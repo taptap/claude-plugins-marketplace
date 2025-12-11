@@ -8,10 +8,10 @@ TapTap 团队维护的 Claude Code 插件库，提供开发工作流自动化工
 
 ```bash
 # HTTPS 方式
-/plugin marketplace add https://gitlab.taptap.com/ai/claude-plugins-marketplace
+/plugin marketplace add https://github.com/taptap/claude-plugins-marketplace
 
 # 或 SSH 方式（推荐）
-/plugin marketplace add [email protected]:ai/claude-plugins-marketplace.git
+/plugin marketplace add git@github.com:taptap/claude-plugins-marketplace.git
 ```
 
 ### 2. 安装插件
@@ -59,4 +59,4 @@ TapTap 团队维护的 Claude Code 插件库，提供开发工作流自动化工
 
 ## 问题反馈
 
-请在 [GitLab Issues](https://gitlab.taptap.com/ai/claude-plugins-marketplace/-/issues) 提交问题。
+请在 [GitHub Issues](https://github.com/taptap/claude-plugins-marketplace/issues) 提交问题。
