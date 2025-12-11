@@ -7,7 +7,7 @@
   "metadata": {
     "description": "TapTap Claude Code 插件库 - 提供开发工作流自动化插件",
     "version": "0.0.1",
-    "repository": "https://gitlab.taptap.com/ai/claude-plugins-marketplace",
+    "repository": "https://github.com/taptap/claude-plugins-marketplace",
     "pluginRoot": "./plugins"
   },
   "plugins": [
