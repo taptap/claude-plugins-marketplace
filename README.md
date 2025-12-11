@@ -47,6 +47,38 @@ TapTap 团队维护的 Claude Code 插件库，提供开发工作流自动化工
 /help
 ```
 
+## 团队配置（推荐）
+
+对于团队项目，可以在项目根目录配置 `.claude/settings.json`，团队成员克隆或更新代码后，Claude Code 会自动安装插件，无需手动执行安装命令。
+
+### 配置方法
+
+在项目根目录执行以下命令：
+
+```bash
+mkdir -p .claude && echo '{
+  "extraKnownMarketplaces": {
+    "taptap-plugins": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/taptap/claude-plugins-marketplace.git"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "spec@taptap-plugins": true,
+    "sync@taptap-plugins": true,
+    "git@taptap-plugins": true
+  }
+}' > .claude/settings.json
+```
+
+### 使用说明
+
+1. 将 `.claude/settings.json` 提交到项目的 master 分支
+2. 团队成员更新 master 后，Claude Code 会自动安装配置的插件
+3. 无需每个成员手动执行安装命令
+
 ## 插件列表
 
 | 插件 | 版本 | 描述 |
