@@ -26,7 +26,18 @@ TapTap 团队维护的 Claude Code 插件库，提供开发工作流自动化工
 /plugin install sync@taptap-plugins
 ```
 
-### 3. 验证安装
+### 3. 同步到 Cursor（可选）
+
+如果你希望在 Cursor IDE 中也能使用插件命令（如 `/commit`、`/commit-push-pr`），需要执行同步：
+
+```bash
+# 在 Claude Code 中执行
+/sync-to-cursor
+
+# 同步完成后，在 Cursor 中重启或刷新即可使用
+```
+
+### 4. 验证安装
 
 ```bash
 # 查看已安装插件
@@ -40,11 +51,66 @@ TapTap 团队维护的 Claude Code 插件库，提供开发工作流自动化工
 
 | 插件 | 版本 | 描述 |
 |------|------|------|
-| spec | 0.1.0 | Spec-Driven Development 工作流插件 |
-| git  | 0.1.0 | Git 工作流自动化插件 |
-| sync | 0.1.0 | 开发环境配置同步插件 |
+| spec | 0.0.1 | Spec-Driven Development 工作流插件 |
+| git  | 0.0.1 | Git 工作流自动化插件 |
+| sync | 0.0.1 | 开发环境配置同步插件 |
 
 详细说明请查看各插件目录下的 README.md。
+
+## 日常使用
+
+### Git 工作流（推荐）
+
+适用于需要创建 MR 的开发场景：
+
+```bash
+# 1. 提供任务链接，自动创建分支、提交、推送并创建 MR
+/commit-push-pr https://xindong.atlassian.net/browse/TAP-12345
+
+# 或提供飞书任务链接
+/commit-push-pr https://project.feishu.cn/pojq34/story/detail/12345
+```
+
+**命令执行流程：**
+- 自动从任务链接提取 Task ID
+- 如果在 main/master 分支，会询问分支描述并创建功能分支（如 `feat-TAP-12345-description`）
+- 分析代码变更，生成符合规范的提交信息
+- 推送代码并自动创建 Merge Request
+
+### 快速提交（无需 MR）
+
+适用于小改动或不需要立即创建 MR 的场景：
+
+```bash
+# 1. 在功能分支上，直接提交（会自动从分支名提取 Task ID）
+/commit
+
+# 2. 或提供任务链接
+/commit https://xindong.atlassian.net/browse/TAP-12345
+
+# 3. 对于不需要关联任务的改动
+/commit
+# 在询问时选择 "使用 #no-ticket"
+```
+
+### Spec 驱动开发
+
+从需求文档生成技术方案并执行开发：
+
+```bash
+# 根据任务需求生成完整的技术方案和执行计划
+/spec https://xindong.atlassian.net/browse/TAP-12345
+```
+
+### 开发环境同步
+
+```bash
+# 同步插件配置到 Cursor IDE
+/sync-to-cursor
+
+# 使用飞书多维表格（需配置 MCP）
+/mcp-feishu
+```
 
 ## 更新插件
 
