@@ -66,7 +66,7 @@ mkdir -p .claude && echo '{
     "taptap-plugins": {
       "source": {
         "source": "git",
-        "url": "https://github.com/taptap/claude-plugins-marketplace.git"
+        "url": "git@github.com:taptap/claude-plugins-marketplace.git"
       }
     }
   },
