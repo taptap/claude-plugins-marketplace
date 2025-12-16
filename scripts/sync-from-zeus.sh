@@ -14,6 +14,18 @@ if [ ! -d "$ZEUS_PATH/.claude/plugins" ]; then
   exit 1
 fi
 
+# 同步 marketplace.json
+if [ -f "$ZEUS_PATH/.claude/.claude-plugin/marketplace.json" ]; then
+  echo "→ 同步 marketplace.json..."
+  mkdir -p "$MARKETPLACE_PATH/.claude-plugin"
+  cp "$ZEUS_PATH/.claude/.claude-plugin/marketplace.json" "$MARKETPLACE_PATH/.claude-plugin/marketplace.json"
+  echo "  ✓ marketplace.json 已同步"
+else
+  echo "⚠️  警告: marketplace.json 不存在于 $ZEUS_PATH/.claude/.claude-plugin/"
+fi
+
+echo ""
+
 # 同步所有插件
 for plugin in spec git sync; do
   if [ -d "$ZEUS_PATH/.claude/plugins/$plugin" ]; then
@@ -34,5 +46,5 @@ echo ""
 echo "请检查变更并提交："
 echo "  cd $MARKETPLACE_PATH"
 echo "  git diff"
-echo "  git add plugins/"
+echo "  git add .claude-plugin/marketplace.json plugins/"
 echo "  git commit -m 'sync: 同步插件从 zeus'"

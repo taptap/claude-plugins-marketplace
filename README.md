@@ -90,7 +90,7 @@ mkdir -p .claude && echo '{
 |------|------|------|
 | spec | 0.1.0 | Spec-Driven Development 工作流插件 |
 | git  | 0.1.0 | Git 工作流自动化插件（支持智能分支前缀判断） |
-| sync | 0.1.0 | 开发环境配置同步插件（MCP + Hooks + Cursor） |
+| sync | 0.1.1 | 开发环境配置同步插件（MCP + Hooks + Cursor） |
 
 详细说明请查看各插件目录下的 README.md。
 
