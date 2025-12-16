@@ -1,0 +1,15 @@
+{
+  "description": "自动重新加载团队插件",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/reload-plugins.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -20,8 +20,22 @@ description: 提交代码、推送分支并使用 GitLab push options 创建 Mer
    - 飞书链接：`https://*.feishu.cn/**`
    - Jira 链接：`https://xindong.atlassian.net/browse/TAP-xxxxx`
 
-2. **处理分支创建**
-   - ✅ 如果找到任务 ID：询问分支描述，创建 `feat-TAP-xxxxx-description` 分支
+2. **智能判断分支前缀类型**
+
+   分析 `git diff --stat` 和 `git diff` 内容，按优先级判断变更类型：
+
+   - **docs-**：仅修改文档文件（*.md, *.txt）
+   - **test-**：仅修改测试文件（*_test.go, *.test.js, *_test.*, test_*）
+   - **fix-**：diff 中包含关键词 "fix"、"修复"、"bug"、"error"、"issue"
+   - **feat-**：新增文件、或包含 "feat"、"feature"、"新增"、"add"
+   - **refactor-**：包含 "refactor"、"重构"、"rename"
+   - **perf-**：包含 "perf"、"performance"、"优化"、"optimize"
+   - **chore-**：配置文件、依赖更新、其他维护任务
+
+   如果无法自动判断，使用 `AskUserQuestion` 询问用户选择类型。
+
+3. **处理分支创建**
+   - ✅ 如果找到任务 ID：询问分支描述，创建 `{智能判断的prefix}-TAP-xxxxx-description` 分支
    - ❌ 如果没有：**中断命令**，提示用户提供任务链接/ID
 
 ### 第二步：提取任务 ID
@@ -63,3 +77,4 @@ git push -o merge_request.create
 - 显示任务工单链接（如有）
 
 **注意**：提交规范详见 [../skills/git-flow/reference.md](../skills/git-flow/reference.md)
+
