@@ -38,11 +38,21 @@ description: 一键配置开发环境（MCP + Hooks + Cursor 同步）
 
 **目标**：同步 context7 和 sequential-thinking MCP 配置到 `.mcp.json` 和 `.cursor/mcp.json`
 
-**步骤 1.1：读取 MCP 配置模板**
+**步骤 1.1：读取 MCP 配置模板（三级查找）**
 
-读取以下两个模板文件：
-- `.claude/plugins/sync/skills/mcp-templates/context7.json`
-- `.claude/plugins/sync/skills/mcp-templates/sequential-thinking.json`
+按以下优先级查找并读取模板文件：
+
+**对于 context7.json：**
+1. `${CLAUDE_PLUGIN_ROOT}/skills/mcp-templates/context7.json`（如果 `CLAUDE_PLUGIN_ROOT` 环境变量存在且文件存在）
+2. `.claude/plugins/sync/skills/mcp-templates/context7.json`（项目本地）
+3. `~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/mcp-templates/context7.json`（用户主目录）
+
+**对于 sequential-thinking.json：**
+1. `${CLAUDE_PLUGIN_ROOT}/skills/mcp-templates/sequential-thinking.json`
+2. `.claude/plugins/sync/skills/mcp-templates/sequential-thinking.json`
+3. `~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/mcp-templates/sequential-thinking.json`
+
+使用每个文件第一个存在的路径。如果所有路径都不存在，使用步骤 1.2 中的硬编码默认配置。
 
 **步骤 1.2：同步到 .mcp.json**
 
@@ -95,13 +105,18 @@ description: 一键配置开发环境（MCP + Hooks + Cursor 同步）
 
 **目标**：同步 plugin hooks 配置到项目级，启用自动重载功能
 
-**步骤 2.1：读取 plugin hooks 配置**
+**步骤 2.1：读取 plugin hooks 配置（三级查找）**
 
-尝试读取文件：`.claude/plugins/sync/hooks/hooks.json`
+按以下优先级查找并读取 hooks.json：
+1. `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json`（如果 `CLAUDE_PLUGIN_ROOT` 环境变量存在且文件存在）
+2. `.claude/plugins/sync/hooks/hooks.json`（项目本地）
+3. `~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/hooks/hooks.json`（用户主目录）
+
+使用第一个存在的路径。
 
 **错误处理：**
-- 如果读取失败（文件不存在或无法访问）：
-  1. 记录错误：step2_hooks = "failed"，原因：插件 hooks 配置文件不存在
+- 如果所有路径都不存在或无法访问：
+  1. 记录错误：step2_hooks = "failed"，原因：插件 hooks 配置文件在所有位置都不存在
   2. 跳过步骤 2.2-2.6
   3. 继续阶段 3
 
@@ -128,11 +143,16 @@ test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
      - 合并 hooks 数组，添加新的 SessionStart hook
      - 保留现有的其他 hooks
 
-**步骤 2.4：设置脚本可执行权限**
+**步骤 2.4：设置脚本可执行权限（三级查找）**
 
-```bash
-chmod +x .claude/plugins/sync/scripts/reload-plugins.sh
-```
+按以下优先级查找 reload-plugins.sh 脚本并设置权限：
+1. `${CLAUDE_PLUGIN_ROOT}/scripts/reload-plugins.sh`
+2. `.claude/plugins/sync/scripts/reload-plugins.sh`
+3. `~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/scripts/reload-plugins.sh`
+
+对找到的第一个文件执行：`chmod +x <path>`
+
+如果所有位置都不存在该脚本，记录警告但继续执行（不阻塞流程）。
 
 **步骤 2.5：记录执行结果**
 
@@ -151,13 +171,18 @@ chmod +x .claude/plugins/sync/scripts/reload-plugins.sh
 
 **目标**：同步 git-flow rules 和 git commands 到 Cursor
 
-**步骤 3.1：同步 Git Flow Rules**
+**步骤 3.1：同步 Git Flow Rules（三级查找）**
 
-1. 尝试读取源文件：`.claude/plugins/git/skills/git-flow/reference.md`
+1. 按以下优先级查找并读取 Git Flow 规范文件：
+   1. `${CLAUDE_PLUGIN_ROOT}/../git/skills/git-flow/reference.md`（如果 `CLAUDE_PLUGIN_ROOT` 指向 sync 插件）
+   2. `.claude/plugins/git/skills/git-flow/reference.md`（项目本地）
+   3. `~/.claude/plugins/marketplaces/taptap-plugins/plugins/git/skills/git-flow/reference.md`（用户主目录）
+
+   使用第一个存在的文件。
 
    **错误处理：**
-   - 如果读取失败（文件不存在或无法访问）：
-     1. 记录错误：step3_cursor = "failed"，原因：Git 插件文件不存在
+   - 如果所有路径都不存在或无法访问：
+     1. 记录错误：step3_cursor = "failed"，原因：Git 插件文件在所有位置都不存在
      2. 跳过步骤 3.2-3.4
      3. 继续阶段 4
    - 如果读取成功，继续执行步骤 2-3
@@ -172,18 +197,22 @@ chmod +x .claude/plugins/sync/scripts/reload-plugins.sh
    ```
 3. 写入目标文件：`.cursor/rules/git-flow.mdc`
 
-**步骤 3.2：同步 Git Commands**
+**步骤 3.2：同步 Git Commands（三级查找）**
 
 对于每个命令文件，执行以下操作：
 
-**命令映射：**
-- `.claude/plugins/git/commands/commit.md` → `.cursor/commands/git-commit.md`
-- `.claude/plugins/git/commands/commit-push-pr.md` → `.cursor/commands/git-commit-push-pr.md`
+**命令映射（目标文件）：**
+- `commit.md` → `.cursor/commands/git-commit.md`
+- `commit-push-pr.md` → `.cursor/commands/git-commit-push-pr.md`
 
 **处理逻辑：**
-1. 尝试读取源文件（如 `.claude/plugins/git/commands/commit.md`）
-   - 如果读取失败：跳过该文件，继续处理下一个
-   - 如果读取成功：继续步骤 2-3
+1. 按三级优先级查找源文件（以 commit.md 为例）：
+   1. `${CLAUDE_PLUGIN_ROOT}/../git/commands/commit.md`
+   2. `.claude/plugins/git/commands/commit.md`
+   3. `~/.claude/plugins/marketplaces/taptap-plugins/plugins/git/commands/commit.md`
+
+   使用第一个存在的文件。如果所有路径都不存在，跳过该文件，继续处理下一个。
+
 2. 检查目标文件是否存在
 3. 如果目标不存在：直接创建
 4. 如果目标存在：跳过（不覆盖用户可能的自定义修改）
