@@ -97,7 +97,13 @@ description: 一键配置开发环境（MCP + Hooks + Cursor 同步）
 
 **步骤 2.1：读取 plugin hooks 配置**
 
-读取文件：`.claude/plugins/sync/hooks/hooks.json`
+尝试读取文件：`.claude/plugins/sync/hooks/hooks.json`
+
+**错误处理：**
+- 如果读取失败（文件不存在或无法访问）：
+  1. 记录错误：step2_hooks = "failed"，原因：插件 hooks 配置文件不存在
+  2. 跳过步骤 2.2-2.6
+  3. 继续阶段 3
 
 **步骤 2.2：检查项目级 hooks 配置**
 
@@ -147,7 +153,15 @@ chmod +x .claude/plugins/sync/scripts/reload-plugins.sh
 
 **步骤 3.1：同步 Git Flow Rules**
 
-1. 读取源文件：`.claude/plugins/git/skills/git-flow/reference.md`
+1. 尝试读取源文件：`.claude/plugins/git/skills/git-flow/reference.md`
+
+   **错误处理：**
+   - 如果读取失败（文件不存在或无法访问）：
+     1. 记录错误：step3_cursor = "failed"，原因：Git 插件文件不存在
+     2. 跳过步骤 3.2-3.4
+     3. 继续阶段 4
+   - 如果读取成功，继续执行步骤 2-3
+
 2. 添加 YAML front matter：
    ```yaml
    ---
@@ -167,9 +181,12 @@ chmod +x .claude/plugins/sync/scripts/reload-plugins.sh
 - `.claude/plugins/git/commands/commit-push-pr.md` → `.cursor/commands/git-commit-push-pr.md`
 
 **处理逻辑：**
-1. 检查目标文件是否存在
-2. 如果不存在：直接创建
-3. 如果存在：跳过（不覆盖用户可能的自定义修改）
+1. 尝试读取源文件（如 `.claude/plugins/git/commands/commit.md`）
+   - 如果读取失败：跳过该文件，继续处理下一个
+   - 如果读取成功：继续步骤 2-3
+2. 检查目标文件是否存在
+3. 如果目标不存在：直接创建
+4. 如果目标存在：跳过（不覆盖用户可能的自定义修改）
 
 **转换规则：**
 - 移除 YAML front matter
@@ -177,6 +194,7 @@ chmod +x .claude/plugins/sync/scripts/reload-plugins.sh
 - 引用 `.cursor/rules/git-flow.mdc` 而非嵌入规范
 
 **注意**：为简化流程，此命令采用保守策略：
+- 源文件不存在时跳过该文件
 - 已存在的文件一律跳过，不覆盖
 - 如需强制更新，请使用 `/sync:cursor` 命令
 
