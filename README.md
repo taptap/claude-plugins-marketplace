@@ -2,61 +2,11 @@
 
 TapTap 团队维护的 Claude Code 插件库，提供开发工作流自动化工具。
 
-## 安装方式
+## 团队配置
 
-### 1. 添加 Marketplace
+对于团队项目，可以在项目根目录配置 `.claude/settings.json`，Claude Code 会自动安装插件，无需手动执行安装命令。
 
-```bash
-# HTTPS 方式
-/plugin marketplace add https://github.com/taptap/claude-plugins-marketplace
-
-# 或 SSH 方式（推荐）
-/plugin marketplace add git@github.com:taptap/claude-plugins-marketplace.git
-```
-
-### 2. 安装插件
-
-```bash
-# 查看可用插件
-/plugin list
-
-# 安装指定插件
-/plugin install spec@taptap-plugins
-/plugin install git@taptap-plugins
-/plugin install sync@taptap-plugins
-```
-
-### 3. 配置开发环境（推荐）
-
-一键配置 MCP 服务器、自动重载和 Cursor 同步：
-
-```bash
-# 在 Claude Code 中执行
-/sync:basic
-
-# 配置完成后，重启 Claude Code 和 Cursor 即可使用
-```
-
-**包含功能：**
-- ✅ 配置 context7 和 sequential-thinking MCP（自动获取最新文档）
-- ✅ 启用插件自动重载（修改后重启会话即可生效）
-- ✅ 同步 Git 命令到 Cursor IDE
-
-### 4. 验证安装
-
-```bash
-# 查看已安装插件
-/plugin
-
-# 查看可用命令
-/help
-```
-
-## 团队配置（推荐）
-
-对于团队项目，可以在项目根目录配置 `.claude/settings.json`，团队成员克隆或更新代码后，Claude Code 会自动安装插件，无需手动执行安装命令。
-
-### 配置方法
+### 1. 配置 settings 
 
 在项目根目录执行以下命令：
 
@@ -78,11 +28,31 @@ mkdir -p .claude && echo '{
 }' > .claude/settings.json
 ```
 
-### 使用说明
+### 2. 执行 /sync
 
-1. 将 `.claude/settings.json` 提交到项目的 master 分支
-2. 团队成员更新 master 后，Claude Code 会自动安装配置的插件
-3. 无需每个成员手动执行安装命令
+一键配置 MCP、自动更新和 Cursor 同步：
+
+```bash
+# 在 Claude Code 中执行
+/sync:basic
+
+# 配置完成后，重启 Claude Code 和 Cursor 即可使用
+```
+
+**包含功能：**
+- ✅ 配置 context7 和 sequential-thinking MCP（自动获取最新文档）
+- ✅ 启用插件自动重载（修改后重启会话即可生效）
+- ✅ 同步配置到 Cursor
+
+### 3. 验证安装
+
+```bash
+# 查看已安装插件
+/plugin
+
+# 查看可用命令
+/help
+```
 
 ## 插件列表
 
