@@ -195,7 +195,9 @@ test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
    alwaysApply: false
    ---
    ```
-3. 写入目标文件：`.cursor/rules/git-flow.mdc`
+3. 创建目录并直接覆盖写入目标文件：`.cursor/rules/git-flow.mdc`
+   - 使用 `mkdir -p .cursor/rules` 确保目录存在
+   - 直接覆盖写入，不检查文件是否存在
 
 **步骤 3.2：同步 Git Commands（三级查找）**
 
@@ -203,6 +205,7 @@ test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
 
 **命令映射（目标文件）：**
 - `commit.md` → `.cursor/commands/git-commit.md`
+- `commit-push.md` → `.cursor/commands/git-commit-push.md`
 - `commit-push-pr.md` → `.cursor/commands/git-commit-push-pr.md`
 
 **处理逻辑：**
@@ -213,19 +216,19 @@ test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
 
    使用第一个存在的文件。如果所有路径都不存在，跳过该文件，继续处理下一个。
 
-2. 检查目标文件是否存在
-3. 如果目标不存在：直接创建
-4. 如果目标存在：跳过（不覆盖用户可能的自定义修改）
+2. 创建目录并直接覆盖写入
+   - 使用 `mkdir -p .cursor/commands` 确保目录存在
+   - 直接覆盖写入，不检查文件是否存在
 
 **转换规则：**
 - 移除 YAML front matter
 - 保持 Markdown 格式
 - 引用 `.cursor/rules/git-flow.mdc` 而非嵌入规范
 
-**注意**：为简化流程，此命令采用保守策略：
+**注意**：此命令会直接覆盖已存在的文件：
 - 源文件不存在时跳过该文件
-- 已存在的文件一律跳过，不覆盖
-- 如需强制更新，请使用 `/sync:cursor` 命令
+- 已存在的文件会被直接覆盖
+- 如需更精细的冲突处理，请使用 `/sync:cursor` 命令
 
 **步骤 3.3：记录执行结果**
 
@@ -268,7 +271,7 @@ test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
 
   ✅ Cursor 同步: 成功
      - Rules: git-flow.mdc
-     - Commands: git-commit.md, git-commit-push-pr.md
+     - Commands: git-commit.md, git-commit-push.md, git-commit-push-pr.md
 
 下一步：
   1. 重启 Claude Code 会话（MCP 配置生效）
@@ -276,7 +279,6 @@ test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
   3. 配置将自动生效
 
 💡 提示：
-  - 如需配置飞书 MCP，请运行 `/sync:mcp-feishu <URL>`
   - 修改插件后重启会话，会自动重新加载
   - 在 Cursor 中输入 / 可查看所有命令
 ```
@@ -362,7 +364,3 @@ test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
    - `/sync:mcp` - 仅配置 MCP
    - `/sync:hooks` - 仅配置钩子
    - `/sync:cursor` - 仅同步 Cursor（包含冲突处理）
-
-4. **飞书 MCP**：
-   飞书 MCP 需要个人 URL，不包含在此命令中
-   请单独运行：`/sync:mcp-feishu <URL>`

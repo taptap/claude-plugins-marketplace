@@ -16,29 +16,26 @@ description: 同步配置到 Cursor IDE
 
 **重要：先同步规范文件，commands 将引用此文件以避免冗余**
 
-1. **同步 `.claude/plugins/git/skills/git-flow/reference.md` → `.cursor/rules/git-flow.mdc`：**
-   - 源文件：`.claude/plugins/git/skills/git-flow/reference.md`
-   - 目标文件：`.cursor/rules/git-flow.mdc`
-   - 格式要求：添加 YAML front matter
+1. **按三级优先级查找模板文件：**
+   - Level 1: `${CLAUDE_PLUGIN_ROOT}/skills/cursor-templates/rules/git-flow-rule.mdc`（环境变量，marketplace 安装）
+   - Level 2: `.claude/plugins/sync/skills/cursor-templates/rules/git-flow-rule.mdc`（项目本地）
+   - Level 3: `~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/cursor-templates/rules/git-flow-rule.mdc`（用户主目录）
 
-   **YAML front matter 格式：**
-   ```yaml
-   ---
-   description: Git 工作流规范，在执行 Git 操作时应用
-   globs:
-   alwaysApply: false
-   ---
-   ```
+   使用第一个存在的文件。如果所有路径都不存在，报错并中止。
 
-2. **检查更新：**
-   ```bash
-   # 对比源文件和目标文件
-   diff .claude/plugins/git/skills/git-flow/reference.md .cursor/rules/git-flow.mdc
-   ```
+2. **读取模板内容：**
+   - 模板已包含正确的 YAML frontmatter（description, globs, alwaysApply）
+   - 模板已包含完整的 Git 工作流规范内容
+   - 无需任何格式转换
 
-3. **Cursor Rules 特性：**
+3. **创建目录并直接覆盖写入目标文件 `.cursor/rules/git-flow.mdc`：**
+   - 使用 `mkdir -p .cursor/rules` 确保目录存在
+   - 直接覆盖写入，不检查文件是否存在
+   - 无需格式转换，模板内容已经是正确格式
+
+5. **Cursor Rules 特性：**
    - `.mdc` 文件是 Cursor 的 rules 文件格式
-   - `alwaysApply: false` 表示仅在相关操作时应用
+   - 模板中 `alwaysApply: false` 表示仅在相关操作时应用
    - Commands 可以在文档中引用此规范，Cursor AI 会自动读取
 
 ### 第二步：检查已同步的命令
@@ -49,119 +46,43 @@ description: 同步配置到 Cursor IDE
 ls -la .cursor/commands/
 ```
 
-### 第三步：同步 Git Commands（简化版）
+### 第三步：同步 Git Commands
 
-将以下 Claude Code commands 转换为 Cursor 兼容格式并写入 `.cursor/commands/`：
+将 Cursor 模板直接同步到 `.cursor/commands/`：
 
-1. **git-commit.md**
-   - 源文件：`.claude/plugins/git/commands/commit.md`
-   - 目标文件：`.cursor/commands/git-commit.md`
+**命令映射：**
+1. `cursor-templates/commands/git-commit.md` → `.cursor/commands/git-commit.md`
+2. `cursor-templates/commands/git-commit-push.md` → `.cursor/commands/git-commit-push.md`
+3. `cursor-templates/commands/git-commit-push-pr.md` → `.cursor/commands/git-commit-push-pr.md`
 
-2. **git-commit-push-pr.md**
-   - 源文件：`.claude/plugins/git/commands/commit-push-pr.md`
-   - 目标文件：`.cursor/commands/git-commit-push-pr.md`
+**同步流程（对每个文件）：**
 
-**文件冲突处理逻辑（重要）：**
+1. **按三级优先级查找模板文件（以 git-commit.md 为例）：**
+   - Level 1: `${CLAUDE_PLUGIN_ROOT}/skills/cursor-templates/commands/git-commit.md`
+   - Level 2: `.claude/plugins/sync/skills/cursor-templates/commands/git-commit.md`
+   - Level 3: `~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/cursor-templates/commands/git-commit.md`
 
-对于每个目标文件，执行以下检查：
+   使用第一个存在的文件。如果所有路径都不存在，跳过该文件并记录错误。
 
-1. **检查文件是否存在：**
-   ```bash
-   test -f .cursor/commands/git-commit.md && echo "存在" || echo "不存在"
-   ```
+2. **读取模板内容（已是 Cursor 格式，无需转换）**
 
-2. **如果文件存在，询问用户：**
-   使用 `AskUserQuestion` 工具，为每个已存在的文件提问：
+3. **创建目录并直接覆盖写入：**
+   - 使用 `mkdir -p .cursor/commands` 确保目录存在
+   - 直接覆盖写入，不检查文件是否存在
+   - 无需格式转换，模板内容已经是正确格式
 
-   ```
-   问题：文件 .cursor/commands/git-commit.md 已存在，如何处理？
+4. **记录同步结果（创建/覆盖）**
 
-   选项：
-   - 覆盖：使用最新版本覆盖（会丢失用户自定义修改）
-   - 跳过：保留现有文件，不做任何修改
-   - 对比：显示差异，由用户决定
-   ```
+**模板优势：**
+- ✅ 模板已是 Cursor 纯 Markdown 格式
+- ✅ 已移除 YAML frontmatter
+- ✅ 已将动态语法转换为静态命令示例
+- ✅ 已引用 `.cursor/rules/git-flow.mdc` 而非嵌入规范
+- ✅ 无需运行时转换，直接复制即可
 
-3. **根据用户选择执行操作：**
-   - **覆盖**：直接写入新内容
-   - **跳过**：保持现有文件不变，继续下一个
-   - **对比**：使用 `diff` 或显示双栏对比，然后再次询问
-
-4. **批量处理选项（可选）：**
-   如果有多个文件需要同步，可以询问：
-   ```
-   问题：发现 2 个文件已存在，如何处理？
-
-   选项：
-   - 全部覆盖：覆盖所有已存在的文件
-   - 全部跳过：保留所有现有文件
-   - 逐个询问：对每个文件单独决定
-   ```
-
-**转换规则：**
-- 移除 YAML front matter（`allowed-tools`, `description`）
-- 将动态执行语法（反引号包裹的命令）转换为明确的 bash 命令块
-- 保持纯 Markdown 格式
-- 添加使用说明和示例
-- **关键：引用 `.cursor/rules/git-flow.mdc` 而非嵌入规范**
-
-**简化策略（利用 Cursor Rules）：**
-
-Cursor 会自动读取 `.cursor/rules/*.mdc` 文件作为上下文，因此 commands 中：
-
-✅ **应该保留：**
-- 命令使用方式和示例
-- 具体执行步骤
-- 需要执行的 git 命令列表
-- 特殊处理逻辑（如分支创建、任务 ID 提取）
-
-❌ **应该移除（改为引用）：**
-- 分支命名规则详细表格 → 引用 `git-flow.mdc`
-- Type 类型详细表格 → 引用 `git-flow.mdc`
-- Description 生成规范 → 引用 `git-flow.mdc`
-- 提交信息验证正则 → 引用 `git-flow.mdc`
-- 分支保护规则 → 引用 `git-flow.mdc`
-
-**引用格式示例：**
-
-```markdown
-### 提交信息规范
-
-生成符合项目规范的提交信息：`type(scope): description #TASK-ID`
-
-详细规范参见：`.cursor/rules/git-flow.mdc`
-
-**快速参考：**
-- Type: feat, fix, refactor, docs, style, test, chore
-- Task ID: 自动从分支名提取（TAP-xxx、TP-xxx、TDS-xxx）
-- Description: 中文描述，简洁总结所有改动
-```
-
-**检查更新逻辑：**
-
-```bash
-# 检查文件修改时间
-stat -f "%m %N" .claude/plugins/git/commands/commit.md
-stat -f "%m %N" .cursor/commands/git-commit.md 2>/dev/null || echo "0 不存在"
-```
-
-**同步决策流程图：**
-
-```
-目标文件存在？
-├─ 否 → 直接创建
-└─ 是 → 检查修改时间
-         ├─ 源文件更新 → 询问用户：覆盖/跳过/对比
-         │                └─ 覆盖 → 备份旧文件 → 写入新内容
-         │                └─ 跳过 → 保持不变
-         │                └─ 对比 → 显示 diff → 再次询问
-         └─ 目标文件更新 → 提示用户目标文件有自定义修改
-                          └─ 询问：保留/覆盖/合并
-```
-
-**安全措施：**
-- 覆盖前自动备份：`.cursor/commands/git-commit.md.backup.YYYYMMDD-HHMMSS`
-- 显示备份文件路径，方便恢复
+**同步策略：**
+- 直接覆盖所有文件，确保配置始终是最新的
+- 适用于团队共享配置，保持一致性
 - 记录同步日志
 
 ### 第四步：显示同步报告
@@ -172,20 +93,15 @@ stat -f "%m %N" .cursor/commands/git-commit.md 2>/dev/null || echo "0 不存在"
 🔄 同步完成
 
 Rules:
-  ✅ git-flow.mdc (Git 工作流规范)
+  ✅ git-flow.mdc (Git 工作流规范) → 已覆盖
 
 Commands:
-  ✅ git-commit.md → 已创建/已更新/已跳过
+  ✅ git-commit.md → 已覆盖
      └─ 引用 git-flow.mdc
-  ✅ git-commit-push-pr.md → 已创建/已更新/已跳过
+  ✅ git-commit-push.md → 已覆盖
      └─ 引用 git-flow.mdc
-
-文件冲突处理：
-  📦 备份文件：
-     - .cursor/commands/git-commit.md.backup.20251211-153700
-
-  ⏭️  跳过文件：
-     - .cursor/commands/git-commit-push-pr.md (用户选择保留)
+  ✅ git-commit-push-pr.md → 已覆盖
+     └─ 引用 git-flow.mdc
 
 💡 使用方式：
   在 Cursor 中输入 / 即可查看所有命令
@@ -196,9 +112,9 @@ Commands:
   - 统一维护规范，一处更新全局生效
 
 ⚠️  注意：
+  - 所有文件已直接覆盖，确保配置始终最新
+  - 适合团队共享配置，保持一致性
   - Cursor commands 为纯 Markdown 格式，无动态上下文功能
-  - 需要手动执行 git 命令获取上下文信息
-  - 如需恢复备份：cp .cursor/commands/*.backup.* .cursor/commands/
 ```
 
 ### 第五步：验证同步结果
@@ -227,37 +143,61 @@ Commands:
 |------|------------|--------|------|
 | Rules | `.claude/plugins/git/skills/git-flow/reference.md` | `.cursor/rules/git-flow.mdc` | ✅ 支持 |
 | Commands | `.claude/plugins/git/commands/commit.md` | `.cursor/commands/git-commit.md` | ✅ 支持 |
+| Commands | `.claude/plugins/git/commands/commit-push.md` | `.cursor/commands/git-commit-push.md` | ✅ 支持 |
 | Commands | `.claude/plugins/git/commands/commit-push-pr.md` | `.cursor/commands/git-commit-push-pr.md` | ✅ 支持 |
 
 ## 架构对比
 
-### Claude Code
+### Claude Code（源）
 ```
 .claude/
-├── rules/
-│   └── git-flow.md          # 规范文档
 └── plugins/
     └── git/
-        └── commands/
-            ├── commit.md    # 命令内嵌规范
-            └── commit-push-pr.md
+        ├── commands/
+        │   ├── commit.md          # 包含 YAML frontmatter 和动态语法
+        │   ├── commit-push.md
+        │   └── commit-push-pr.md
+        └── skills/
+            └── git-flow/
+                └── reference.md    # 规范文档
 ```
 
-### Cursor
+### Sync 插件模板（中间层）
 ```
-.cursor/
+.claude/plugins/sync/skills/cursor-templates/
 ├── rules/
-│   └── git-flow.mdc         # 规范文档（自动应用）
+│   └── git-flow-rule.mdc         # 预格式化的 Cursor rules
 └── commands/
-    ├── git-commit.md        # 命令引用规范
+    ├── git-commit.md             # 预格式化的 Cursor commands
+    ├── git-commit-push.md
     └── git-commit-push-pr.md
 ```
 
+### Cursor（目标）
+```
+.cursor/
+├── rules/
+│   └── git-flow.mdc              # 规范文档（YAML frontmatter）
+└── commands/
+    ├── git-commit.md             # 纯 Markdown，引用 rules
+    ├── git-commit-push.md
+    └── git-commit-push-pr.md
+```
+
+**同步流程：**
+```
+模板目录 (cursor-templates/)
+    ↓ 三级查找
+    ↓ 直接复制（无需转换）
+目标目录 (.cursor/)
+```
+
 **优势：**
-- ✅ 规范集中管理，避免重复
-- ✅ Rules 自动应用到相关上下文
-- ✅ Commands 更简洁，专注于执行流程
-- ✅ 更新规范时，所有命令自动生效
+- ✅ 规范集中管理在 rules，commands 引用规范
+- ✅ 模板预格式化，同步时无需转换
+- ✅ 单一真实来源（Single Source of Truth）用于 Cursor 格式
+- ✅ 维护简单：更新模板即可，无需修改转换逻辑
+- ✅ 调试容易：模板内容直接可见，所见即所得
 
 ---
 
@@ -279,10 +219,9 @@ Commands:
 - Cursor 会自动读取 rules 作为上下文
 
 ### 问题 4：同步时覆盖了我的自定义修改
-- 同步前会检查文件是否存在
-- 存在时会询问用户如何处理
-- 覆盖前会自动创建备份
-- 备份文件可随时恢复：`cp .cursor/commands/*.backup.* .cursor/commands/`
+- 此命令会直接覆盖所有文件，确保配置始终是最新的
+- 适用于团队共享配置，保持一致性
+- 如果需要自定义修改，建议在项目本地 fork 模板（见下方最佳实践）
 
 ---
 
@@ -319,31 +258,86 @@ Commands:
 ### 3. 保持同步更新
 
 当 `.claude/plugins/git/skills/git-flow/reference.md` 更新时：
-1. 运行 `/sync-to-cursor` 自动同步
-2. 如果有冲突，会友好询问用户
-3. 覆盖前自动备份，避免丢失自定义修改
-4. Cursor 会自动读取最新的 rules
+1. 运行 `/sync:cursor` 自动同步
+2. 所有文件直接覆盖，确保配置最新
+3. Cursor 会自动读取最新的 rules
 
-### 4. 文件冲突处理最佳实践
+### 4. 同步策略
 
-**场景 1：首次同步**
-- 目标文件不存在
-- 直接创建，无需询问
+**直接覆盖模式：**
+- 所有文件直接覆盖，不询问、不备份
+- 确保团队配置始终一致
+- 适合团队共享配置的场景
 
-**场景 2：源文件有更新**
-- 对比修改时间
-- 询问用户：覆盖/跳过/查看差异
-- 覆盖前备份旧文件
+**如需自定义修改：**
+- 方案 A：在项目本地 fork 模板（推荐）
+  - 复制 `cursor-templates` 到项目本地
+  - 修改项目本地版本
+  - 三级查找会优先使用项目本地模板
+- 方案 B：使用版本控制
+  - 将 `.cursor/` 目录提交到 git
+  - 团队共享自定义配置
 
-**场景 3：用户有自定义修改**
-- 检测到目标文件被修改过
-- 提示用户可能丢失自定义内容
-- 提供备份路径
+---
 
-**推荐做法：**
-- 选择"对比"查看差异
-- 如果只是格式调整，选择"覆盖"
-- 如果有实质性自定义，选择"跳过"并手动合并
+## 模板维护最佳实践
+
+### 1. 当 Git 插件更新时
+
+如果 `.claude/plugins/git/` 中的规范或命令更新：
+
+1. 检查变更内容
+2. 更新对应的 Cursor 模板：
+   - `reference.md` 更新 → 更新 `cursor-templates/rules/git-flow-rule.mdc`
+   - `commands/*.md` 更新 → 更新 `cursor-templates/commands/git-*.md`
+3. 保持 Cursor 格式特性：
+   - Rules 保留 YAML frontmatter
+   - Commands 移除 YAML frontmatter
+   - Commands 使用静态命令示例（非动态语法）
+   - Commands 引用 rules 而非嵌入规范
+
+### 2. 模板更新后同步
+
+更新模板后，运行 `/sync:cursor` 同步到用户的 Cursor 配置：
+- 直接覆盖所有文件，确保配置最新
+- 适合团队共享配置的场景
+- 建议在更新说明中提醒用户重启 Cursor
+
+### 3. 自定义 Cursor 配置
+
+如果用户需要自定义 Cursor commands：
+
+**方案 A：Fork 模板（推荐）**
+- 复制 `cursor-templates` 到项目本地
+- 修改项目本地版本
+- 三级查找会优先使用项目本地模板
+- 优点：可以版本控制自定义内容
+
+**方案 B：版本控制 .cursor 目录**
+- 将 `.cursor/` 目录提交到 git
+- 团队共享自定义配置
+- 注意：每次运行 `/sync:cursor` 会覆盖
+
+### 4. 版本控制建议
+
+**Git 插件内容（源）：**
+- `.claude/plugins/git/commands/` - 提交到版本控制
+- `.claude/plugins/git/skills/git-flow/` - 提交到版本控制
+
+**Cursor 模板（中间层）：**
+- `.claude/plugins/sync/skills/cursor-templates/` - 提交到版本控制
+- 作为 Cursor 格式的单一真实来源
+
+**用户 Cursor 配置（目标）：**
+- `.cursor/` - 添加到 .gitignore（用户自定义）
+- 或提交到版本控制（团队共享配置）
+
+### 5. 模板更新检测
+
+运行 `/sync:cursor` 时会：
+- 按三级优先级查找模板文件
+- 直接覆盖所有目标文件
+- 确保配置始终与模板保持一致
 
 ## 相关文档
 

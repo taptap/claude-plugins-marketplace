@@ -59,10 +59,12 @@ mkdir -p .claude && echo '{
 | 插件 | 版本 | 描述 |
 |------|------|------|
 | spec | 0.1.0 | Spec-Driven Development 工作流插件 |
-| git  | 0.1.0 | Git 工作流自动化插件（支持智能分支前缀判断） |
-| sync | 0.1.2 | 开发环境配置同步插件（MCP + Hooks + Cursor） |
+| git  | 0.1.1 | Git 工作流自动化插件（三种提交方式：commit、commit+push、commit+push+MR） |
+| sync | 0.1.3 | 开发环境配置同步插件（MCP + Hooks + Cursor，支持模板化同步） |
 
 详细说明请查看各插件目录下的 README.md。
+
+**版本历史**：查看 [CHANGELOG.md](./CHANGELOG.md) 了解各版本更新内容。
 
 ## 日常使用
 
@@ -92,21 +94,32 @@ mkdir -p .claude && echo '{
 - 分析代码变更，生成符合规范的提交信息
 - 推送代码并自动创建 Merge Request
 
-### 快速提交（无需 MR）
+### 快速提交与推送
 
-适用于小改动或不需要立即创建 MR 的场景：
+Git 插件提供三种提交方式，根据需求选择：
 
+**1. 仅提交（本地开发）**
 ```bash
-# 1. 在功能分支上，直接提交（会自动从分支名提取 Task ID）
-/commit
-
-# 2. 或提供任务链接
-/commit https://xindong.atlassian.net/browse/TAP-12345
-
-# 3. 对于不需要关联任务的改动
-/commit
-# 在询问时选择 "使用 #no-ticket"
+# 适用于：还需要多次提交，暂不推送
+/git:commit
 ```
+
+**2. 提交并推送（备份到远程）**
+```bash
+# 适用于：功能完成，需要备份到远程，但不创建 MR
+/git:commit-push
+```
+
+**3. 提交、推送并创建 MR（完整流程）**
+```bash
+# 适用于：功能完成，立即创建合并请求
+/git:commit-push-pr https://xindong.atlassian.net/browse/TAP-12345
+```
+
+**说明**：
+- 所有命令都会自动从分支名提取 Task ID
+- 在 main/master 分支会自动创建功能分支
+- `/git:commit-push-pr` 支持智能分支前缀判断
 
 ### Spec 驱动开发
 
