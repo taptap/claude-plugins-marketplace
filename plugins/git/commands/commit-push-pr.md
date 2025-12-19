@@ -40,29 +40,58 @@ description: 提交代码、推送分支并使用 GitLab push options 创建 Mer
 
 ### 第二步：提取任务 ID
 
-**按优先级尝试以下方式：**
+详细步骤参见：[command-procedures.md](../skills/git-flow/command-procedures.md#任务ID提取)
 
-1. **从分支名提取**
-   ```bash
-   git branch --show-current | grep -oE '(TAP|TP|TDS)-[0-9]+'
-   ```
+**概要：** 按优先级从分支名、用户输入、用户询问中获取任务 ID
 
-2. **从用户输入中提取**（如果步骤 1 失败）
-   - 检查用户消息是否包含任务 ID（TAP-xxx、TP-xxx、TDS-xxx）
-   - 检查是否有飞书任务链接，从链接中提取 ID
-   - 检查是否有 Jira 链接（`https://xindong.atlassian.net/browse/TAP-xxxxx`），从 URL 路径中提取 ID
-
-3. **询问用户**（如果步骤 1 和 2 都失败）
-   - 使用 `AskUserQuestion` 询问：「当前分支未包含任务 ID，是否提供工单链接或 ID？」
-   - 选项：
-     - 「提供任务 ID」→ 用户输入 ID
-     - 「使用 #no-ticket」→ 使用 `#no-ticket`
+**三级优先级：**
+1. 从分支名提取：`git branch --show-current | grep -oE '(TAP|TP|TDS)-[0-9]+'`
+2. 从用户输入提取（飞书链接、Jira 链接、直接 ID）
+3. 询问用户
 
 ### 第三步：提交变更
 
+详细规范参见：[command-procedures.md](../skills/git-flow/command-procedures.md#commit信息生成规范)
+
+**执行流程：**
+
 1. 使用上一步获取的任务 ID
-2. 分析变更内容，生成提交信息：`type(scope): description #TASK-ID`
-3. Stage 并 commit（排除敏感文件）
+2. 分析变更内容，确定 commit type（feat, fix, refactor, etc.）
+3. 生成符合规范的提交信息：
+
+**Commit 格式：**
+```
+type(scope): english description #TASK-ID
+
+## Changes
+- List main changes (analyze git diff content)
+- Each change should be specific and clear
+
+## 改动内容
+- 列出主要改动点（分析 git diff 内容）
+- 每个改动点应具体、清晰
+
+## Impact
+- Describe affected modules and features
+- Assess backward compatibility
+- Risk assessment (if any)
+
+## 影响面
+- 说明影响的模块、功能
+- 评估向后兼容性
+- 风险评估（如有）
+
+Generated-By: Claude Code <https://claude.ai/code>
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+**关键规则：**
+- 标题：`type(scope): english description #TASK-ID`（必须使用英文祈使句）
+- 正文：同时包含英文和中文两部分，英文在前，中文在后
+- 签名：空一行后添加 Generated-By 和 Co-Authored-By（连续两行，不空行）
+
+4. Stage 并 commit（排除敏感文件）
 
 ### 第四步：推送并创建 MR
 
@@ -77,4 +106,3 @@ git push -o merge_request.create
 - 显示任务工单链接（如有）
 
 **注意**：提交规范详见 [../skills/git-flow/reference.md](../skills/git-flow/reference.md)
-

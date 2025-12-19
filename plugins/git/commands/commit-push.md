@@ -1,6 +1,6 @@
 ---
-allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git checkout:*)
-description: 创建符合规范的 git commit，自动从分支名提取 Task ID
+allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git push:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*)
+description: 提交代码并推送到远程分支
 ---
 
 ## Context
@@ -34,11 +34,11 @@ description: 创建符合规范的 git commit，自动从分支名提取 Task ID
 **概要：** 按优先级从分支名、用户输入、用户询问中获取任务 ID
 
 **三级优先级：**
-1. 从分支名提取：`git branch --show-current | grep -oE '(TAP|TP)-[0-9]+'`
+1. 从分支名提取：`git branch --show-current | grep -oE '(TAP|TP|TDS)-[0-9]+'`
 2. 从用户输入提取（飞书链接、Jira 链接、直接 ID）
 3. 询问用户
 
-### 第三步：提交流程
+### 第三步：提交变更
 
 详细规范参见：[command-procedures.md](../skills/git-flow/command-procedures.md#commit信息生成规范)
 
@@ -84,3 +84,39 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 5. 执行 commit
 
 **注意**：提交规范详见 [../skills/git-flow/reference.md](../skills/git-flow/reference.md)
+
+### 第四步：推送到远程
+
+检查当前分支是否已设置 upstream：
+
+```bash
+git branch --show-current
+git push
+```
+
+**处理 upstream 未设置的情况：**
+- 如果 push 失败并提示 "no upstream branch"
+- 自动使用：`git push -u origin <current-branch>`
+
+### 第五步：输出结果
+
+显示执行结果：
+
+```
+✅ 提交并推送成功
+
+分支: feat-TAP-85404-user-profile
+Commit: feat(api): 新增用户资料接口 #TAP-85404
+远程: origin/feat-TAP-85404-user-profile
+
+下一步：
+  - 使用 /git:commit-push-pr 命令创建 Merge Request
+  - 或手动在 GitLab 中创建 MR
+```
+
+---
+
+## 参考文档
+
+- [命令执行流程](../skills/git-flow/command-procedures.md) - 任务 ID 提取、分支检查、Commit 格式
+- [Git 工作流规范](../skills/git-flow/reference.md) - 完整的提交规范

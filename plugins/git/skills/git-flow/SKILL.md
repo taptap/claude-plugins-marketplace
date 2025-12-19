@@ -38,41 +38,17 @@ git diff --cached
 
 ### 3. 提取任务 ID
 
-**按优先级尝试以下方式：**
+详细步骤参见：[command-procedures.md](./command-procedures.md#任务ID提取)
 
-1. **从分支名提取**
-   ```bash
-   git branch --show-current | grep -oE '(TAP|TP|TDS)-[0-9]+'
-   ```
-
-2. **从用户输入中提取**（如果步骤 1 失败）
-   - 检查用户消息是否包含任务 ID（TAP-xxx、TP-xxx、TDS-xxx）
-   - 检查是否有飞书任务链接，从链接中提取 ID
-
-3. **询问用户**（如果步骤 1 和 2 都失败）
-   - 使用 `AskUserQuestion` 询问：「当前分支未包含任务 ID，是否提供工单链接或 ID？」
-   - 选项：
-     - 「提供任务 ID」→ 用户输入 ID
-     - 「使用 #no-ticket」→ 使用 `#no-ticket`
+**概要：** 按优先级从分支名、用户输入、用户询问中获取任务 ID
 
 ### 4. 生成提交信息
 
-格式：`type(scope): description #TASK-ID`
+详细规范参见：[command-procedures.md](./command-procedures.md#commit信息生成规范)
 
-**Type 选择：**
-| Type | 场景 |
-|------|------|
-| feat | 新功能 |
-| fix | 错误修复 |
-| docs | 文档变更 |
-| refactor | 代码重构 |
-| test | 添加测试 |
-| chore | 维护任务 |
+**格式：** `type(scope): description #TASK-ID`
 
-**Description 原则：**
-- 单一改动：直接描述，如 `新增 API 调用重试逻辑`
-- 多文件同一目的：概括目标，如 `实现用户认证流程`
-- 多类改动：分号分隔，如 `新增参数校验；修复空指针问题`
+**Type 和 Description 规范：** 详细参见 [reference.md](./reference.md#提交信息规范)
 
 ### 5. 执行提交
 
@@ -91,8 +67,9 @@ git push -u origin <branch-name> -o merge_request.create -o merge_request.target
 
 ## 与 Commands 的关系
 
-- `/git:commit`：用户显式调用命令
-- `/git:commit-push-pr`：用户显式调用命令
+- `/git:commit`：用户显式调用命令（仅提交）
+- `/git:commit-push`：用户显式调用命令（提交并推送）
+- `/git:commit-push-pr`：用户显式调用命令（提交、推送并创建 MR）
 - **此 Skill**：用户用自然语言描述，Claude 自动应用规范
 
 详细规范参见：[reference.md](reference.md)

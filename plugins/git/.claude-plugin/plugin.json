@@ -1,9 +1,8 @@
 {
   "name": "git",
-  "description": "Git 工作流命令插件，提供提交、推送、创建 MR 和分支清理功能",
-  "version": "0.1.0",
+  "description": "Git 工作流命令插件，提供三种提交方式：commit、commit+push、commit+push+MR，支持智能任务 ID 提取和规范化提交信息",
+  "version": "0.1.1",
   "author": {
     "name": "TapTap AI Team"
   }
 }
-
