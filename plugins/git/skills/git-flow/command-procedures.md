@@ -49,6 +49,7 @@ git branch --show-current | grep -oE '(TAP|TP|TDS)-[0-9]+'
 选项：
 - 提供任务 ID → 用户输入 ID（TAP-xxxxx、TP-xxxxx、TDS-xxxxx）
 - 使用 #no-ticket → 使用 `#no-ticket` 作为占位符
+- ID 如果没有前缀, 默认补充 TAP-xxxxx
 ```
 
 ---
@@ -192,6 +193,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 | **refactor-** | 包含关键词："refactor"、"重构"、"rename" | 5 |
 | **perf-** | 包含关键词："perf"、"performance"、"优化"、"optimize" | 6 |
 | **chore-** | 配置文件、依赖更新、其他维护任务 | 7（默认） |
+| **revert-** | diff 中包含 "revert"、"回滚" 关键词或为回滚提交 | 8 |
 
 ### 实现逻辑
 
@@ -223,6 +225,7 @@ git diff
 - docs- （文档更新）
 - test- （测试相关）
 - chore- （维护任务）
+- revert-  (回滚操作)
 ```
 
 ---

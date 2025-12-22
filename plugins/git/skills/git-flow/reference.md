@@ -34,6 +34,7 @@
 | docs- | 文档更新 | docs-TAP-85408-api-docs |
 | test- | 测试相关 | test-TAP-85409-unit-tests |
 | chore- | 维护任务 | chore-update-dependencies |
+| revert- | 回滚先前的提交 | revert-TAP-85410-revert-login-feature |
 
 分支格式：`{prefix}-{TAP-ID}-{short-description}`
 
@@ -62,6 +63,7 @@ type(scope): description #TASK-ID
 | refactor | 代码重构 | `refactor(service): 提取公共逻辑 #TAP-85406` |
 | test | 添加测试 | `test: 添加用户服务单元测试 #TAP-85407` |
 | chore | 维护任务 | `chore: 更新依赖版本 #no-ticket` |
+| revert | 回滚先前的提交 | `revert: 回滚 login 功能提交 #TAP-85410` |
 
 ### 任务 ID
 
