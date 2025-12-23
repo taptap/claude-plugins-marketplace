@@ -26,17 +26,16 @@ fi
 
 echo ""
 
-# 同步所有插件
-for plugin in spec git sync; do
-  if [ -d "$ZEUS_PATH/.claude/plugins/$plugin" ]; then
+# 同步所有插件（自动发现）
+for plugin_path in "$ZEUS_PATH/.claude/plugins"/*; do
+  if [ -d "$plugin_path" ]; then
+    plugin=$(basename "$plugin_path")
     echo "→ 同步 $plugin..."
     rsync -av --delete \
       --exclude='.git' \
       --exclude='node_modules' \
-      "$ZEUS_PATH/.claude/plugins/$plugin/" \
+      "$plugin_path/" \
       "$MARKETPLACE_PATH/plugins/$plugin/"
-  else
-    echo "⚠️  警告: 插件不存在: $plugin"
   fi
 done
 

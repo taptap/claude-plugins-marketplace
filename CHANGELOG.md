@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.1.4
+
+### Quality Plugin (0.0.1)
+
+- Added AI-driven code review plugin with 9 parallel agents
+- Added multi-language support (Go/Java/Python/Kotlin/Swift/TypeScript)
+- Added four-dimensional review: bug detection, code quality, security analysis, performance analysis
+- Added confidence scoring mechanism with redundancy confirmation (threshold: 80)
+- Added intelligent project standards checking (CLAUDE.md/CONTRIBUTING.md auto-detection)
+- Added `/review` command for automated code review workflow
+
+### Sync Plugin (0.1.4)
+
+- Improved `sync-from-zeus.sh` to auto-discover all plugins instead of hardcoding plugin names
+- Removed warnings for non-existent plugins by using dynamic plugin directory scanning
+
+### Marketplace
+
+- Bumped version from 0.1.3 to 0.1.4
+- Added quality plugin to marketplace registry
+
 ## 0.1.3
 
 ### Git Plugin (0.1.1)
