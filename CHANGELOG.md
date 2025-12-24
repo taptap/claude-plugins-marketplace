@@ -6,27 +6,35 @@
 
 - Added `module-discovery` skill for AI to auto-read `module-map.md` at session start
 - Added `generate-module-map.md` prompt for generating module index
-- Added prerequisite check for `tap-agents-configs.md` in doc-auto-sync and generate-module-map
-- Moved config template to `module-discovery/template/`
 - Updated `doc-auto-sync` prerequisite steps with project type and name config items
-
-### Git Plugin (0.1.2)
-
-- Enforced commit message format: English subject with bilingual body (English + Chinese)
-- Removed support for TP- and TDS- task ID prefixes
-- Simplified to support only TAP- prefix for task IDs
-- Updated all documentation, commands, and regex patterns to reflect single prefix support
-
-### Quality Plugin (0.0.2)
-
-- Removed hardcoded absolute paths from developer's local environment
-- Updated project standards file detection to use relative paths
-- Improved portability and generalization for public release
 
 ### Marketplace
 
 - Bumped version from 0.1.5 to 0.1.6
-- Updated spec plugin to version 0.1.1
+- Updated Spec plugin to version 0.1.1
+
+
+## 0.1.5
+
+### Git Plugin (0.1.2)
+
+- Removed support for TP- and TDS- task ID prefixes
+- Simplified to support only TAP- prefix for task IDs
+- Updated all documentation, commands, and regex patterns to reflect single prefix support
+- Updated task ID extraction logic across all files
+
+### Quality Plugin (0.0.2)
+
+- Removed hardcoded absolute paths from developer's local environment
+- Updated project standards file detection to use relative paths 
+- Updated language-checks references to use plugin-relative paths
+- Updated agent definitions path to use relative path 
+- Fixed issue-comment template resource links to use correct relative paths
+- Improved portability and generalization for public release
+
+### Marketplace
+
+- Bumped version from 0.1.4 to 0.1.5
 - Updated git plugin to version 0.1.2
 - Updated quality plugin to version 0.0.2
 
