@@ -196,9 +196,9 @@ Bug 检测    ████████░░ 80% (8/10 已确认)
 
 ### 🔗 相关资源
 
-- [Plugin 文档](./.claude/plugins/quality/README.md)
-- [审查维度说明](./.claude/plugins/quality/skills/code-reviewing/review-dimensions.md)
-- [Go 语言检查规则](./.claude/plugins/quality/skills/language-checks/go-checks.md)
+- [Plugin 文档](../README.md)
+- [审查维度说明](../skills/code-reviewing/review-dimensions.md)
+- [Go 语言检查规则](../skills/language-checks/go-checks.md)
 
 ---
 

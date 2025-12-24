@@ -176,7 +176,7 @@ Claude: 我可以检查以下维度：
 
 ## 参考资料
 
-- Agent 定义：`/Users/em0t/Documents/Repository/zeus/.claude/plugins/quality/agents/`
+- Agent 定义：`../../agents/`
 - 审查维度：[review-dimensions.md](./review-dimensions.md)
 - 置信度评分：[confidence-scoring.md](./confidence-scoring.md)
 - Go 检查规则：[../language-checks/go-checks.md](../language-checks/go-checks.md)

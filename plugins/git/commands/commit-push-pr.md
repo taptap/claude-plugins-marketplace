@@ -16,7 +16,7 @@ description: 提交代码、推送分支并使用 GitLab push options 创建 Mer
 ### 第一步：检查并创建分支
 
 如果当前在 master 或 main 分支：
-1. **检查用户输入**是否包含任务链接或任务 ID（TAP-xxx、TP-xxx、TDS-xxx）
+1. **检查用户输入**是否包含任务链接或任务 ID（TAP-xxx）
    - 飞书链接：`https://*.feishu.cn/**`
    - Jira 链接：`https://xindong.atlassian.net/browse/TAP-xxxxx`
 
@@ -45,7 +45,7 @@ description: 提交代码、推送分支并使用 GitLab push options 创建 Mer
 **概要：** 按优先级从分支名、用户输入、用户询问中获取任务 ID
 
 **三级优先级：**
-1. 从分支名提取：`git branch --show-current | grep -oE '(TAP|TP|TDS)-[0-9]+'`
+1. 从分支名提取：`git branch --show-current | grep -oE 'TAP-[0-9]+'`
 2. 从用户输入提取（飞书链接、Jira 链接、直接 ID）
 3. 询问用户
 

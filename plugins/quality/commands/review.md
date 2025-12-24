@@ -8,7 +8,6 @@ description: AI 驱动的代码审查，9 个并行 Agent 全维度分析（Bug/
 - 当前 git 状态: !`git status`
 - 当前分支: !`git branch --show-current`
 - 最近提交: !`git log --oneline -5`
-- 变更文件列表: !`git diff --name-only origin/master...HEAD`
 
 ## Your Task
 
@@ -16,23 +15,53 @@ description: AI 驱动的代码审查，9 个并行 Agent 全维度分析（Bug/
 
 ### 阶段 1: Pre-check（前置检查）
 
-1. 检查是否在 Git 仓库中
-2. 获取当前分支信息
-3. 检查是否有变更（相对于 master 分支）
-4. 如果没有变更，提示用户并退出
+1. **检查是否在 Git 仓库中**
+   ```bash
+   git rev-parse --git-dir
+   ```
+
+2. **获取当前分支信息**
+   ```bash
+   current_branch=$(git branch --show-current)
+   ```
+
+3. **自动检测主分支**（按优先级尝试）：
+   ```bash
+   # 尝试1: 检测远程主分支
+   if git show-ref --verify --quiet refs/remotes/origin/main; then
+     base_branch="origin/main"
+   elif git show-ref --verify --quiet refs/remotes/origin/master; then
+     base_branch="origin/master"
+   # 尝试2: 使用本地主分支
+   elif git show-ref --verify --quiet refs/heads/main; then
+     base_branch="main"
+   elif git show-ref --verify --quiet refs/heads/master; then
+     base_branch="master"
+   # 后备方案: 使用当前分支的第一个 commit
+   else
+     base_branch=$(git rev-list --max-parents=0 HEAD)
+   fi
+   ```
+
+4. **检查是否有变更**（相对于检测到的主分支）
+   ```bash
+   git diff --name-only $base_branch...HEAD
+   ```
+
+   如果没有变更，提示用户并退出
 
 ### 阶段 2: Context Collection（上下文收集）
 
 1. **智能检测项目规范文件**（按优先级）：
-   - `/Users/em0t/Documents/Repository/zeus/CLAUDE.md`
-   - `/Users/em0t/Documents/Repository/zeus/CONTRIBUTING.md`
-   - `/Users/em0t/Documents/Repository/zeus/README.md`（仅检查是否有编码规范章节）
+   - `CLAUDE.md`
+   - `CONTRIBUTING.md`
+   - `README.md`（仅检查是否有编码规范章节）
 
    如果找到任一文件，标记为"需要规范检查"
 
-2. **获取代码差异**：
+2. **获取代码差异**（使用阶段1检测到的主分支）：
    ```bash
-   git diff origin/master...HEAD
+   git diff $base_branch...HEAD
    ```
 
 3. **识别变更语言**：
@@ -110,7 +139,7 @@ Task(
 [识别的语言列表]
 
 ## 语言特定规则
-请参考 /Users/em0t/Documents/Repository/zeus/.claude/plugins/quality/skills/language-checks/{language}-checks.md 的 Bug 检测部分。
+请参考 ../skills/language-checks/{language}-checks.md 的 Bug 检测部分。
 
 ## 任务
 独立分析代码变更，查找 Bug：
@@ -158,7 +187,7 @@ Task(
 [识别的语言列表]
 
 ## 语言特定规则
-请参考 /Users/em0t/Documents/Repository/zeus/.claude/plugins/quality/skills/language-checks/{language}-checks.md 的代码质量部分。
+请参考 ../skills/language-checks/{language}-checks.md 的代码质量部分。
 
 ## 任务
 独立分析代码质量问题：
@@ -203,7 +232,7 @@ Task(
 [识别的语言列表]
 
 ## 语言特定规则
-请参考 /Users/em0t/Documents/Repository/zeus/.claude/plugins/quality/skills/language-checks/{language}-checks.md 的安全检查部分。
+请参考 ../skills/language-checks/{language}-checks.md 的安全检查部分。
 
 ## 任务
 独立分析安全问题：
@@ -249,7 +278,7 @@ Task(
 [识别的语言列表]
 
 ## 语言特定规则
-请参考 /Users/em0t/Documents/Repository/zeus/.claude/plugins/quality/skills/language-checks/{language}-checks.md 的性能优化部分。
+请参考 ../skills/language-checks/{language}-checks.md 的性能优化部分。
 
 ## 任务
 独立分析性能问题：

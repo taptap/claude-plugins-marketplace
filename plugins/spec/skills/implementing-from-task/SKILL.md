@@ -9,20 +9,20 @@ description: 从任务工单和 PRD 启动完整开发流程。识别用户输�
 
 识别用户输入包含以下要素：
 - **任务工单链接**：
-  - 飞书：`https://project.feishu.cn/pojq34/story/detail/{数字ID}`
-  - Jira：`https://xindong.atlassian.net/browse/TAP-xxxxx`
-- **PRD 链接**：`https://xxx.feishu.cn/wiki/xxx` 或 `https://xxx.feishu.cn/docx/xxx`
+  - 项目管理系统：`https://your-project-system.example.com/story/detail/{数字ID}`
+  - Jira：`https://your-company.atlassian.net/browse/PROJ-xxxxx`
+- **PRD 链接**：`https://your-docs.example.com/wiki/xxx` 或 `https://your-docs.example.com/doc/xxx`
 - **动作词**（可选）：实现、修复、重构、优化、新增、开发、fix
 
 示例输入：
 ```
-实现 https://project.feishu.cn/pojq34/story/detail/6578710056 https://taptap.feishu.cn/wiki/ABC123
+实现 https://your-project-system.example.com/story/detail/123456 https://your-docs.example.com/wiki/DOC001
 ```
 ```
-https://xindong.atlassian.net/browse/TAP-85651 https://taptap.feishu.cn/docx/DEF456
+https://your-company.atlassian.net/browse/PROJ-12345 https://your-docs.example.com/doc/DOC002
 ```
 ```
-修复 TAP-85651 https://taptap.feishu.cn/wiki/GHI789
+修复 PROJ-12345 https://your-docs.example.com/wiki/DOC003
 ```
 
 ## ⚠️ 强制检查点
@@ -103,27 +103,28 @@ https://xindong.atlassian.net/browse/TAP-85651 https://taptap.feishu.cn/docx/DEF
 
 #### 0.2 服务定位
 
-参考项目文档定位涉及的服务：
-- **Mono Repo 架构**：[README.md](../../../../README.md)
-- **服务索引**：[service-index.md](../../../../skills/service-discovery/service-index.md)
-- **服务发现技能**：[service-discovery/SKILL.md](../../../../skills/service-discovery/SKILL.md)
+参考项目文档定位涉及的服务（如果项目提供）：
+- **项目架构文档**：项目根目录的 README.md，通常记录 Mono Repo 结构和服务划分
+- **服务索引**：服务索引文档（如 service-index.md），用于映射功能域到具体服务
+- **服务发现工具**：项目可能提供的服务发现工具或文档，帮助快速定位功能所属服务
 
 **定位方法**：
 
 1. **关键词匹配**：
-   - PRD 提到 "评价" → 查找 `review` 服务
-   - PRD 提到 "自定义表情" → 查找 `customemoji` 或 `community` 服务
-   - PRD 提到 "用户资料" → 查找 `user-center` 或 `profile` 服务
+   - PRD 提到业务关键词（如 "订单"、"商品"、"用户"）→ 查找项目中对应的服务
+   - 示例：PRD 提到 "评论" → 查找 `comment-service` 或 `content-service`
 
 2. **功能域匹配**：
-   - 内容发布与互动 → `community`, `review`, `moment`
-   - 用户与社交 → `user-center`, `relation`, `im`
-   - 安全与风控 → `regulation`, `content-understanding`
+   - 根据项目的服务划分规则，将需求映射到功能域
+   - 示例：
+     - 内容相关功能 → 内容服务
+     - 用户相关功能 → 用户服务
+     - 支付相关功能 → 支付服务
 
 3. **Proto 文件验证**：
    ```bash
    # 搜索相关 proto 定义
-   find proto/ -name "*.proto" -exec grep -l "Review\|CustomEmoji" {} \;
+   find proto/ -name "*.proto" -exec grep -l "YourFeature\|YourEntity" {} \;
    ```
 
 **输出示例**：
@@ -131,20 +132,20 @@ https://xindong.atlassian.net/browse/TAP-85651 https://taptap.feishu.cn/docx/DEF
 ## 服务定位结果
 
 ### 涉及服务
-1. **community** (`app/community/`)
-   - 原因：管理自定义表情收藏功能
-   - 现有代码：`internal/repo/customemoji/custom_emoji.go`
-   - Proto: `proto/taptap/community/customemoji/v1/*.proto`
+1. **service-a** (`app/service-a/` 或 `services/service-a/`)
+   - 原因：管理 XXX 功能
+   - 现有代码：`internal/repo/{feature}/{handler}.go`
+   - Proto: `proto/taptap/{service}/{feature}/v1/*.proto`
 
-2. **review** (`app/review/`)
-   - 原因：评价内容需支持自定义表情渲染
-   - 现有代码：`internal/service/review.go`
-   - Proto: `proto/taptap/community/review/v1/*.proto`
+2. **service-b** (`app/service-b/`)
+   - 原因：负责 YYY 功能的数据处理
+   - 现有代码：`internal/service/{feature}.go`
+   - Proto: `proto/taptap/{service}/{feature}/v1/*.proto`
 
 ### 查找依据
-- 关键词 "自定义表情" → service-index.md 指向 `community`
-- 关键词 "评价内容" → service-index.md 指向 `review`
-- Proto 文件验证：`proto/taptap/community/` 确认包含相关定义
+- 关键词 "XXX" → 服务索引文档指向 `service-a`
+- 关键词 "YYY" → 服务索引文档指向 `service-b`
+- Proto 文件验证：`proto/taptap/{service}/` 确认包含相关定义
 ```
 
 #### 0.3 影响范围分析
@@ -186,18 +187,18 @@ https://xindong.atlassian.net/browse/TAP-85651 https://taptap.feishu.cn/docx/DEF
 #### 1. 解析任务 ID
 
 从输入中提取任务 ID：
-- **飞书任务工单链接** → 解析出最后的数字 ID（如 6578710056）
-- **Jira 任务链接** → 从 URL 路径中提取任务 ID（如 `https://xindong.atlassian.net/browse/TAP-85651` → `TAP-85651`）
-- **任务 ID** → 直接使用（TAP-xxx、TP-xxx、TDS-xxx）
+- **项目管理系统任务链接** → 解析出最后的数字 ID（如 123456）
+- **Jira 任务链接** → 从 URL 路径中提取任务 ID（如 `https://your-company.atlassian.net/browse/PROJ-12345` → `PROJ-12345`）
+- **任务 ID** → 直接使用（PROJ-xxx、TASK-xxx 等，根据项目约定）
 - **动作词** → 映射分支前缀和 commit type（参阅 [action-mapping.md](action-mapping.md)）
   - 无动作词时默认为 `feat`
 
 #### 2. 创建工作分支
 
-分支命名：`{prefix}-TAP-{任务ID}-{short-summary}`
+分支命名：`{prefix}-{任务ID前缀}-{任务ID}-{short-summary}`
 
 ```bash
-git checkout -b feat-TAP-6578710056-user-profile
+git checkout -b feat-PROJ-12345-user-profile
 ```
 
 #### 3. 获取 PRD 详细内容
@@ -354,12 +355,12 @@ git checkout -b feat-TAP-6578710056-user-profile
 **Commit Message 格式**：
 
 ```
-feat(regulation): 支持用户资料回调并发处理 #TAP-6578710056
+feat(service-name): 实现 XXX 功能的并发处理 #PROJ-12345
 
 ## 变更内容
-- 在 yi_dun.go 配置中新增 ProfileText 和 ProfileImage 并发数配置
-- 修改 textcallback/profile.go，使用 errgroup 实现并发处理
-- 修改 imagecallback/profile.go，使用 errgroup 实现并发处理
+- 在 {config-file}.go 配置中新增并发数配置项
+- 修改 {handler}/{feature}.go，使用 errgroup 实现并发处理
+- 添加相关单元测试
 
 ## 技术方案
 - 使用 Go 标准库 errgroup.Group 控制并发
@@ -367,8 +368,8 @@ feat(regulation): 支持用户资料回调并发处理 #TAP-6578710056
 - 确保循环变量捕获，避免闭包问题
 
 ## 相关文档
-- specs/TAP-6578710056/spec.md
-- specs/TAP-6578710056/plan.md
+- specs/PROJ-12345/spec.md
+- specs/PROJ-12345/plan.md
 ```
 
 **Description 内容要求**：
@@ -379,7 +380,7 @@ feat(regulation): 支持用户资料回调并发处理 #TAP-6578710056
 ## 输出
 
 完成后输出：
-- MR 链接
+- MR/PR 链接
 - 任务工单链接
 - 变更摘要
-- specs/TAP-{任务ID}/ 文档链接
+- specs/{任务ID}/ 文档链接

@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.1.5
+
+### Git Plugin (0.1.2)
+
+- Removed support for TP- and TDS- task ID prefixes
+- Simplified to support only TAP- prefix for task IDs
+- Updated all documentation, commands, and regex patterns to reflect single prefix support
+- Updated task ID extraction logic across all files
+
+### Quality Plugin (0.0.2)
+
+- Removed hardcoded absolute paths from developer's local environment
+- Updated project standards file detection to use relative paths 
+- Updated language-checks references to use plugin-relative paths
+- Updated agent definitions path to use relative path 
+- Fixed issue-comment template resource links to use correct relative paths
+- Improved portability and generalization for public release
+
+### Marketplace
+
+- Bumped version from 0.1.4 to 0.1.5
+- Updated git plugin to version 0.1.2
+- Updated quality plugin to version 0.0.2
+
 ## 0.1.4
 
 ### Quality Plugin (0.0.1)

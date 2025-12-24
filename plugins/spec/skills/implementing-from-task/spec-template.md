@@ -15,7 +15,7 @@
 
 ## 任务工单
 
-- 工单: [TAP-{任务ID}](https://project.feishu.cn/pojq34/story/detail/{任务ID})
+- 工单: [{任务ID前缀}-{任务ID}](https://your-project-system.example.com/story/detail/{任务ID})
 - PRD: [{PRD 文档标题}]({PRD 链接})
 
 ## 影响范围分析
@@ -128,11 +128,11 @@
 
 1. **影响范围分析**（新增章节）：
    - 前后端职责划分：使用 [前后端分解指南](前后端分解指南.md) 识别任务类型
-   - 涉及服务定位：参考 [service-index.md](../../../../skills/service-discovery/service-index.md) 和 [README.md](../../../../README.md)
+   - 涉及服务定位：参考项目的服务索引文档（如 service-index.md）和项目架构文档（如 README.md）
    - 变更影响评估：分析 Proto/数据库/配置变更的连锁影响
 
 2. **功能需求**：根据 PRD 内容填充，只包含后端相关内容
 
-3. **API 设计**：明确请求/响应格式，遵循 [protobuf-api-conventions.mdc](../../../../.cursor/rules/protobuf-api-conventions.mdc)
+3. **API 设计**：明确请求/响应格式，遵循项目的 API 规范文档（如有定义 Proto 编写约定的文档）
 
 4. **保持简洁**：避免重复 PRD 内容，专注后端技术实现要点
