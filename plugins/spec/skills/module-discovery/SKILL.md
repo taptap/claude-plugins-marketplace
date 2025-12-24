@@ -1,6 +1,6 @@
 ---
 name: module-discovery
-description: 默认执行：AI 开始工作时自动读取 module-map.md，获取项目模块索引供后续定位使用。
+description: 当需要定位代码位置或者询问某个模块功能时（如修改某个功能、查找某个模块），使用本 SKILL（必须执行不可跳过）获取项目模块索引
 ---
 
 # 模块发现（自动执行）
@@ -10,11 +10,10 @@ description: 默认执行：AI 开始工作时自动读取 module-map.md，获�
 在开始任何开发任务前，必须先读取项目模块索引：
 
 1. 检查 `tap-agents/prompts/module-map.md` 是否存在
-   - **如果不存在**：询问用户是否需要生成，确认后使用 [generate-module-map.md](generate-module-map.md) prompt 进行生成
-   - **如果存在**：继续下一步
-2. 读取 `tap-agents/prompts/module-map.md`
-3. 理解项目模块划分和优先级
-4. 记住快速定位表中的关键词映射
+   - **如果不存在**：中断操作不继续往下, 询问用户是否需要生成，确认后使用 [generate-module-map.md](generate-module-map.md) prompt 进行生成
+   - **如果存在**：读取 `tap-agents/prompts/module-map.md`
+2. 理解项目模块划分和优先级
+3. 记住快速定位表中的关键词映射
 
 **路径约定**：本文档中所有以 `tap-agents/` 开头的路径均指项目根目录下的对应路径。
 
