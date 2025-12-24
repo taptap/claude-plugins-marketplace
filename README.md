@@ -23,7 +23,8 @@ mkdir -p .claude && echo '{
   "enabledPlugins": {
     "spec@taptap-plugins": true,
     "sync@taptap-plugins": true,
-    "git@taptap-plugins": true
+    "git@taptap-plugins": true,
+    "quality@taptap-plugins": true
   }
 }' > .claude/settings.json
 ```
@@ -61,6 +62,7 @@ mkdir -p .claude && echo '{
 | spec | 0.1.0 | Spec-Driven Development 工作流插件 |
 | git  | 0.1.1 | Git 工作流自动化插件（三种提交方式：commit、commit+push、commit+push+MR） |
 | sync | 0.1.3 | 开发环境配置同步插件（MCP + Hooks + Cursor，支持模板化同步） |
+| quality | 0.0.1 | AI 驱动的代码质量检查插件（9 个并行 Agent，支持 Bug 检测、代码质量、安全检查、性能分析） |
 
 详细说明请查看各插件目录下的 README.md。
 
@@ -129,6 +131,29 @@ Git 插件提供三种提交方式，根据需求选择：
 # 根据任务需求生成完整的技术方案和执行计划
 /spec https://xindong.atlassian.net/browse/TAP-12345
 ```
+
+### 代码质量检查
+
+使用 AI 驱动的代码审查，自动检测潜在问题：
+
+```bash
+# 审查当前分支的所有变更
+/review
+
+# 审查特定 Merge Request
+/review --mr 123
+
+# 审查特定文件
+/review path/to/file.go
+```
+
+**功能亮点：**
+- **9 个并行 Agent**：同时执行，审查速度快
+- **四维度审查**：Bug 检测、代码质量、安全检查、性能分析
+- **置信度评分**：阈值 80，自动过滤低置信度问题
+- **冗余确认**：同类问题由 2 个 Agent 独立发现，置信度 +20
+- **多语言支持**：Go/Java/Python/Kotlin/Swift/TypeScript
+- **智能规范检查**：自动检测 CLAUDE.md/CONTRIBUTING.md 并遵循项目规范
 
 ### 开发环境同步
 
