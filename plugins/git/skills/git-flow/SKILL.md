@@ -24,7 +24,7 @@ git branch --show-current
 ```
 
 如果在 master/main 分支：
-- 检查用户消息是否包含任务 ID（TAP-xxx、TP-xxx、TDS-xxx）或飞书链接
+- 检查用户消息是否包含任务 ID（TAP-xxx）或飞书链接
 - 如果有：询问分支描述，创建工作分支 `feat-TAP-xxxxx-description`
 - 如果没有：提示用户需要提供任务工单链接或 ID
 

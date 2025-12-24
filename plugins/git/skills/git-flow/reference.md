@@ -49,7 +49,7 @@ type(scope): description #TASK-ID
 ### 验证正则
 
 ```
-^((feat|fix|docs|style|refactor|test|chore)(\(.+\))?:\s.{1,500}#((TAP|TP|TDS)-\d+|no-ticket)|(Merge|Resolve|Revert|Translated|Squashed)\s.{1,500}|bot(\(.+\))?:\s.{1,500})$
+^((feat|fix|docs|style|refactor|test|chore)(\(.+\))?:\s.{1,500}#(TAP-\d+|no-ticket)|(Merge|Resolve|Revert|Translated|Squashed)\s.{1,500}|bot(\(.+\))?:\s.{1,500})$
 ```
 
 ### Type 类型
@@ -67,8 +67,8 @@ type(scope): description #TASK-ID
 
 ### 任务 ID
 
-- 支持格式：TAP-xxx、TP-xxx、TDS-xxx
-- 自动从分支名提取：`git branch --show-current | grep -oE '(TAP|TP|TDS)-[0-9]+'`
+- 支持格式：TAP-xxx
+- 自动从分支名提取：`git branch --show-current | grep -oE 'TAP-[0-9]+'`
 - 支持从任务链接提取：
   - 飞书链接：`https://*.feishu.cn/**`
   - Jira 链接：`https://xindong.atlassian.net/browse/TAP-xxxxx`

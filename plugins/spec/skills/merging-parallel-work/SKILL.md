@@ -19,11 +19,11 @@ description: 管理并行 agent 的工作合并。自动创建 worktree、合并
 
 ```bash
 # 主分支
-git checkout -b feat-TAP-6578710056-main
+git checkout -b feat-PROJ-12345-main
 
 # 为每个模块创建 worktree
-git worktree add ../worktree-module-a -b feat-TAP-6578710056-module-a
-git worktree add ../worktree-module-b -b feat-TAP-6578710056-module-b
+git worktree add ../worktree-module-a -b feat-PROJ-12345-module-a
+git worktree add ../worktree-module-b -b feat-PROJ-12345-module-b
 ```
 
 ### 2. 分配任务
@@ -45,13 +45,13 @@ git worktree add ../worktree-module-b -b feat-TAP-6578710056-module-b
 
 ```bash
 # 切换到主分支
-git checkout feat-TAP-6578710056-main
+git checkout feat-PROJ-12345-main
 
 # 合并第一个模块
-git merge feat-TAP-6578710056-module-a
+git merge feat-PROJ-12345-module-a
 
 # 合并第二个模块
-git merge feat-TAP-6578710056-module-b
+git merge feat-PROJ-12345-module-b
 ```
 
 ### 5. 冲突解决
@@ -92,8 +92,8 @@ git worktree remove ../worktree-module-a
 git worktree remove ../worktree-module-b
 
 # 删除临时分支
-git branch -d feat-TAP-6578710056-module-a
-git branch -d feat-TAP-6578710056-module-b
+git branch -d feat-PROJ-12345-module-a
+git branch -d feat-PROJ-12345-module-b
 ```
 
 ### 7. 创建 MR
@@ -108,8 +108,8 @@ git branch -d feat-TAP-6578710056-module-b
 ## 合并报告
 
 ### 合并的分支
-- feat-TAP-6578710056-module-a ✅
-- feat-TAP-6578710056-module-b ✅
+- feat-PROJ-12345-module-a ✅
+- feat-PROJ-12345-module-b ✅
 
 ### 冲突解决
 | 文件 | 冲突类型 | 解决方式 |
