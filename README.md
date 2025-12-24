@@ -59,8 +59,8 @@ mkdir -p .claude && echo '{
 
 | 插件 | 版本 | 描述 |
 |------|------|------|
-| spec | 0.1.0 | Spec-Driven Development 工作流插件 |
-| git  | 0.1.1 | Git 工作流自动化插件（三种提交方式：commit、commit+push、commit+push+MR） |
+| spec | 0.1.1 | Spec-Driven Development 工作流插件 |
+| git  | 0.1.2 | Git 工作流自动化插件（三种提交方式：commit、commit+push、commit+push+MR） |
 | sync | 0.1.3 | 开发环境配置同步插件（MCP + Hooks + Cursor，支持模板化同步） |
 | quality | 0.0.1 | AI 驱动的代码质量检查插件（9 个并行 Agent，支持 Bug 检测、代码质量、安全检查、性能分析） |
 
@@ -131,6 +131,39 @@ Git 插件提供三种提交方式，根据需求选择：
 # 根据任务需求生成完整的技术方案和执行计划
 /spec https://xindong.atlassian.net/browse/TAP-12345
 ```
+
+#### 模块发现（module-discovery）
+
+AI 开始工作时**自动读取**模块索引，快速了解项目结构：
+
+| 路径 | 说明 |
+|------|------|
+| `tap-agents/tap-agents-configs.md` | 项目配置文件（项目类型、项目名称、业务模块目录、主要类后缀、文件扩展名） |
+| `tap-agents/prompts/module-map.md` | 模块索引（P0/P1/P2 优先级分类 + 关键词定位表） |
+| `tap-agents/prompts/modules/[模块名].md` | 各模块详细文档 |
+
+**工作流程：**
+1. AI 检查 `module-map.md` 是否存在
+2. 如不存在，询问用户是否生成（使用 `generate-module-map.md` prompt）
+3. 读取模块索引，利用关键词快速定位代码
+
+#### 文档自动同步（doc-auto-sync）
+
+AI 修改代码时**自动维护**模块文档：
+
+| 触发场景 | AI 行为 |
+|---------|--------|
+| 新增模块 | 创建 `modules/[模块名].md` + 更新 `module-map.md` |
+| 修改模块 | 检查并更新对应文档 |
+| 文档缺失 | 自动创建文档（强制执行） |
+| 文档过期 | 信任代码，自动更新文档 |
+
+**配置项（在 `tap-agents/tap-agents-configs.md` 中定义）：**
+- `「项目类型」`：iOS / Android / Web / Backend 等
+- `「项目名称」`：项目名称
+- `「业务模块目录」`：主要业务代码目录（如 `TapTap`、`src/modules`）
+- `「主要类后缀」`：识别主要类的后缀（如 `ViewController`、`Service`）
+- `「文件扩展名」`：代码文件扩展名（如 `.swift`、`.kt`、`.go`）
 
 ### 代码质量检查
 

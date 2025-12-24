@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.5
+
+### Spec Plugin (0.1.1)
+
+- Added `module-discovery` skill for AI to auto-read `module-map.md` at session start
+- Added `generate-module-map.md` prompt for generating module index
+- Updated `doc-auto-sync` prerequisite steps with project type and name config items
+
+### Git Plugin (0.1.2)
+
+- Enforced commit message format: English subject with bilingual body (English + Chinese)
+
+### Marketplace
+
+- Bumped version from 0.1.4 to 0.1.5
+
 ## 0.1.4
 
 ### Quality Plugin (0.0.1)
