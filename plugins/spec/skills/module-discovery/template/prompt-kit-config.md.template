@@ -20,9 +20,6 @@
 | 配置项 | 配置值 |
 |-------|-------|
 | 业务模块目录 | `TapTap/` |
-| 模块文档目录 | `prompt-kit/prompts/modules/` |
-| 模块索引文件 | `prompt-kit/prompts/module-map.md` |
-| 脚本目录 | `prompt-kit/scripts/` |
 
 ---
 
@@ -58,38 +55,6 @@
 |-------|-------|
 | 主要类后缀 | Controller, ViewController, Manager, Service, ViewModel |
 | 文件扩展名 | `.swift` |
-
----
-
-## 6. 模块优先级
-
-### P0 核心模块（必须维护文档）
-
-- Account - 账户体系
-- GameDetail - 游戏详情
-- FeedList - 信息流
-- NewSearch - 新版搜索
-- Comment - 评论系统
-- Editor - 编辑器
-- Login - 登录
-- NewVersionUpdate - 新版本更新
-- Forum - 论坛
-
-### P1 常用模块（推荐维护文档）
-
-- MessageCenter - 消息中心
-- TopicDetail - 话题详情
-- ReviewDetail - 评价详情
-- Rank - 排行榜
-- Setting - 设置
-- Player - 播放器
-- VideoDetail - 视频详情
-
-### P2 工具模块（按需维护）
-
-- Base - 基础组件
-- Tools - 工具类
-- Services - 服务层
 
 ---
 

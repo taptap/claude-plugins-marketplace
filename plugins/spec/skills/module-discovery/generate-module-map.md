@@ -1,3 +1,15 @@
+## 前置检查
+
+在生成 module-map.md 之前，请先确认：
+
+1. **配置文件存在**：检查 `tap-agents/tap-agents-configs.md` 是否存在
+   - 如果不存在，请先创建配置文件，参考模板：`template/prompt-kit-config.md.template`
+
+2. **读取配置**：从配置文件中获取上述配置项的值，替换下方的占位符
+
+---
+
+## 生成 module-map.md
 我需要你为「项目名称」项目生成模块索引文件 module-map.md。
 
 项目背景：
