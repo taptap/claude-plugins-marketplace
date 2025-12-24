@@ -161,7 +161,7 @@
 
 ## 参考资料
 
-- **服务定位**：[service-discovery/SKILL.md](../../../../skills/service-discovery/SKILL.md)
-- **服务索引**：[service-index.md](../../../../skills/service-discovery/service-index.md)
-- **项目架构**：[README.md](../../../../README.md)
+- **服务定位**：项目提供的服务发现工具或文档（帮助快速定位功能所属服务）
+- **服务索引**：项目的服务索引文档（用于映射功能域到具体服务）
+- **项目架构**：项目根目录的 README.md（记录架构和服务划分）
 - **Spec 模板**：[spec-template.md](spec-template.md)

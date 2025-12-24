@@ -19,11 +19,11 @@
 v0.0.1 使用本地 git 命令获取代码变更，无需额外配置：
 
 ```bash
-# 获取当前分支相对于 master 的差异
-git diff origin/master...HEAD
+# 自动检测主分支并获取差异
+git diff $base_branch...HEAD
 
 # 获取变更的文件列表
-git diff --name-only origin/master...HEAD
+git diff --name-only $base_branch...HEAD
 
 # 获取当前分支信息
 git branch --show-current
@@ -46,7 +46,7 @@ git checkout feat-TAP-12345-new-feature
 #### 2. 自定义目标分支
 
 ```bash
-# 默认对比 origin/master
+# 自动检测主分支进行对比
 /review
 
 # 对比其他分支（需在命令中指定）

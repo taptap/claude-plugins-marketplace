@@ -274,7 +274,7 @@ quality plugin 支持多种编程语言的代码审查，每种语言都有专�
 
 ```bash
 # 基于文件扩展名映射
-git diff --name-only origin/master...HEAD | while read file; do
+git diff --name-only $base_branch...HEAD | while read file; do
   case "$file" in
     *.go)      echo "Go" ;;
     *.java)    echo "Java" ;;

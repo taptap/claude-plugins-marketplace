@@ -120,7 +120,7 @@ Claude Code 识别关键词
 **快速参考：**
 - 格式：`type(scope): description #TASK-ID`
 - Type：feat, fix, docs, style, refactor, test, chore
-- 任务 ID：从分支名自动提取（TAP-xxx、TP-xxx、TDS-xxx）
+- 任务 ID：从分支名自动提取（TAP-xxx）
 
 ## 命令对比
 
@@ -189,7 +189,7 @@ Claude Code 识别关键词
 ### 任务 ID 提取策略（三级优先级）
 
 1. **优先级 1**: 从分支名自动提取
-   - 正则匹配: `(TAP|TP|TDS)-[0-9]+`
+   - 正则匹配: `TAP-[0-9]+`
    - 示例: `feat-TAP-85404-user-profile` → `TAP-85404`
 
 2. **优先级 2**: 从用户输入提取

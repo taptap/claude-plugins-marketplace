@@ -19,7 +19,7 @@ description: 创建符合规范的 git commit，自动从分支名提取 Task ID
 **概要：**
 
 如果当前在 master 或 main 分支：
-1. **检查用户输入**是否包含任务链接或任务 ID（TAP-xxx、TP-xxx、TDS-xxx）
+1. **检查用户输入**是否包含任务链接或任务 ID（TAP-xxx）
    - 飞书链接：`https://*.feishu.cn/**`
    - Jira 链接：`https://xindong.atlassian.net/browse/TAP-xxxxx`
 
@@ -34,7 +34,7 @@ description: 创建符合规范的 git commit，自动从分支名提取 Task ID
 **概要：** 按优先级从分支名、用户输入、用户询问中获取任务 ID
 
 **三级优先级：**
-1. 从分支名提取：`git branch --show-current | grep -oE '(TAP|TP)-[0-9]+'`
+1. 从分支名提取：`git branch --show-current | grep -oE 'TAP-[0-9]+'`
 2. 从用户输入提取（飞书链接、Jira 链接、直接 ID）
 3. 询问用户
 

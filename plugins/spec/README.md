@@ -7,11 +7,11 @@ Spec-Driven Development 插件，从任务工单和 PRD 自动执行完整开发
 通过贴入任务工单链接和 PRD 链接触发完整的开发工作流：
 
 ```
-用户：实现 https://project.feishu.cn/pojq34/story/detail/6578710056 https://taptap.feishu.cn/wiki/ABC123
+用户：实现 https://your-project-system.example.com/story/detail/123456 https://your-docs.example.com/wiki/DOC001
 
-→ 解析任务 ID (6578710056)
+→ 解析任务 ID (123456)
 → 读取任务工单标题
-→ 创建工作分支 (feat-TAP-6578710056-xxx)
+→ 创建工作分支 (feat-PROJ-12345-xxx)
 → 读取 PRD 内容
 → 生成 spec/plan/tasks
 → ⏸️ 输出文档摘要，等待用户确认
@@ -72,7 +72,7 @@ Spec-Driven Development 插件，从任务工单和 PRD 自动执行完整开发
 
 ```
 specs/
-└── TAP-6578710056/
+└── PROJ-12345/
     ├── spec.md      # 功能规范
     ├── plan.md      # 实现计划
     └── tasks.md     # 任务清单
@@ -87,16 +87,16 @@ specs/
 
 ```bash
 # 实现新功能（贴任务工单链接 + PRD 链接）
-实现 https://project.feishu.cn/pojq34/story/detail/6578710056 https://taptap.feishu.cn/wiki/ABC123
+实现 https://your-project-system.example.com/story/detail/123456 https://your-docs.example.com/wiki/DOC001
 
 # 修复 Bug
-修复 https://project.feishu.cn/pojq34/story/detail/6578710056 https://taptap.feishu.cn/docx/DEF456
+修复 https://your-project-system.example.com/story/detail/123456 https://your-docs.example.com/doc/DOC002
 
 # 省略动作词（默认 feat）
-https://project.feishu.cn/pojq34/story/detail/6578710056 https://taptap.feishu.cn/wiki/GHI789
+https://your-project-system.example.com/story/detail/123456 https://your-docs.example.com/wiki/DOC003
 
 # 简写任务 ID
-修复 6578710056 https://taptap.feishu.cn/wiki/JKL012
+修复 123456 https://your-docs.example.com/wiki/DOC004
 
 # 查看工作流状态
 /workflow-status
@@ -108,13 +108,14 @@ https://project.feishu.cn/pojq34/story/detail/6578710056 https://taptap.feishu.c
 
 | 格式 | 示例 |
 |------|------|
-| 动作词 + 任务工单链接 + PRD 链接 | `实现 https://project.feishu.cn/.../6578710056 https://...wiki/xxx` |
-| 动作词 + 任务 ID + PRD 链接 | `修复 6578710056 https://...wiki/xxx` |
-| 任务工单链接 + PRD 链接 | `https://project.feishu.cn/.../6578710056 https://...wiki/xxx` |
+| 动作词 + 任务工单链接 + PRD 链接 | `实现 https://your-project-system.example.com/.../123456 https://your-docs.example.com/wiki/xxx` |
+| 动作词 + 任务 ID + PRD 链接 | `修复 123456 https://your-docs.example.com/wiki/xxx` |
+| 任务工单链接 + PRD 链接 | `https://your-project-system.example.com/.../123456 https://your-docs.example.com/wiki/xxx` |
 
 **链接识别规则**：
-- 任务工单：包含 `project.feishu.cn/pojq34/story/detail/` 后跟数字 ID
-- PRD：包含 `feishu.cn/wiki/` 或 `feishu.cn/docx/`
+- 任务工单：项目管理系统的任务详情页 URL
+- PRD：文档系统的文档链接
+- 根据项目实际使用的系统调整 URL 匹配规则
 
 ## 环境配置
 

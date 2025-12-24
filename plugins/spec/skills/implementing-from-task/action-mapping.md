@@ -22,16 +22,16 @@
 
 | 用户输入 | 解析结果 |
 |---------|---------|
-| `实现 6578710056 https://...` | feat-, feat |
-| `修复 6578710056 https://...` | fix-, fix |
-| `重构 6578710056 https://...` | refactor-, refactor |
-| `优化 6578710056 https://...` | perf-, perf |
-| `6578710056 https://...`（无动作词） | feat-, feat |
-| `https://...6578710056 https://...`（仅链接） | feat-, feat |
+| `实现 123456 https://...` | feat-, feat |
+| `修复 123456 https://...` | fix-, fix |
+| `重构 123456 https://...` | refactor-, refactor |
+| `优化 123456 https://...` | perf-, perf |
+| `123456 https://...`（无动作词） | feat-, feat |
+| `https://...123456 https://...`（仅链接） | feat-, feat |
 
 ## 分支命名生成
 
-格式：`{prefix}-TAP-{任务ID}-{short-summary}`
+格式：`{prefix}-{任务ID前缀}-{任务ID}-{short-summary}`
 
 从任务工单标题生成 short-summary：
 1. 转换为小写
@@ -41,4 +41,4 @@
 
 示例：
 - 任务工单标题: "Add user profile page"
-- 分支名: `feat-TAP-6578710056-add-user-profile-page`
+- 分支名: `feat-PROJ-12345-add-user-profile-page`

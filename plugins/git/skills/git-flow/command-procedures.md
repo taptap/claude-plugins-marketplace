@@ -11,25 +11,22 @@
 #### 1. 从分支名提取（优先级最高）
 
 ```bash
-git branch --show-current | grep -oE '(TAP|TP|TDS)-[0-9]+'
+git branch --show-current | grep -oE 'TAP-[0-9]+'
 ```
 
 支持的格式：
 - `TAP-xxxxx`
-- `TP-xxxxx`
-- `TDS-xxxxx`
 
 示例：
 - 分支名 `feat-TAP-85404-user-profile` → 提取出 `TAP-85404`
-- 分支名 `fix-TP-123-bug-fix` → 提取出 `TP-123`
 
 #### 2. 从用户输入提取（如果步骤 1 失败）
 
 检查用户消息中是否包含以下任一内容：
 
 **a) 直接的任务 ID**
-- 格式：`TAP-xxxxx`、`TP-xxxxx`、`TDS-xxxxx`
-- 提取方式：正则匹配 `(TAP|TP|TDS)-\d+`
+- 格式：`TAP-xxxxx`
+- 提取方式：正则匹配 `TAP-\d+`
 
 **b) 飞书任务链接**
 - 格式：`https://*.feishu.cn/**`
@@ -47,7 +44,7 @@ git branch --show-current | grep -oE '(TAP|TP|TDS)-[0-9]+'
 问题：当前分支未包含任务 ID，是否提供工单链接或 ID？
 
 选项：
-- 提供任务 ID → 用户输入 ID（TAP-xxxxx、TP-xxxxx、TDS-xxxxx）
+- 提供任务 ID → 用户输入 ID（TAP-xxxxx）
 - 使用 #no-ticket → 使用 `#no-ticket` 作为占位符
 - ID 如果没有前缀, 默认补充 TAP-xxxxx
 ```
@@ -69,7 +66,7 @@ fi
 
 ### 分支创建流程
 
-1. **检查用户输入**是否包含任务链接或任务 ID（TAP-xxx、TP-xxx、TDS-xxx）
+1. **检查用户输入**是否包含任务链接或任务 ID（TAP-xxx）
    - 飞书链接：`https://*.feishu.cn/**`
    - Jira 链接：`https://xindong.atlassian.net/browse/TAP-xxxxx`
 

@@ -98,7 +98,7 @@
 /review
 ```
 
-这将审查当前分支相对于 `origin/master` 的所有变更。
+这将自动检测主分支（main/master）并审查当前分支的所有变更。
 
 #### 2. 审查特定 Merge Request
 
@@ -332,8 +332,8 @@ $ /review
 插件使用本地 git 命令获取代码变更，无需额外配置即可使用：
 
 ```bash
-# 自动检测当前分支和目标分支
-git diff origin/master...HEAD
+# 自动检测主分支（main/master）并获取差异
+git diff <base_branch>...HEAD
 ```
 
 ### 高级配置（可选）

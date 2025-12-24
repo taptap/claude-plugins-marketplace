@@ -62,7 +62,7 @@ mkdir -p .claude && echo '{
 | spec | 0.1.1 | Spec-Driven Development 工作流插件 |
 | git  | 0.1.2 | Git 工作流自动化插件（三种提交方式：commit、commit+push、commit+push+MR） |
 | sync | 0.1.3 | 开发环境配置同步插件（MCP + Hooks + Cursor，支持模板化同步） |
-| quality | 0.0.1 | AI 驱动的代码质量检查插件（9 个并行 Agent，支持 Bug 检测、代码质量、安全检查、性能分析） |
+| quality | 0.0.2 | AI 驱动的代码质量检查插件（9 个并行 Agent，支持 Bug 检测、代码质量、安全检查、性能分析） |
 
 详细说明请查看各插件目录下的 README.md。
 
@@ -124,6 +124,8 @@ Git 插件提供三种提交方式，根据需求选择：
 - `/git:commit-push-pr` 支持智能分支前缀判断
 
 ### Spec 驱动开发
+
+> ⚠️ **警告**：此功能正在开发中，暂不推荐使用
 
 从需求文档生成技术方案并执行开发：
 
