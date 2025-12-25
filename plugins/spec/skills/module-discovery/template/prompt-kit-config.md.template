@@ -1,0 +1,125 @@
+# 项目配置
+
+> **重要**：此文件包含项目的核心配置信息，AI 在工作时会读取此文件。  
+> 请根据你的项目情况修改下方配置值。
+
+---
+
+## 1. 项目基础信息
+
+| 配置项 | 配置值 |
+|-------|-------|
+| 项目名称 | TapTap |
+| 项目类型 | iOS 客户端项目，使用 Swift 开发的原生 iOS 应用 |
+| 编程语言 | Swift |
+
+---
+
+## 2. 路径配置
+
+| 配置项 | 配置值 |
+|-------|-------|
+| 业务模块目录 | `TapTap/` |
+
+---
+
+## 3. 构建配置
+
+| 配置项 | 配置值 |
+|-------|-------|
+| 依赖管理工具 | CocoaPods |
+| 依赖安装命令 | `pod install` |
+| 构建命令 | `xcodebuild build -workspace TapTap.xcworkspace -scheme TapTap` |
+| 测试命令 | `xcodebuild test -workspace TapTap.xcworkspace -scheme TapTap -destination 'platform=iOS Simulator,name=iPhone 15'` |
+| Lint 命令 | `swiftlint` |
+
+---
+
+## 4. 版本控制配置
+
+| 配置项 | 配置值 |
+|-------|-------|
+| 目标分支 | `cn/version/{version}` |
+| 版本号解析 | 支持：`570` → `5.7.0`，`5.7` → `5.7.0`，`5.7.0` 原样使用 |
+| 工单前缀 | `TAP` |
+| 工单格式 | `#TAP-XXXXXXXXXX` |
+| 无工单标记 | `#no-ticket` |
+
+> **说明**：如果团队使用固定分支（如 `main` `master`），将「目标分支」设为 `main`，「版本号解析」设为 `不适用`。
+
+---
+
+## 5. 模块文档配置
+
+| 配置项 | 配置值 |
+|-------|-------|
+| 主要类后缀 | Controller, ViewController, Manager, Service, ViewModel |
+| 文件扩展名 | `.swift` |
+
+---
+
+## 配置说明
+
+### 如何修改配置
+
+1. 直接修改上方表格中的"配置值"列
+2. 保持表格格式不变，AI 会解析这些值
+3. 修改后无需重启，AI 下次读取时会使用新值
+
+### 各平台配置参考
+
+<details>
+<summary>Android 配置示例</summary>
+
+```
+项目名称: TapTap
+项目类型: Android 客户端项目，使用 Kotlin 开发的原生 Android 应用
+编程语言: Kotlin
+业务模块目录: app/src/main/java/com/taptap/
+依赖管理工具: Gradle
+依赖安装命令: ./gradlew build
+主要类后缀: Activity, Fragment, ViewModel, Repository, UseCase
+文件扩展名: .kt
+版本分支格式: release/{version}
+```
+
+</details>
+
+<details>
+<summary>Web 前端配置示例</summary>
+
+```
+项目名称: TapTap Web
+项目类型: Web 前端项目，使用 TypeScript + React 开发
+编程语言: TypeScript
+业务模块目录: src/modules/
+依赖管理工具: npm
+依赖安装命令: npm install
+主要类后缀: Page, Component, Hook, Service, Store
+文件扩展名: .tsx
+版本分支格式: release/v{version}
+```
+
+</details>
+
+<details>
+<summary>Server 配置示例</summary>
+
+```
+项目名称: TapTap Server
+项目类型: 后端服务，使用 Go 开发的微服务架构
+编程语言: Go
+业务模块目录: internal/
+依赖管理工具: go mod
+依赖安装命令: go mod download
+主要类后缀: Controller, Service, Repository, Handler
+文件扩展名: .go
+版本分支格式: release/{version}
+```
+
+</details>
+
+---
+
+**最后更新**: YYYY-MM-DD
+

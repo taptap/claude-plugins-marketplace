@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.6
+
+### Spec Plugin (0.1.1)
+
+- Added `module-discovery` skill for AI to auto-read `module-map.md` at session start
+- Added `generate-module-map.md` prompt for generating module index
+- Updated `doc-auto-sync` prerequisite steps with project type and name config items
+
+### Marketplace
+
+- Bumped version from 0.1.5 to 0.1.6
+- Updated Spec plugin to version 0.1.1
+
+
 ## 0.1.5
 
 ### Git Plugin (0.1.2)
