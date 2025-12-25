@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.7
+
+### Spec Plugin (0.1.2)
+
+- Improved README with complete skills documentation
+- Added `module-discovery` skill documentation (auto-read module index, keyword-based module location)
+- Added `doc-auto-sync` skill documentation (layered doc system, auto-sync rules, check scripts)
+- Updated `merging-parallel-work` skill documentation (worktree workflow, conflict resolution, merge report)
+- Clarified trigger conditions and use cases for each skill
+
+### Marketplace
+
+- Bumped version from 0.1.6 to 0.1.7
+- Updated Spec plugin to version 0.1.2
+
 ## 0.1.6
 
 ### Spec Plugin (0.1.1)

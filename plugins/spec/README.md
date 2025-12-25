@@ -1,6 +1,6 @@
 # Spec-Driven Development Plugin
 
-Spec-Driven Development 插件，从任务工单和 PRD 自动执行完整开发流程。
+Spec-Driven Development 插件，从任务工单和 PRD 自动执行完整开发流程，并提供模块发现与文档自动同步能力。
 
 ## 功能概述
 
@@ -23,6 +23,41 @@ Spec-Driven Development 插件，从任务工单和 PRD 自动执行完整开发
 
 ## Skills
 
+### module-discovery
+
+**触发条件**：需要定位代码位置或询问模块功能时（自动执行）
+
+**功能**：
+- 读取 `module-map.md` 获取项目模块索引
+- 根据关键词快速定位相关模块
+- 支持按优先级（P0/P1/P2）组织模块
+- 提供关键词到模块的映射表
+
+**使用场景**：
+- 收到开发需求时，快速定位代码模块
+- 需要了解模块详情时，读取模块文档
+- 新增或修改模块时，配合 doc-auto-sync 同步更新
+
+### doc-auto-sync
+
+**触发条件**：修改模块代码时（强制执行）
+
+**功能**：
+- 维护分层文档系统（module-map.md + 模块文档）
+- 新增模块时自动创建文档
+- 修改模块时自动更新文档
+- 处理文档与代码不一致情况
+- 提供文档检查脚本（check-docs.py、check-stale-docs.py）
+
+**文档结构**：
+```
+tap-agents/prompts/
+├── module-map.md           # 根索引
+└── modules/
+    ├── ModuleA.md          # 模块A详情
+    └── ModuleB.md          # 模块B详情
+```
+
 ### implementing-from-task
 
 **触发条件**：识别用户输入的任务工单链接 + PRD 链接
@@ -36,13 +71,22 @@ Spec-Driven Development 插件，从任务工单和 PRD 自动执行完整开发
 
 ### merging-parallel-work
 
-**触发条件**：并行任务完成后
+**触发条件**：用户明确指定执行时（测试中）
 
 **功能**：
-- 管理 git worktree
-- 合并多个分支
-- AI 自动解决冲突
-- 生成合并报告
+- 使用 git worktree 管理并行开发
+- 按顺序合并各模块分支到主分支
+- AI 自动解决冲突（import 合并、配置智能合并）
+- 生成合并报告与验证结果
+- 提供回退策略
+
+**工作流程**：
+1. 创建 worktree（每个独立模块一个）
+2. 分配任务到各 worktree
+3. 各 agent 在 worktree 中独立工作
+4. 合并分支并解决冲突
+5. 清理 worktree 和临时分支
+6. 创建统一 MR
 
 ## Commands
 

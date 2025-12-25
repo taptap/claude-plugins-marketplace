@@ -1,6 +1,6 @@
 ---
 name: merging-parallel-work
-description: 管理并行 agent 的工作合并。自动创建 worktree、合并分支、解决冲突。在并行任务完成后触发。
+description: 测试中, 用户明确指定执行 merging-parallel-work 时候才执行, 其余情况一律不执行
 ---
 
 # 并行工作合并
