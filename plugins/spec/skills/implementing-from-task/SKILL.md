@@ -1,6 +1,6 @@
 ---
 name: implementing-from-task
-description: 从任务工单和 PRD 启动完整开发流程。识别用户输入的任务工单链接和 PRD 链接，自动解析任务 ID 创建分支，读取 PRD 生成 spec/plan/tasks 并实现代码。
+description: 测试中, 用户明确指定执行 implementing-from-task 时候才执行, 其余情况一律不执行
 ---
 
 # 从任务工单实现功能
