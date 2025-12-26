@@ -183,7 +183,7 @@ test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
    **错误处理：**
    - 如果所有路径都不存在或无法访问：
      1. 记录错误：step3_cursor = "failed"，原因：Git 插件文件在所有位置都不存在
-     2. 跳过步骤 3.2-3.4
+     2. 跳过步骤 3.2-3.5
      3. 继续阶段 4
    - 如果读取成功，继续执行步骤 2-3
 
@@ -230,13 +230,57 @@ test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
 - 已存在的文件会被直接覆盖
 - 如需更精细的冲突处理，请使用 `/sync:cursor` 命令
 
-**步骤 3.3：记录执行结果**
+**步骤 3.3：同步 Claude Plugin Skills 索引**
+
+**目标**：生成 `.cursor/rules/sync-claude-plugin.mdc`，汇总指定插件下所有 SKILL.md 的元信息
+
+**当前加载的插件列表**（未来可扩展）：
+- `spec`
+
+**处理逻辑：**
+
+1. 准备固定头部内容：
+   ```markdown
+   ---
+   description: 
+   globs: 
+   alwaysApply: true
+   ---
+
+   # Claude Plugin 同步
+
+   需要你读取以下插件的 skills：
+   - ~/.claude/plugins/cache/taptap-plugins/spec/[x.x.x]/skills/
+
+   (x.x.x 取最新的一个版本)
+   ```
+
+2. 遍历每个插件的 skills 目录：
+   - **当前只加载 spec 插件**：`~/.claude/plugins/cache/taptap-plugins/spec/[x.x.x]/skills/`
+   - 读取每个子目录下的 `SKILL.md` 文件
+   - 提取 YAML front matter 中的 `name` 和 `description` 字段
+   - **过滤规则**：如果 `description` 中包含「测试中」，则跳过该 SKILL 不添加
+
+3. 拼接动态内容，格式如下：
+   ```markdown
+   ## 1. [nameA]
+   [descriptionA]
+
+    ## 2. [nameB]
+   [descriptionB]
+   ```
+
+4. 将固定头部 + 动态内容写入目标文件：`.cursor/rules/sync-claude-plugin.mdc`
+   - 使用 `mkdir -p .cursor/rules` 确保目录存在
+   - 直接覆盖写入，不检查文件是否存在
+
+**步骤 3.4：记录执行结果**
 
 记录 Cursor 同步的执行结果：
 - 成功：step3_cursor = "success"，记录详情（创建/跳过文件数）
 - 失败：step3_cursor = "failed"，记录错误信息
 
-**步骤 3.4：更新任务状态**
+**步骤 3.5：更新任务状态**
 
 标记 "同步到 Cursor IDE" 任务为 completed。
 
@@ -270,7 +314,7 @@ test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
      - 重载脚本: .claude/plugins/sync/scripts/reload-plugins.sh
 
   ✅ Cursor 同步: 成功
-     - Rules: git-flow.mdc
+     - Rules: git-flow.mdc, sync-claude-plugin.mdc
      - Commands: git-commit.md, git-commit-push.md, git-commit-push-pr.md
 
 下一步：
@@ -342,17 +386,18 @@ test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
 - **效果**: 修改插件后重启会话即可生效，无需手动 uninstall + install
 
 ### Cursor 同步
-- **Rules**: Git 工作流规范，自动应用到 git 操作
+- **Rules**: Git 工作流规范（git-flow.mdc）和 Claude Plugin Skills 索引（sync-claude-plugin.mdc）
 - **Commands**: git-commit 和 git-commit-push-pr 命令
 
 ---
 
 ## 注意事项
 
-1. **保守策略**：
-   - 不覆盖已存在的配置文件
+1. **覆盖策略**：
+   - **MCP 配置**：已存在则跳过，不覆盖
+   - **Hooks 配置**：已存在则跳过，不覆盖
+   - **Cursor 同步**：直接覆盖（rules 和 commands 每次重新生成）
    - 某步骤失败不影响后续步骤
-   - 如需强制更新，使用对应的单独命令
 
 2. **配置生效**：
    - MCP 配置：重启 Claude Code 会话

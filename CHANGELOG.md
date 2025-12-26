@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.8
+
+### Sync Plugin (0.1.4)
+
+- Added `sync-claude-plugin.mdc` generation in `/sync:basic` command
+- Syncs Claude Plugin Skills index to `.cursor/rules/sync-claude-plugin.mdc`
+- Automatically extracts `name` and `description` from SKILL.md files
+- Filters out skills marked as "测试中" (testing)
+- Updated coverage strategy documentation (MCP/Hooks: skip if exists, Cursor: always overwrite)
+
+### Spec Plugin (0.1.3)
+
+- No functional changes, version bump for marketplace sync
+
+### Marketplace
+
+- Bumped version from 0.1.7 to 0.1.8
+- Updated Sync plugin to version 0.1.4
+- Updated Spec plugin to version 0.1.3
+
 ## 0.1.7
 
 ### Spec Plugin (0.1.2)
