@@ -15,7 +15,7 @@
 这个命令会自动完成：
 - ✅ 配置 MCP 服务器（context7 + sequential-thinking）
 - ✅ 启用自动重载钩子（修改插件后自动生效）
-- ✅ 同步配置到 Cursor IDE
+- ✅ 同步配置到 Cursor IDE（包括 Claude Plugin Skills 索引）
 
 ### 飞书 MCP 配置（可选）
 
@@ -114,8 +114,9 @@ AI: 💡 正在使用 context7 获取 Next.js 的最新文档...
 
 **功能：**
 - 同步 Git Flow Rules 到 `.cursor/rules/git-flow.mdc`
+- 同步 Claude Plugin Skills 索引到 `.cursor/rules/sync-claude-plugin.mdc`
 - 同步 Git Commands 到 `.cursor/commands/`
-- 支持冲突处理和备份
+- 直接覆盖（每次重新生成最新内容）
 
 ## 自动触发 Skills
 
@@ -162,6 +163,7 @@ AI: 💡 正在使用 context7 获取 Next.js 的最新文档...
 ### Cursor
 - `.cursor/mcp.json` - MCP 配置（项目级）
 - `.cursor/rules/git-flow.mdc` - Git 工作流规范
+- `.cursor/rules/sync-claude-plugin.mdc` - Claude Plugin Skills 索引
 - `.cursor/commands/git-*.md` - Git 命令
 - `~/.cursor/mcp.json` - 飞书 MCP 配置（全局）
 
@@ -208,5 +210,7 @@ AI: 💡 正在使用 context7 获取 Next.js 的最新文档...
 
 ## 版本历史
 
+- **v0.1.4** - 新增 Claude Plugin Skills 索引同步（`sync-claude-plugin.mdc`）
+- **v0.1.3** - 新增 Cursor 模板直接复制方式
 - **v0.1.0** - 命令简化、自动发现插件
 - **v0.0.1** - 初始版本
