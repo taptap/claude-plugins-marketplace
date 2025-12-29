@@ -59,9 +59,9 @@ mkdir -p .claude && echo '{
 
 | 插件 | 版本 | 描述 |
 |------|------|------|
-| spec | 0.1.1 | Spec-Driven Development 工作流插件 |
+| spec | 0.1.3 | Spec-Driven Development 工作流插件 |
 | git  | 0.1.2 | Git 工作流自动化插件（三种提交方式：commit、commit+push、commit+push+MR） |
-| sync | 0.1.3 | 开发环境配置同步插件（MCP + Hooks + Cursor，支持模板化同步） |
+| sync | 0.1.4 | 开发环境配置同步插件（MCP + Hooks + Cursor + Claude Plugin Skills 索引） |
 | quality | 0.0.2 | AI 驱动的代码质量检查插件（9 个并行 Agent，支持 Bug 检测、代码质量、安全检查、性能分析） |
 
 详细说明请查看各插件目录下的 README.md。
