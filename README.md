@@ -42,8 +42,9 @@ mkdir -p .claude && echo '{
 
 **包含功能：**
 - ✅ 配置 context7 和 sequential-thinking MCP（自动获取最新文档）
-- ✅ 启用插件自动重载（修改后重启会话即可生效）
+- ✅ 启用插件自动重载 + CLI 工具检测（修改后重启会话即可生效）
 - ✅ 同步配置到 Cursor
+- ✅ 同步 GitLab Merge Request 默认模板
 
 ### 3. 验证安装
 
@@ -60,8 +61,8 @@ mkdir -p .claude && echo '{
 | 插件 | 版本 | 描述 |
 |------|------|------|
 | spec | 0.1.3 | Spec-Driven Development 工作流插件 |
-| git  | 0.1.2 | Git 工作流自动化插件（三种提交方式：commit、commit+push、commit+push+MR） |
-| sync | 0.1.4 | 开发环境配置同步插件（MCP + Hooks + Cursor + Claude Plugin Skills 索引） |
+| git  | 0.1.3 | Git 工作流自动化插件（三种提交方式：commit、commit+push、commit+push+MR） |
+| sync | 0.1.5 | 开发环境配置同步插件（MCP + Hooks + Cursor + Claude Plugin Skills 索引） |
 | quality | 0.0.2 | AI 驱动的代码质量检查插件（9 个并行 Agent，支持 Bug 检测、代码质量、安全检查、性能分析） |
 
 详细说明请查看各插件目录下的 README.md。
@@ -76,23 +77,23 @@ mkdir -p .claude && echo '{
 
 ```bash
 # 1. 提供任务链接，自动创建分支、提交、推送并创建 MR
-/commit-push-pr https://xindong.atlassian.net/browse/TAP-12345
+/git:commit-push-pr https://xindong.atlassian.net/browse/TAP-12345
 
 # 或提供飞书任务链接
-/commit-push-pr https://project.feishu.cn/pojq34/story/detail/12345
+/git:commit-push-pr https://project.feishu.cn/pojq34/story/detail/12345
 ```
 
 **命令执行流程：**
 - 自动从任务链接提取 Task ID
 - **智能判断分支前缀**：分析 `git diff` 内容自动选择合适的前缀
-  - `docs-`：仅修改文档文件
-  - `test-`：仅修改测试文件
-  - `fix-`：包含 bug 修复关键词
-  - `feat-`：新增功能或文件
-  - `refactor-`：代码重构
-  - `perf-`：性能优化
-  - `chore-`：配置或维护任务
-- 如果在 main/master 分支，会询问分支描述并创建功能分支（如 `feat-TAP-12345-description`）
+  - `docs/`：仅修改文档文件
+  - `test/`：仅修改测试文件
+  - `fix/`：包含 bug 修复关键词
+  - `feat/`：新增功能或文件
+  - `refactor/`：代码重构
+  - `perf/`：性能优化
+  - `chore/`：配置或维护任务
+- 如果在 main/master 分支，会询问分支描述并创建功能分支（如 `feat/TAP-12345-description`）
 - 分析代码变更，生成符合规范的提交信息
 - 推送代码并自动创建 Merge Request
 

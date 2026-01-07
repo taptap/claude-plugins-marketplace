@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(cat:*)
+allowed-tools: Read, Bash(mkdir:*), Bash(cp:*), Bash(ls:*), Bash(cat:*)
 description: 同步配置到 Cursor IDE
 ---
 
@@ -16,24 +16,25 @@ description: 同步配置到 Cursor IDE
 
 **重要：先同步规范文件，commands 将引用此文件以避免冗余**
 
-1. **按三级优先级查找模板文件：**
-   - Level 1: `${CLAUDE_PLUGIN_ROOT}/skills/cursor-templates/rules/git-flow-rule.mdc`（环境变量，marketplace 安装）
-   - Level 2: `.claude/plugins/sync/skills/cursor-templates/rules/git-flow-rule.mdc`（项目本地）
-   - Level 3: `~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/cursor-templates/rules/git-flow-rule.mdc`（用户主目录）
+1. **按三级优先级确定模板目录路径：**
+   - Level 1: `${CLAUDE_PLUGIN_ROOT}/skills/cursor-templates`（环境变量）
+   - Level 2: `.claude/plugins/sync/skills/cursor-templates`（项目本地）
+   - Level 3: `~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/cursor-templates`（用户主目录）
 
-   使用第一个存在的文件。如果所有路径都不存在，报错并中止。
+   使用第一个存在的路径作为 `TEMPLATE_DIR`。如果所有路径都不存在，报错并中止。
 
-2. **读取模板内容：**
-   - 模板已包含正确的 YAML frontmatter（description, globs, alwaysApply）
-   - 模板已包含完整的 Git 工作流规范内容
-   - 无需任何格式转换
+2. **创建目录并使用 cp 命令复制文件：**
+   ```bash
+   mkdir -p .cursor/rules
+   cp "${TEMPLATE_DIR}/rules/git-flow.mdc" .cursor/rules/git-flow.mdc
 
-3. **创建目录并直接覆盖写入目标文件 `.cursor/rules/git-flow.mdc`：**
-   - 使用 `mkdir -p .cursor/rules` 确保目录存在
-   - 直接覆盖写入，不检查文件是否存在
-   - 无需格式转换，模板内容已经是正确格式
+   # 同步 git-flow snippets（commands 中会引用这些文件）
+   mkdir -p .cursor/rules/git-flow
+   cp -R "${TEMPLATE_DIR}/rules/git-flow/snippets" .cursor/rules/git-flow/
+   ```
+   - 日志输出："git-flow.mdc → 已覆盖"
 
-5. **Cursor Rules 特性：**
+3. **Cursor Rules 特性：**
    - `.mdc` 文件是 Cursor 的 rules 文件格式
    - 模板中 `alwaysApply: false` 表示仅在相关操作时应用
    - Commands 可以在文档中引用此规范，Cursor AI 会自动读取
@@ -55,23 +56,25 @@ ls -la .cursor/commands/
 2. `cursor-templates/commands/git-commit-push.md` → `.cursor/commands/git-commit-push.md`
 3. `cursor-templates/commands/git-commit-push-pr.md` → `.cursor/commands/git-commit-push-pr.md`
 
-**同步流程（对每个文件）：**
+**同步流程：**
 
-1. **按三级优先级查找模板文件（以 git-commit.md 为例）：**
-   - Level 1: `${CLAUDE_PLUGIN_ROOT}/skills/cursor-templates/commands/git-commit.md`
-   - Level 2: `.claude/plugins/sync/skills/cursor-templates/commands/git-commit.md`
-   - Level 3: `~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/cursor-templates/commands/git-commit.md`
+1. **按三级优先级确定模板目录路径：**
+   - Level 1: `${CLAUDE_PLUGIN_ROOT}/skills/cursor-templates`（环境变量）
+   - Level 2: `.claude/plugins/sync/skills/cursor-templates`（项目本地）
+   - Level 3: `~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/cursor-templates`（用户主目录）
 
-   使用第一个存在的文件。如果所有路径都不存在，跳过该文件并记录错误。
+   使用第一个存在的路径作为模板目录。
 
-2. **读取模板内容（已是 Cursor 格式，无需转换）**
+2. **创建目录并使用 cp 命令复制：**
+   ```bash
+   mkdir -p .cursor/commands
+   cp "${TEMPLATE_DIR}/commands/git-commit.md" .cursor/commands/
+   cp "${TEMPLATE_DIR}/commands/git-commit-push.md" .cursor/commands/
+   cp "${TEMPLATE_DIR}/commands/git-commit-push-pr.md" .cursor/commands/
+   ```
 
-3. **创建目录并直接覆盖写入：**
-   - 使用 `mkdir -p .cursor/commands` 确保目录存在
-   - 直接覆盖写入，不检查文件是否存在
-   - 无需格式转换，模板内容已经是正确格式
-
-4. **记录同步结果（创建/覆盖）**
+3. **记录同步结果**
+   - 日志输出："git-commit.md → 已覆盖"（每个文件类似）
 
 **模板优势：**
 - ✅ 模板已是 Cursor 纯 Markdown 格式
@@ -166,7 +169,9 @@ Commands:
 ```
 .claude/plugins/sync/skills/cursor-templates/
 ├── rules/
-│   └── git-flow-rule.mdc         # 预格式化的 Cursor rules
+│   ├── git-flow.mdc              # 预格式化的 Cursor rules
+│   └── git-flow/
+│       └── snippets/             # commands 引用的 git-flow snippets
 └── commands/
     ├── git-commit.md             # 预格式化的 Cursor commands
     ├── git-commit-push.md
@@ -177,7 +182,9 @@ Commands:
 ```
 .cursor/
 ├── rules/
-│   └── git-flow.mdc              # 规范文档（YAML frontmatter）
+│   ├── git-flow.mdc              # 规范文档（YAML frontmatter）
+│   └── git-flow/
+│       └── snippets/             # commands 引用的 git-flow snippets
 └── commands/
     ├── git-commit.md             # 纯 Markdown，引用 rules
     ├── git-commit-push.md
@@ -288,7 +295,8 @@ Commands:
 
 1. 检查变更内容
 2. 更新对应的 Cursor 模板：
-   - `reference.md` 更新 → 更新 `cursor-templates/rules/git-flow-rule.mdc`
+   - `reference.md` 更新 → 更新 `cursor-templates/rules/git-flow.mdc`
+   - `snippets/*.md` 更新 → 更新 `cursor-templates/rules/git-flow/snippets/*.md`
    - `commands/*.md` 更新 → 更新 `cursor-templates/commands/git-*.md`
 3. 保持 Cursor 格式特性：
    - Rules 保留 YAML frontmatter
