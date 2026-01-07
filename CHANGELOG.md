@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.9
+
+### Sync Plugin (0.1.5)
+
+- `/sync:basic` now syncs the GitLab Merge Request default template
+- Added SessionStart CLI tool checks for `gh`/`glab`, with scripts for macOS/Linux (`ensure-cli-tools.sh`) and Windows (`ensure-cli-tools.ps1`)
+- Added `/sync:git-cli-auth` to detect gh/glab and configure GitHub/GitLab tokens
+
+### Git Plugin (0.1.3)
+
+- Refactored execution logic into reusable snippets (default branch detection, task ID extraction, branch creation, commit execution, etc.) to reduce duplication across command docs
+- Tightened commit rules: title must include Chinese description; `Co-Authored-By` must be placed at the end of the body
+- `commit-push-pr` can generate MR descriptions from templates (compatible with `.gitlab/merge_request_templates/default.md` and `Default.md`)
+
+### Marketplace
+
+- Bumped version from 0.1.8 to 0.1.9
+- Updated git plugin to version 0.1.3
+- Updated sync plugin to version 0.1.5
+
 ## 0.1.8
 
 ### Sync Plugin (0.1.4)

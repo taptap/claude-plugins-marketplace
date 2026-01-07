@@ -1,5 +1,5 @@
 {
-  "description": "自动重新加载团队插件",
+  "description": "自动重新加载团队插件 + 检查 CLI 工具",
   "hooks": {
     "SessionStart": [
       {
@@ -7,6 +7,10 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/reload-plugins.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/ensure-cli-tools.sh 2>/dev/null || powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/scripts/ensure-cli-tools.ps1\" 2>$null || true"
           }
         ]
       }

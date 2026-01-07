@@ -1,123 +1,164 @@
-提交代码、推送分支并使用 GitLab push options 创建 Merge Request
+---
+allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git push:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git checkout:*)
+description: 提交代码、推送分支并使用 GitLab push options 创建 Merge Request
+---
 
 ## Context
 
-需要收集的上下文信息：
-- 当前 git 状态: `git status`
-- 当前分支: `git branch --show-current`
-- Staged 和 unstaged 变更: `git diff HEAD --stat` 和 `git diff`
-- 最近提交历史: `git log --oneline -5`
-- 远程分支: `git branch -r | head -10`
+- 当前 git 状态: !`git status`
+- 当前分支: !`git branch --show-current`
+- Staged 和 unstaged 变更: !`git diff HEAD --stat`
+- 最近提交历史: !`git log --oneline -5`
+- 远程分支: !`git branch -r | head -10`
 
 ## Your Task
 
 ### 第一步：检查并创建分支
 
-如果当前在 master 或 main 分支：
+**特殊功能：** 本命令包含智能分支类型判断
 
-1. 检查用户输入是否包含任务链接或任务 ID（TAP-xxx、TP-xxx、TDS-xxx）
-   - 飞书链接：`https://*.feishu.cn/**`
-   - Jira 链接：`https://xindong.atlassian.net/browse/TAP-xxxxx`
+1. **检测默认分支**（详见 [默认分支检测](../rules/git-flow/snippets/01-detect-default-branch.md)）
 
-2. 智能判断分支前缀类型
-
-   分析 `git diff --stat` 和 `git diff` 内容，按优先级判断变更类型：
-
-   - **docs-**：仅修改文档文件（*.md, *.txt）
-   - **test-**：仅修改测试文件（*_test.go, *.test.js, *_test.*, test_*）
-   - **fix-**：diff 中包含关键词 "fix"、"修复"、"bug"、"error"、"issue"
-   - **feat-**：新增文件、或包含 "feat"、"feature"、"新增"、"add"
-   - **refactor-**：包含 "refactor"、"重构"、"rename"
-   - **perf-**：包含 "perf"、"performance"、"优化"、"optimize"
-   - **chore-**：配置文件、依赖更新、其他维护任务
-
-   如果无法自动判断，询问用户选择类型。
-
-3. 处理分支创建
-   - 如果找到任务 ID：询问分支描述，创建 `{智能判断的prefix}-TAP-xxxxx-description` 分支
-   - 如果没有：中断命令，提示用户提供任务链接/ID
-
-分支命名详细规则和分支前缀说明参见：`.cursor/rules/git-flow.mdc`
+2. **智能创建分支**（如需要）：
+   - 使用增强的智能分支创建逻辑
+   - 自动分析 `git diff` 判断分支类型（docs/test/fix/feat/refactor等）
+   - 详细逻辑参见：[智能分支创建](../rules/git-flow/snippets/04-branch-creation-smart.md)
 
 ### 第二步：提取任务 ID
 
-按优先级尝试以下方式：
+**三级优先级策略**（详见 [任务ID提取](../rules/git-flow/snippets/02-extract-task-id.md)）：
 
-1. 从分支名提取
-   ```bash
-   git branch --show-current | grep -oE '(TAP|TP|TDS)-[0-9]+'
-   ```
+1. 从分支名提取：`git branch --show-current | grep -oE 'TAP-[0-9]+'`
+2. 从用户输入提取（飞书/Jira链接、直接ID）
+3. 询问用户
 
-2. 从用户输入中提取（如果步骤 1 失败）
-   - 检查用户消息是否包含任务 ID（TAP-xxx、TP-xxx、TDS-xxx）
-   - 检查是否有飞书任务链接，从链接中提取 ID
-   - 检查是否有 Jira 链接，从 URL 路径中提取 ID
-
-3. 询问用户（如果步骤 1 和 2 都失败）
-   - 询问：「当前分支未包含任务 ID，是否提供工单链接或 ID？」
-   - 选项：提供任务 ID 或使用 #no-ticket
-
-任务 ID 格式详见：`.cursor/rules/git-flow.mdc`
+**关键点：** 纯数字ID必须转换为 `TAP-xxx` 格式
 
 ### 第三步：提交变更
 
-1. 分析变更内容，确定 commit type（feat, fix, refactor, etc.）
-2. 使用上一步获取的任务 ID
-3. 生成符合规范的提交信息
+标准提交流程（详见 [提交执行](../rules/git-flow/snippets/05-commit-execution.md)）
 
-**Commit 格式：**
-```
-type(scope): english description #TASK-ID
-
-## Changes
-- List main changes (analyze git diff content)
-- Each change should be specific and clear
-
-## 改动内容
-- 列出主要改动点（分析 git diff 内容）
-- 每个改动点应具体、清晰
-
-## Impact
-- Describe affected modules, backward compatibility, risk assessment
-
-## 影响面
-- 说明影响的模块、向后兼容性、风险评估
-
-Generated-By: Claude Code <https://claude.ai/code>
-
-Co-Authored-By: Claude <noreply@anthropic.com>
-```
-
-4. Stage 文件（排除 .env、credentials 等敏感文件）
-5. 执行 commit
-
-详细的 type 类型、description 规范参见：`.cursor/rules/git-flow.mdc`
+**Commit格式**详见 [Commit格式规范](../rules/git-flow/snippets/03-commit-format.md)
 
 ### 第四步：推送并创建 MR
 
-使用 GitLab push options 一键创建 MR：
+1. **检测 glab 是否可用**：
+   ```bash
+   which glab && glab auth status
+   ```
 
-```bash
-git push -o merge_request.create
-```
+2. **生成 MR 标题和描述**：
 
-如果分支未设置 upstream，会自动设置并推送。
+   **MR Title：**
+   - 单个 commit：使用 commit 标题
+   - 多个 commit：使用第一个 commit 标题或汇总
 
-### 第五步：输出结果
+   **MR Description：**
+   从 commit message 提取并汇总（使用 `git log origin/master..HEAD --pretty=format:"%B" --reverse`）：
 
-显示：
-- 推送成功信息
-- GitLab 返回的 MR 链接
-- 任务工单链接（如有）
+   ```markdown
+   ## 改动内容
+   - [汇总所有 commit 的改动点]
 
-```
-✅ 提交、推送并创建 MR 成功
+   ## 影响面
+   - [汇总所有 commit 的影响面]
+   ```
 
-分支: feat-TAP-85404-user-profile
-Commit: feat(api): add user profile endpoint #TAP-85404
-MR 链接: https://gitlab.example.com/project/merge_requests/123
+   **关键规则：** MR description 必须从 commit message 提取，保持一致性
 
-任务工单: https://xindong.atlassian.net/browse/TAP-85404
-```
+3. **合成最终 MR Description（模板优先）**：
 
-详细规范参见：`.cursor/rules/git-flow.mdc`
+   - 若仓库存在 MR 模板：读取模板并将“汇总后的 commit 正文”填充到模板的 `## Description` 区块
+     - 兼容模板文件：`.gitlab/merge_request_templates/default.md`（优先）与 `.gitlab/merge_request_templates/Default.md`
+     - 填充规则：替换 `## Description` 与下一个 `## ` 标题之间的所有内容（不包含下一个标题行）
+   - 若仓库不存在 MR 模板：最终 MR description 直接使用“汇总后的 commit 正文”
+   - 不再使用 `glab mr create --fill`
+
+4. **推送并创建 MR**：
+
+   **如果 glab 可用：**
+
+   a. 推送分支：
+   ```bash
+   git push -u origin $(git branch --show-current)
+   ```
+
+   b. 创建 MR（模板优先；无模板则直接使用汇总正文）：
+
+   ```bash
+   TEMPLATE_FILE=""
+   if [ -f ".gitlab/merge_request_templates/default.md" ]; then
+     TEMPLATE_FILE=".gitlab/merge_request_templates/default.md"
+   elif [ -f ".gitlab/merge_request_templates/Default.md" ]; then
+     TEMPLATE_FILE=".gitlab/merge_request_templates/Default.md"
+   fi
+
+   COMMIT_SUMMARY="$(cat <<'EOF'
+   ## 改动内容
+   - 改动点 1
+
+   ## 影响面
+   - 影响的模块/功能
+   EOF
+   )"
+
+   if [ -n "$TEMPLATE_FILE" ]; then
+     MR_DESC="$(TEMPLATE_FILE="$TEMPLATE_FILE" COMMIT_SUMMARY="$COMMIT_SUMMARY" python3 - <<'PY'
+   import os
+   import re
+
+   template_path = os.environ["TEMPLATE_FILE"]
+   summary = os.environ["COMMIT_SUMMARY"].rstrip("\n")
+
+   with open(template_path, "r", encoding="utf-8") as f:
+     template = f.read()
+
+   header_re = re.compile(r"(?m)^## Description\\s*$")
+   m = header_re.search(template)
+
+   block = f"\\n\\n{summary}\\n\\n"
+
+   if not m:
+     out = f"## Description{block}" + template.lstrip("\\n")
+   else:
+     start = m.end()
+     rest = template[start:]
+     m2 = re.search(r"(?m)^##\\s+.+$", rest)
+     end = start + (m2.start() if m2 else len(rest))
+     out = template[:start] + block + template[end:]
+
+   print(out, end="")
+   PY
+   )"
+   else
+     MR_DESC="$COMMIT_SUMMARY"
+   fi
+
+   glab mr create \
+     --title "$(git log -1 --pretty=%s)" \
+     --description "$MR_DESC" \
+     --yes --remove-source-branch
+   ```
+
+   **如果 glab 不可用（fallback）：**
+   ```bash
+   git push -u origin $(git branch --show-current) -o merge_request.create
+   ```
+
+### 第五步：输出结果并打开浏览器
+
+1. 显示推送成功信息
+2. 显示 GitLab 返回的 MR 链接
+3. 显示任务工单链接（如有）
+4. 使用系统默认浏览器打开 MR 链接
+
+---
+
+## 参考文档
+
+- [Git 工作流规范](../rules/git-flow.mdc) - 完整规范
+- [默认分支检测](../rules/git-flow/snippets/01-detect-default-branch.md)
+- [智能分支创建](../rules/git-flow/snippets/04-branch-creation-smart.md) - 本命令特有
+- [任务ID提取](../rules/git-flow/snippets/02-extract-task-id.md)
+- [Commit格式](../rules/git-flow/snippets/03-commit-format.md)
+- [提交执行](../rules/git-flow/snippets/05-commit-execution.md)
