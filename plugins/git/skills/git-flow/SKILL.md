@@ -63,6 +63,7 @@ git diff --cached
 详细步骤参见：[reference.md](./reference.md#任务ID提取)
 
 **概要：** 按优先级从分支名、用户输入、用户询问中获取任务 ID
+（若需使用 `no-ticket`，必须先与用户确认是否为纯文档/配置等非功能性变更；否则要求用户提供/创建工单 ID）
 
 ### 4. 生成提交信息
 
@@ -83,16 +84,89 @@ git commit -m "type(scope): 中文描述 #TASK-ID"
 
 如果用户请求推送或创建 MR：
 
-**使用 push options（需要动态获取默认分支）：**
+**策略（与 `/git:commit-push-pr` 保持一致）：glab 优先，失败则 fallback 到 push options**
 
-如果在步骤 1 中已经获取了默认分支，直接使用该值。否则，按照 reference.md 中的三级检测方法获取。
-
-推送并创建 MR：
+1. **检测 glab 是否可用**：
 ```bash
-git push -u origin <branch-name> -o merge_request.create -o merge_request.target=$default_branch
+which glab && glab auth status
 ```
 
-**注意：** 确保 default_branch 变量已通过前面的检测步骤正确设置。
+2. **准备 MR 标题和描述（模板优先）**：
+- **MR Title**：优先使用最新 commit 标题（`git log -1 --pretty=%s`）
+- **MR Description**：从 commit message 汇总生成（与 command 一致），并按以下规则填充 MR 模板：
+  - 优先模板：`.gitlab/merge_request_templates/default.md`
+  - 兼容模板：`.gitlab/merge_request_templates/Default.md`
+  - 填充规则：替换模板中 `## Description` 与下一个 `## ` 标题之间的内容；若模板没有 `## Description`，则在顶部插入
+
+3. **推送并创建 MR**：
+
+**如果 glab 可用：**
+```bash
+# 推送分支
+git push -u origin $(git branch --show-current)
+
+# 生成 MR_DESC（模板优先；无模板则直接用汇总正文），然后创建 MR
+TEMPLATE_FILE=""
+if [ -f ".gitlab/merge_request_templates/default.md" ]; then
+  TEMPLATE_FILE=".gitlab/merge_request_templates/default.md"
+elif [ -f ".gitlab/merge_request_templates/Default.md" ]; then
+  TEMPLATE_FILE=".gitlab/merge_request_templates/Default.md"
+fi
+
+COMMIT_SUMMARY="$(cat <<'EOF'
+## 改动内容
+- [汇总所有 commit 的改动点]
+
+## 影响面
+- [汇总所有 commit 的影响面]
+EOF
+)"
+
+if [ -n "$TEMPLATE_FILE" ]; then
+  MR_DESC="$(TEMPLATE_FILE="$TEMPLATE_FILE" COMMIT_SUMMARY="$COMMIT_SUMMARY" python3 - <<'PY'
+import os
+import re
+
+template_path = os.environ["TEMPLATE_FILE"]
+summary = os.environ["COMMIT_SUMMARY"].rstrip("\n")
+
+with open(template_path, "r", encoding="utf-8") as f:
+  template = f.read()
+
+header_re = re.compile(r"(?m)^## Description\\s*$")
+m = header_re.search(template)
+
+block = f"\\n\\n{summary}\\n\\n"
+
+if not m:
+  out = f"## Description{block}" + template.lstrip(\"\\n\")
+else:
+  start = m.end()
+  rest = template[start:]
+  m2 = re.search(r"(?m)^##\\s+.+$", rest)
+  end = start + (m2.start() if m2 else len(rest))
+  out = template[:start] + block + template[end:]
+
+print(out, end=\"\")
+PY
+  )"
+else
+  MR_DESC="$COMMIT_SUMMARY"
+fi
+
+glab mr create \
+  --title "$(git log -1 --pretty=%s)" \
+  --description "$MR_DESC" \
+  --yes --remove-source-branch
+```
+
+**如果 glab 不可用（fallback）：**
+- 先确保你已经通过步骤 1 的默认分支检测拿到了 `default_branch`
+```bash
+git push -u origin $(git branch --show-current) -o merge_request.create -o merge_request.target=$default_branch
+```
+
+4. **输出结果**：显示 MR 链接，并使用系统默认浏览器打开（如果可获取到链接）。
 
 ## 与 Commands 的关系
 

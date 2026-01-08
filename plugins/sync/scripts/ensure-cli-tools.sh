@@ -87,6 +87,8 @@ install_glab() {
 # ========== 主逻辑 ==========
 
 main() {
+    local did_anything=false
+
     # 检查包管理器
     if ! has_brew; then
         log_warn "未检测到 Homebrew，跳过 CLI 工具检测"
@@ -96,25 +98,35 @@ main() {
 
     # ===== GitHub CLI (gh) =====
     if ! check_gh_installed; then
+        did_anything=true
         if ! install_gh; then
             INSTALL_FAILED+=("gh")
         fi
+    else
+        log_info "GitHub CLI (gh) 已安装"
     fi
 
     # ===== GitLab CLI (glab) =====
     if ! check_glab_installed; then
+        did_anything=true
         if ! install_glab; then
             INSTALL_FAILED+=("glab")
         fi
+    else
+        log_info "GitLab CLI (glab) 已安装"
     fi
 
     # ===== 检测环境变量认证 =====
     if [ -z "$GH_TOKEN" ]; then
         AUTH_MISSING+=("GitHub")
+    else
+        log_info "GH_TOKEN 已配置"
     fi
 
     if [ -z "$GITLAB_TOKEN" ]; then
         AUTH_MISSING+=("GitLab")
+    else
+        log_info "GITLAB_TOKEN 已配置"
     fi
 
     # ===== 输出提示 =====
@@ -157,6 +169,12 @@ main() {
         echo "  source ~/.zshrc"
         echo ""
         log_info "运行 '/sync:cli-tools' 获取详细指南"
+    fi
+
+    # 如果没有任何需要处理的事项，给出友好提示，避免看起来像“卡住/没输出”
+    if [ "$did_anything" = "false" ] && [ ${#INSTALL_FAILED[@]} -eq 0 ] && [ ${#AUTH_MISSING[@]} -eq 0 ]; then
+        echo ""
+        log_info "环境已满足：gh/glab 已安装且认证变量已配置，无需处理"
     fi
 
     return 0

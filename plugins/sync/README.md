@@ -67,6 +67,19 @@ AI: 💡 正在使用 context7 获取 Next.js 的最新文档...
 
 如果需要单独执行某个配置步骤：
 
+### （可选）启用 git pre-commit：自动同步 git-flow snippets
+
+当你修改 `plugins/git/skills/git-flow/snippets/` 并准备提交时，可启用本仓库的版本化 `pre-commit` hook，自动运行同步脚本并暂存同步产物，避免漏提交。
+
+启用方式（一次性）：
+
+```bash
+git config core.hooksPath .githooks
+chmod +x .githooks/pre-commit
+```
+
+详细说明见：`.githooks/README.md`
+
 ### `/sync:mcp`
 
 配置 context7 和 sequential-thinking MCP 服务器。
@@ -191,12 +204,12 @@ AI: 💡 正在使用 context7 获取 Next.js 的最新文档...
    - 验证插件有效性（检查 `plugin.json`）
    - 依次卸载并重新安装每个插件
 3. **效果**：插件代码更新后自动生效
-4. **额外行为**：同时执行 `ensure-cli-tools.sh` / `ensure-cli-tools.ps1` 检测 `gh`/`glab` 状态并提示认证配置
+4. **额外行为**：执行 `ensure-cli-tools.sh`（macOS/Linux）检测 `gh`/`glab` 状态并提示认证配置
 
 ### 脚本位置
 
 - 脚本文件：`.claude/plugins/sync/scripts/reload-plugins.sh`
-- CLI 工具检测：`.claude/plugins/sync/scripts/ensure-cli-tools.sh` / `.claude/plugins/sync/scripts/ensure-cli-tools.ps1`
+- CLI 工具检测：`.claude/plugins/sync/scripts/ensure-cli-tools.sh`
 - Hook 配置：`.claude/hooks/hooks.json`
 
 ### 自动发现插件
@@ -215,6 +228,7 @@ AI: 💡 正在使用 context7 获取 Next.js 的最新文档...
 
 ## 版本历史
 
+- **v0.1.6** - 重构 hooks 架构为项目相对路径；新增自动更新脚本 (`set-auto-update-plugins.sh`)；新增 git-flow snippets 自动同步脚本和 pre-commit hook；移除 Windows 支持；脚本日志增强
 - **v0.1.5** - `/sync:basic` 增加 GitLab MR 默认模板同步；SessionStart hooks 增加 gh/glab 检测脚本；新增 `/sync:git-cli-auth`
 - **v0.1.4** - 新增 Claude Plugin Skills 索引同步（`sync-claude-plugin.mdc`）
 - **v0.1.3** - 新增 Cursor 模板直接复制方式

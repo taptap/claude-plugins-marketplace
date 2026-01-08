@@ -15,12 +15,15 @@ type(scope): 中文描述 #TASK-ID
 - **scope**：影响范围（可选，如 api, auth, ui）
 - **中文描述**：简洁描述本次改动（1-2句话）
 - **TASK-ID**：任务 ID（如 `TAP-85404` 或 `no-ticket`）
+  
+**格式要求**：
+- 标题中的冒号必须使用半角 `:`，且冒号后必须有一个空格
 
 **示例**：
 ```
 feat(api): 新增用户资料接口 #TAP-85404
 fix(auth): 修复 token 过期问题 #TAP-85405
-docs: 更新 API 文档 #no-ticket
+docs(api): 更新 API 文档 #no-ticket
 ```
 
 ### Commit Body（正文）
@@ -40,22 +43,33 @@ type(scope): 中文描述 #TASK-ID
 - 评估向后兼容性
 - 风险评估（如有）
 
-Generated-By: Claude Code <https://claude.ai/code>
-
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ## 格式要求
 
+### 0. `no-ticket` 使用前必须确认（重要）
+
+当准备在 commit 标题中使用 `#no-ticket`（无论是你主动填写，还是从上下文推断出来）时，**必须先询问并确认**：
+
+- 本次变更是否仅涉及文档/注释/配置/格式化等非功能性变更？
+- 如果涉及功能开发、Bug 修复、重构、性能优化等：**不得使用 `no-ticket`**，必须让用户提供工单 ID（或先创建工单）
+
 ### 1. 语言要求
 - 标题和正文都使用**中文**
 - 描述要简洁明了，概括本次提交的核心内容
+- 中文描述（标题中冒号 `:` 后、`#TASK-ID` 前）必须至少包含 **1 个中文字符**
+- 允许保留必要的专有名词/缩写/代码符号（如 `API`、`README`、`DebugEnv`），但不允许整句英文描述
+
+**正反例**：
+- ❌ `docs: add debug comment for DebugEnv call #TAP-6579933216`
+- ✅ `docs: 为 DebugEnv 调用补充 debug 注释 #TAP-6579933216`
 
 ### 2. 空行要求
 - 标题和正文之间：**空一行**
 - 各章节之间：**不空行**（`##改动内容` 和 `## 影响面` 连续）
 - 正文和签名之间：**空一行**
-- `Generated-By` 和 `Co-Authored-By`：**连续两行，不空行**
+- `Co-Authored-By` 行必须放在正文末尾
 
 ### 3. Type 类型
 
@@ -100,8 +114,6 @@ feat(api): 新增用户资料接口 #TAP-85404
 - 向后兼容
 - 数据库查询增加，需关注性能
 
-Generated-By: Claude Code <https://claude.ai/code>
-
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
@@ -120,8 +132,6 @@ fix(auth): 修复 token 过期后无法刷新的问题 #TAP-85405
 - 向后兼容
 - 可能减少 token 刷新接口的调用频率
 
-Generated-By: Claude Code <https://claude.ai/code>
-
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
@@ -138,8 +148,6 @@ docs: 更新 API 文档，补充认证流程说明 #no-ticket
 ## 影响面
 - 仅文档变更，不影响代码
 - 向后兼容
-
-Generated-By: Claude Code <https://claude.ai/code>
 
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```

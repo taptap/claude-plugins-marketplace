@@ -52,19 +52,30 @@
 **问题**：这是什么类型的变更？
 
 **选项**：
-- **feat-**：新功能开发
-- **fix-**：Bug 修复
-- **refactor-**：代码重构
-- **docs-**：文档更新
-- **test-**：测试相关
-- **chore-**：维护任务
-- **perf-**：性能优化
+- **feat/**：新功能开发
+- **fix/**：Bug 修复
+- **refactor/**：代码重构
+- **docs/**：文档更新
+- **test/**：测试相关
+- **chore/**：维护任务
+- **perf/**：性能优化
 
-#### 询问分支描述
+#### 生成/确认分支描述（desc）
 
-使用 `AskUserQuestion` 询问用户输入分支描述：
+分支描述（desc）**不允许为空**。当用户未提供描述时，优先从本次变更自动生成一个英文短横线描述（生成失败再询问用户）。
 
-**问题**：请输入分支描述（英文，使用短横线分隔单词）
+**自动生成策略（autoFromDiff）**：
+1. 获取变更文件列表：`git diff --name-only HEAD`（或基于实际比较范围）  
+2. 结合变更类型与文件名生成 desc（英文短横线）：  
+   - docs 变更优先：`update-doc` / `update-readme` / `update-api-doc`  
+   - 仅注释变更：`add-comment`  
+   - 关键词映射：`debug`→`debug`、`comment`→`comment`、`readme`→`readme` 等  
+3. 若无法生成（例如无法获取 diff、文件名过于复杂）：进入“询问用户输入”
+
+**询问用户输入（兜底）**：
+使用 `AskUserQuestion` 询问用户输入分支描述（英文短横线）：
+
+**问题**：请输入分支描述（英文，使用短横线分隔单词；不可为空）
 
 **示例**：
 - `user-profile`
@@ -73,12 +84,12 @@
 
 ### 第三步：构建分支名
 
-分支名格式：`{prefix}-{TASK-ID}-{description}`
+分支名格式：`{prefix}/{TASK-ID}-{desc}`（desc 不允许为空）
 
 **示例**：
-- `feat-TAP-85404-user-profile`
-- `fix-TAP-85405-login-error`
-- `docs-TAP-6579933216-api-docs`
+- `feat/TAP-85404-user-profile`
+- `fix/TAP-85405-login-error`
+- `docs/TAP-6579933216-update-doc`
 
 **关键**：任务 ID 必须包含 `TAP-` 前缀（纯数字 ID 必须在此之前已转换）
 
@@ -133,7 +144,7 @@ fi
 ```
 ✅ 成功创建并切换到新分支
 
-分支: feat-TAP-85404-user-profile
+分支: feat/TAP-85404-user-profile
 基于: origin/main
 
 现在可以开始开发，完成后使用以下命令提交：
@@ -173,7 +184,7 @@ fi
   ↓
 询问分支描述
   ↓
-构建分支名：{prefix}-{TAP-ID}-{description}
+构建分支名：{prefix}/{TAP-ID}-{desc}
   ↓
 git fetch origin
   ↓
