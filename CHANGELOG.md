@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.1.10
+
+### Sync Plugin (0.1.6)
+
+- Refactored hooks architecture to use project-relative paths (`.claude/hooks/scripts/`) instead of plugin-root-relative paths
+- Added `set-auto-update-plugins.sh` script to enable automatic marketplace plugin updates
+- Added `sync-git-flow-snippets.sh` script for automated git-flow documentation synchronization
+- Added pre-commit git hook (`.githooks/pre-commit`) for automatic snippet syncing when git-flow docs change
+- Enhanced `ensure-cli-tools.sh` with detailed logging showing installation and configuration status
+- Updated `hooks.json` to use project-relative script paths for better portability across team environments
+- Removed Windows support: deleted `ensure-cli-tools.ps1` (macOS/Linux only)
+- Removed `reload-plugins.sh` (replaced by `set-auto-update-plugins.sh`)
+
+### Git Plugin (0.1.4)
+
+- Modularized git-flow documentation into reusable snippets (6 files) for better maintainability
+- Added support for Feishu task link extraction with automatic ID conversion
+- Added support for Jira link extraction (`/browse/TAP-xxxxx` pattern)
+- Enhanced task ID extraction with three-priority strategy: branch name → user input → user query
+- Added mandatory second confirmation for commits without task ID (#no-ticket)
+- Improved MR creation with Python-based template merging support
+- Deleted monolithic `command-procedures.md` (replaced by modular snippets)
+
+### Marketplace
+
+- Bumped version from 0.1.9 to 0.1.10
+- Updated git plugin to version 0.1.4
+- Updated sync plugin to version 0.1.6
+
 ## 0.1.9
 
 ### Sync Plugin (0.1.5)

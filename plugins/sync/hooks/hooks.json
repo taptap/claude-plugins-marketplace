@@ -6,11 +6,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/reload-plugins.sh"
+            "command": "bash .claude/hooks/scripts/set-auto-update-plugins.sh"
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/ensure-cli-tools.sh 2>/dev/null || powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/scripts/ensure-cli-tools.ps1\" 2>$null || true"
+            "command": "bash .claude/hooks/scripts/ensure-cli-tools.sh 2>/dev/null || true"
           }
         ]
       }

@@ -158,9 +158,92 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ## 开发流程
 
-1. 从 master 创建新的工作分支
-2. 在分支上开发功能或修复问题
-3. 创建合并请求到 master
-4. 该分支自动合并到 staging 并在测试环境构建
-5. 测试通过后，合并请求被批准并合并到 master
-6. 删除工作分支
+1. 动态检测默认分支（优先 `origin/HEAD`，否则依次尝试 main/master/develop，必要时询问用户）
+2. 从默认分支创建新的工作分支
+3. 在分支上开发功能或修复问题
+4. 创建合并请求到默认分支
+5. 该分支自动合并到 staging 并在测试环境构建
+6. 测试通过后，合并请求被批准并合并到默认分支
+7. 删除工作分支
+
+## 创建 MR（与 command /git:commit-push-pr 保持一致）
+
+当用户用自然语言要求“推送/创建 MR/创建合并请求”时，执行策略为：**glab 优先，失败则 fallback 到 GitLab push options**。
+
+1. 检测 glab：
+```bash
+which glab && glab auth status
+```
+
+2. 如果 glab 可用：
+
+按以下流程推送并创建 MR（模板优先；无模板则直接使用汇总正文）：
+
+```bash
+# 推送分支
+git push -u origin $(git branch --show-current)
+
+# 选择 MR 模板（如存在）
+TEMPLATE_FILE=""
+if [ -f ".gitlab/merge_request_templates/default.md" ]; then
+  TEMPLATE_FILE=".gitlab/merge_request_templates/default.md"
+elif [ -f ".gitlab/merge_request_templates/Default.md" ]; then
+  TEMPLATE_FILE=".gitlab/merge_request_templates/Default.md"
+fi
+
+# 从 commit message 汇总生成 MR 正文（示例占位；实际应基于 git log 汇总）
+COMMIT_SUMMARY="$(cat <<'EOF'
+## 改动内容
+- 改动点 1
+
+## 影响面
+- 影响的模块/功能
+EOF
+)"
+
+# 填充最终 MR description：优先写入模板的 `## Description` 区块
+if [ -n "$TEMPLATE_FILE" ]; then
+  MR_DESC="$(TEMPLATE_FILE="$TEMPLATE_FILE" COMMIT_SUMMARY="$COMMIT_SUMMARY" python3 - <<'PY'
+import os
+import re
+
+template_path = os.environ["TEMPLATE_FILE"]
+summary = os.environ["COMMIT_SUMMARY"].rstrip("\n")
+
+with open(template_path, "r", encoding="utf-8") as f:
+  template = f.read()
+
+header_re = re.compile(r"(?m)^## Description\\s*$")
+m = header_re.search(template)
+
+block = f"\\n\\n{summary}\\n\\n"
+
+if not m:
+  out = f"## Description{block}" + template.lstrip("\\n")
+else:
+  start = m.end()
+  rest = template[start:]
+  m2 = re.search(r"(?m)^##\\s+.+$", rest)
+  end = start + (m2.start() if m2 else len(rest))
+  out = template[:start] + block + template[end:]
+
+print(out, end="")
+PY
+  )"
+else
+  MR_DESC="$COMMIT_SUMMARY"
+fi
+
+# 创建 MR（标题默认使用最新 commit 标题）
+glab mr create \
+  --title "$(git log -1 --pretty=%s)" \
+  --description "$MR_DESC" \
+  --yes --remove-source-branch
+```
+
+3. 如果 glab 不可用：
+- 先按“默认分支检测”获得 `default_branch`
+- 使用 push options 创建 MR：
+```bash
+git push -u origin $(git branch --show-current) -o merge_request.create -o merge_request.target=$default_branch
+```

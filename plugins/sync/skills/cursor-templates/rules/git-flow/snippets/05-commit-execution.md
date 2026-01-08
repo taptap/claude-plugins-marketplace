@@ -147,8 +147,6 @@ type(scope): 中文描述 #TASK-ID
 - [评估向后兼容性]
 - [风险评估（如有）]
 
-Generated-By: Claude Code <https://claude.ai/code>
-
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
@@ -169,8 +167,6 @@ feat(api): 新增用户资料接口 #TAP-85404
 - 新增接口，不影响现有功能
 - 向后兼容
 - 数据库查询增加，需关注性能
-
-Generated-By: Claude Code <https://claude.ai/code>
 
 Co-Authored-By: Claude <noreply@anthropic.com>
 EOF
@@ -207,7 +203,7 @@ git log -1 --pretty=format:"%s" | grep -E '^(feat|fix|docs|style|refactor|test|c
 
 Commit: a1b2c3d
 标题: feat(api): 新增用户资料接口 #TAP-85404
-分支: feat-TAP-85404-user-profile
+分支: feat/TAP-85404-user-profile
 
 下一步：
   - 使用 /git:commit-push 推送到远程
@@ -222,7 +218,7 @@ Commit: a1b2c3d
 
 **错误信息**：
 ```
-On branch feat-TAP-85404-user-profile
+On branch feat/TAP-85404-user-profile
 nothing to commit, working tree clean
 ```
 
@@ -238,7 +234,7 @@ nothing to commit, working tree clean
 **错误信息**（远程 hook 拒绝）：
 ```
 remote: error: commit message does not follow the required format
-remote: expected: type(scope): description #TASK-ID
+remote: expected: type(scope): 中文描述 #TASK-ID
 ```
 
 **原因**：Commit 消息不符合正则验证

@@ -134,91 +134,16 @@ test -f ${LATEST_VERSION}skills/mcp-templates/sequential-thinking.json && echo "
 
 ### 阶段 2：配置自动重载钩子
 
-**目标**：同步 plugin hooks 配置到项目级，启用自动重载功能
+**目标**：同步 hooks（脚本 + hooks.json），详见 [hooks.md](./hooks.md)
 
-**步骤 2.1：读取 plugin hooks 配置（两级查找）**
+**执行方式**：此阶段不重复描述细节，请读取并按 [`hooks.md`](./hooks.md) 的 **Your Task** 完整执行（包含：定位源 scripts → 复制到 `.claude/hooks/scripts/` → chmod → 生成/合并 `.claude/hooks/hooks.json` → 验证）。
 
-**方法**：使用分步骤的简单命令
+**复用说明**：如果阶段 1 已经计算过 `LATEST_VERSION`，此处可直接复用。
 
-**2.1.1 查找最新缓存版本**：
-```bash
-ls -d ~/.claude/plugins/cache/taptap-plugins/sync/*/ 2>/dev/null | sort -V | tail -1
-```
-记录结果为 `LATEST_VERSION`（如果步骤 1.1 已执行，可复用该结果）
-
-**2.1.2 检查 hooks.json**：
-```bash
-# 检查 primary 路径
-test -f ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/hooks/hooks.json && echo "PRIMARY_FOUND" || echo "PRIMARY_NOT_FOUND"
-
-# 检查 cache 路径
-test -f ${LATEST_VERSION}hooks/hooks.json && echo "CACHE_FOUND" || echo "CACHE_NOT_FOUND"
-```
-
-**2.1.3 读取 hooks.json**：
-- 如果 PRIMARY_FOUND，使用 Read 工具读取 `~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/hooks/hooks.json`
-- 否则如果 CACHE_FOUND，使用 Read 工具读取 `${LATEST_VERSION}hooks/hooks.json`
-- 否则跳到错误处理
-
-**错误处理**：
-- 如果所有路径都不存在：
-  1. 记录错误：step2_hooks = "failed"，原因：插件 hooks 配置文件在所有位置都不存在
-  2. 跳过步骤 2.2-2.6
-  3. 继续阶段 3
-
-**步骤 2.2：检查项目级 hooks 配置**
-
-检查 `.claude/hooks/hooks.json` 是否存在：
-```bash
-test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
-```
-
-**步骤 2.3：合并或创建配置**
-
-- **文件不存在**：
-  1. 创建目录：`mkdir -p .claude/hooks`
-  2. 直接写入 plugin hooks 配置
-
-- **文件已存在**：
-  1. 读取现有配置（项目配置）
-  2. 读取插件 hooks 配置（源配置，步骤 2.1 获取的）
-  3. 比较两者的 SessionStart hooks 数组：
-     - 比较 hooks 数量是否相同
-     - 逐个比较 `hooks[].command` 字段
-  4. 如果检测到差异（hooks 数量不同或 command 内容不同）：
-     - 使用 Write 工具覆盖写入最新的插件配置
-     - 记录更新详情：`已更新 hooks 配置`
-  5. 如果完全相同：
-     - 跳过（记录：`已配置，无需更新`）
-  6. 如果现有配置不包含 SessionStart hook：
-     - 合并 hooks 数组，添加新的 SessionStart hook
-     - 保留现有的其他 hooks
-
-**步骤 2.4：设置脚本可执行权限（两级查找）**
-
-**方法**：使用分步骤的简单命令
-
-**2.4.1 查找最新缓存版本**（如果步骤 2.1 已执行，可复用 `LATEST_VERSION`）
-
-**2.4.2 检查并设置权限**：
-```bash
-# 检查并设置 primary 路径
-test -f ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/scripts/reload-plugins.sh && chmod +x ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/scripts/reload-plugins.sh && echo "PRIMARY_SUCCESS" || echo "PRIMARY_NOT_FOUND"
-
-# 如果 primary 不存在，检查并设置 cache 路径
-test -f ${LATEST_VERSION}scripts/reload-plugins.sh && chmod +x ${LATEST_VERSION}scripts/reload-plugins.sh && echo "CACHE_SUCCESS" || echo "CACHE_NOT_FOUND"
-```
-
-如果所有位置都不存在该脚本，记录警告但继续执行（不阻塞流程）。
-
-**步骤 2.5：记录执行结果**
-
-记录 Hooks 配置的执行结果：
+**记录 Hooks 执行结果（总控）**：
 - 成功：step2_hooks = "success"
-- 失败：step2_hooks = "failed"，记录错误信息
-- 已存在：step2_hooks = "skipped"
-
-**步骤 2.6：更新任务状态**
+- 失败：step2_hooks = "failed"（记录错误信息）
+- 已存在/无需更新：step2_hooks = "skipped"
 
 无论成功或失败，标记 "配置自动重载钩子" 任务为 completed，继续下一步。
 
@@ -381,7 +306,7 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
 
   ✅ 自动重载钩子: 成功
      - 配置文件: .claude/hooks/hooks.json
-     - 重载脚本: .claude/plugins/sync/scripts/reload-plugins.sh
+     - 重载脚本: .claude/hooks/scripts/reload-plugins.sh
 
   ✅ Cursor 同步: 成功
      - Rules: git-flow.mdc
