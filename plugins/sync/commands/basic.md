@@ -7,7 +7,7 @@ description: 一键配置开发环境（MCP + Hooks + Cursor 同步）
 
 此命令会一次性完成开发环境的基础配置，包括：
 1. 配置 MCP 服务器（context7 + sequential-thinking）
-2. 配置自动重载钩子（SessionStart hook）
+2. 配置自动更新钩子（SessionStart hook）
 3. 同步配置到 Cursor IDE
 
 每个步骤独立执行，某步骤失败不会阻止后续步骤。
@@ -21,7 +21,7 @@ description: 一键配置开发环境（MCP + Hooks + Cursor 同步）
 使用 TodoWrite 创建任务清单，跟踪执行进度：
 ```
 - 配置 MCP 服务器
-- 配置自动重载钩子
+- 配置自动更新钩子
 - 同步到 Cursor IDE
 - 同步 GitLab MR 模板
 ```
@@ -40,6 +40,12 @@ description: 一键配置开发环境（MCP + Hooks + Cursor 同步）
 
 ```bash
 pwd
+```
+
+**步骤 0.4：确认在项目根目录执行（防止写入错误位置）**
+
+```bash
+test -d .git -o -f .gitignore && echo "OK: project root detected" || (echo "❌ 未检测到 .git 或 .gitignore，请在项目根目录执行 /sync:basic" && exit 1)
 ```
 
 ---
@@ -132,7 +138,7 @@ test -f ${LATEST_VERSION}skills/mcp-templates/sequential-thinking.json && echo "
 
 ---
 
-### 阶段 2：配置自动重载钩子
+### 阶段 2：配置自动更新钩子
 
 **目标**：同步 hooks（脚本 + hooks.json），详见 [hooks.md](./hooks.md)
 
@@ -145,7 +151,7 @@ test -f ${LATEST_VERSION}skills/mcp-templates/sequential-thinking.json && echo "
 - 失败：step2_hooks = "failed"（记录错误信息）
 - 已存在/无需更新：step2_hooks = "skipped"
 
-无论成功或失败，标记 "配置自动重载钩子" 任务为 completed，继续下一步。
+无论成功或失败，标记 "配置自动更新钩子" 任务为 completed，继续下一步。
 
 ---
 
@@ -304,9 +310,9 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
      - .mcp.json: [新增/已存在] context7, sequential-thinking
      - .cursor/mcp.json: [新增/已存在] context7, sequential-thinking
 
-  ✅ 自动重载钩子: 成功
+  ✅ 自动更新钩子: 成功
      - 配置文件: .claude/hooks/hooks.json
-     - 重载脚本: .claude/hooks/scripts/reload-plugins.sh
+     - 自动更新脚本: .claude/hooks/scripts/set-auto-update-plugins.sh
 
   ✅ Cursor 同步: 成功
      - Rules: git-flow.mdc
@@ -321,7 +327,7 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
   3. 配置将自动生效
 
 💡 提示：
-  - 修改插件后重启会话，会自动重新加载
+  - 更新插件后重启会话，自动更新机制会生效
   - 在 Cursor 中输入 / 可查看所有命令
 ```
 
@@ -334,7 +340,7 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
   [✅/❌/⏭️ ] MCP 配置: [成功/失败/跳过]
      详情: [具体信息]
 
-  [✅/❌/⏭️ ] 自动重载钩子: [成功/失败/跳过]
+  [✅/❌/⏭️ ] 自动更新钩子: [成功/失败/跳过]
      详情: [具体信息]
 
   [✅/❌/⏭️ ] Cursor 同步: [成功/失败/跳过]
@@ -349,7 +355,7 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
 建议：
   - 对于失败的步骤，可以单独运行对应的命令重试：
     - MCP 配置: /sync:mcp
-    - 自动重载钩子: /sync:hooks
+    - 自动更新钩子: /sync:hooks
     - Cursor 同步: /sync:cursor
 ```
 
@@ -360,7 +366,7 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
 
 所有步骤都失败了，详情：
   ❌ MCP 配置: [错误信息]
-  ❌ 自动重载钩子: [错误信息]
+  ❌ 自动更新钩子: [错误信息]
   ❌ Cursor 同步: [错误信息]
   ❌ GitLab MR 模板: [错误信息]
 
@@ -383,9 +389,9 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
 - **context7**: 自动获取 GitHub 公开库的最新文档和代码示例
 - **sequential-thinking**: 提供结构化问题解决能力
 
-### 自动重载钩子
-- **SessionStart hook**: 会话启动时自动重新加载所有插件
-- **效果**: 修改插件后重启会话即可生效，无需手动 uninstall + install
+### 自动更新钩子
+- **SessionStart hook**: 会话启动时自动启用 marketplace 插件自动更新（autoUpdate）
+- **效果**: 插件更新将由 Claude marketplace 自动更新机制接管（无需手动 uninstall + install）
 
 ### Cursor 同步
 - **Rules**: Git 工作流规范（git-flow.mdc）
@@ -409,7 +415,7 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
 
 2. **配置生效**：
    - MCP 配置：重启 Claude Code 会话
-   - 自动重载钩子：下次会话启动时生效
+   - 自动更新钩子：下次会话启动时生效
    - Cursor 配置：重启 Cursor IDE
    - GitLab MR 模板：立即生效，创建 MR 时使用
 

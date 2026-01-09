@@ -14,7 +14,7 @@
 
 这个命令会自动完成：
 - ✅ 配置 MCP 服务器（context7 + sequential-thinking）
-- ✅ 启用自动重载钩子 + CLI 工具检测（修改插件后自动生效）
+- ✅ 启用自动更新钩子（Marketplace autoUpdate）+ CLI 工具检测（更新插件后自动生效）
 - ✅ 同步配置到 Cursor IDE（包括 Claude Plugin Skills 索引）
 - ✅ 同步 GitLab Merge Request 默认模板
 
@@ -42,7 +42,7 @@
 
 **效果：**
 - ✅ MCP 服务器配置完成，可以自动获取最新文档
-- ✅ 自动重载功能启用，修改插件后无需手动重装
+- ✅ 自动更新机制启用（Marketplace autoUpdate），更新插件后无需手动重装
 - ✅ Cursor IDE 配置同步，两个工具无缝切换
 
 ### 场景 2: 学习新框架
@@ -57,7 +57,7 @@ AI: 💡 正在使用 context7 获取 Next.js 的最新文档...
 
 ### 场景 3: 插件开发
 
-修改插件代码 → 重启会话 → 自动重载（前提：已运行 `/sync:basic`）
+更新插件 → 重启会话 → 自动更新机制生效（前提：已运行 `/sync:basic`）
 
 **效果：**
 - 🔧 **开发者**：无需手动 uninstall + install
@@ -99,7 +99,7 @@ chmod +x .githooks/pre-commit
 
 ### `/sync:hooks`
 
-配置 SessionStart 钩子，启用自动重载功能。
+配置 SessionStart 钩子，启用自动更新（Marketplace autoUpdate）。
 
 ```bash
 /sync:hooks
@@ -107,11 +107,11 @@ chmod +x .githooks/pre-commit
 
 **功能：**
 - 同步 plugin hooks 配置到项目级 `.claude/hooks/hooks.json`
-- 启用 SessionStart 自动重载
+- 启用 SessionStart 自动更新（autoUpdate）
 - 智能合并现有 hooks 配置
 
 **效果：**
-- 重启会话时自动重新加载所有插件
+- 会话启动时自动启用 marketplace 插件自动更新（autoUpdate）
 - 会话启动时自动检测并尝试安装 `gh`/`glab`，并提示认证环境变量配置方式
 - 支持本地插件开发和团队插件更新
 
@@ -165,7 +165,7 @@ chmod +x .githooks/pre-commit
 | `/sync:basic` | 一键配置开发环境 | ⭐ 推荐 |
 | `/sync:mcp-feishu <URL>` | 配置飞书 MCP | 可选 |
 | `/sync:mcp` | 仅配置 MCP 服务器 | 高级 |
-| `/sync:hooks` | 仅配置自动重载钩子 | 高级 |
+| `/sync:hooks` | 仅配置自动更新钩子（autoUpdate） | 高级 |
 | `/sync:cursor` | 仅同步到 Cursor | 高级 |
 | `/sync:git-cli-auth` | 检测并配置 gh/glab 认证 | 高级 |
 
@@ -192,24 +192,23 @@ chmod +x .githooks/pre-commit
 
 这些模板会被 `/sync:mcp` 和 `/sync:basic` 命令使用，确保团队成员使用统一的配置格式。
 
-## 自动重载机制
+## 自动更新机制（Marketplace autoUpdate）
 
 ### 工作原理
 
 配置 SessionStart hook 后：
 
-1. **会话启动时**：自动执行 `reload-plugins.sh` 脚本
+1. **会话启动时**：自动执行 `set-auto-update-plugins.sh`
 2. **脚本行为**：
-   - 自动发现 `.claude/plugins/` 目录下的所有插件
-   - 验证插件有效性（检查 `plugin.json`）
-   - 依次卸载并重新安装每个插件
-3. **效果**：插件代码更新后自动生效
+   - 自动启用 marketplace `taptap-plugins` 的 `autoUpdate=true`
+   - 写入位置：`~/.claude/plugins/known_marketplaces.json`
+3. **效果**：后续插件更新将由 Claude 的 marketplace 自动更新机制接管（无需手动配置）
 4. **额外行为**：执行 `ensure-cli-tools.sh`（macOS/Linux）检测 `gh`/`glab` 状态并提示认证配置
 
 ### 脚本位置
 
-- 脚本文件：`.claude/plugins/sync/scripts/reload-plugins.sh`
-- CLI 工具检测：`.claude/plugins/sync/scripts/ensure-cli-tools.sh`
+- 自动更新脚本：`.claude/hooks/scripts/set-auto-update-plugins.sh`
+- CLI 工具检测：`.claude/hooks/scripts/ensure-cli-tools.sh`
 - Hook 配置：`.claude/hooks/hooks.json`
 
 ### 自动发现插件
