@@ -1,5 +1,5 @@
 {
-  "description": "自动重新加载团队插件 + 检查 CLI 工具",
+  "description": "启用 marketplace 插件自动更新 + 检查 CLI 工具",
   "hooks": {
     "SessionStart": [
       {
