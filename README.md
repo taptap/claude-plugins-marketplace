@@ -43,7 +43,7 @@ mkdir -p .claude && echo '{
 **包含功能：**
 - ✅ 配置 context7 和 sequential-thinking MCP（自动获取最新文档）
 - ✅ 启用插件自动重载 + CLI 工具检测（修改后重启会话即可生效）
-- ✅ 同步配置到 Cursor
+- ✅ 同步配置到 Cursor（含 Spec Skills 规则）
 - ✅ 同步 GitLab Merge Request 默认模板
 
 ### 3. 验证安装
@@ -62,7 +62,7 @@ mkdir -p .claude && echo '{
 |------|------|------|
 | spec | 0.1.3 | Spec-Driven Development 工作流插件 |
 | git  | 0.1.4 | Git 工作流自动化插件（三种提交方式：commit、commit+push、commit+push+MR） |
-| sync | 0.1.6 | 开发环境配置同步插件（MCP + Hooks + Cursor + Claude Plugin Skills 索引） |
+| sync | 0.1.8 | 开发环境配置同步插件（MCP + Hooks + Cursor + Spec Skills 规则） |
 | quality | 0.0.2 | AI 驱动的代码质量检查插件（9 个并行 Agent，支持 Bug 检测、代码质量、安全检查、性能分析） |
 
 详细说明请查看各插件目录下的 README.md。
@@ -209,7 +209,7 @@ AI 修改代码时**自动维护**模块文档：
 **功能说明：**
 - **MCP 服务器**：自动获取 GitHub 库的最新文档（context7）和结构化问题解决（sequential-thinking）
 - **自动重载**：修改插件后重启会话自动生效，无需手动重装
-- **Cursor 同步**：在 Cursor IDE 中也能使用 Git 命令
+- **Cursor 同步**：在 Cursor IDE 中使用 Git 命令和 Spec Skills 规则（doc-auto-sync、module-discovery 等）
 
 ## 更新插件
 

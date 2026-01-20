@@ -15,7 +15,7 @@
 这个命令会自动完成：
 - ✅ 配置 MCP 服务器（context7 + sequential-thinking）
 - ✅ 启用自动更新钩子（Marketplace autoUpdate）+ CLI 工具检测（更新插件后自动生效）
-- ✅ 同步配置到 Cursor IDE（包括 Claude Plugin Skills 索引）
+- ✅ 同步配置到 Cursor IDE（包括 Spec Skills 规则）
 - ✅ 同步 GitLab Merge Request 默认模板
 
 ### 飞书 MCP 配置（可选）
@@ -129,9 +129,14 @@ chmod +x .githooks/pre-commit
 
 **功能：**
 - 同步 Git Flow Rules 到 `.cursor/rules/git-flow.mdc`
-- 同步 Claude Plugin Skills 索引到 `.cursor/rules/sync-claude-plugin.mdc`
+- 同步 Spec Skills 规则到 `.cursor/rules/`（独立 `.mdc` 文件）
+  - `doc-auto-sync.mdc` - AI 改动模块代码时自动同步文档（alwaysApply: true）
+  - `module-discovery.mdc` - 开发前必须读取模块索引定位目标（alwaysApply: true）
+  - `generate-module-map.mdc` - 生成模块索引的 prompt（alwaysApply: false）
+  - 已跳过：`implementing-from-task`、`merging-parallel-work`（测试中）
 - 同步 Git Commands 到 `.cursor/commands/`
 - 直接覆盖（每次重新生成最新内容）
+- 自动删除旧的 `sync-claude-plugin.mdc` 文件
 
 ## 自动触发 Skills
 
@@ -179,7 +184,9 @@ chmod +x .githooks/pre-commit
 ### Cursor
 - `.cursor/mcp.json` - MCP 配置（项目级）
 - `.cursor/rules/git-flow.mdc` - Git 工作流规范
-- `.cursor/rules/sync-claude-plugin.mdc` - Claude Plugin Skills 索引
+- `.cursor/rules/doc-auto-sync.mdc` - 模块文档自动同步规则
+- `.cursor/rules/module-discovery.mdc` - 模块发现规则
+- `.cursor/rules/generate-module-map.mdc` - 模块索引生成 prompt
 - `.cursor/commands/git-*.md` - Git 命令
 - `~/.cursor/mcp.json` - 飞书 MCP 配置（全局）
 
@@ -227,6 +234,7 @@ chmod +x .githooks/pre-commit
 
 ## 版本历史
 
+- **v0.1.8** - 重构 Spec Skills 同步：删除单一索引文件 `sync-claude-plugin.mdc`，改为独立 `.mdc` 规则文件（`doc-auto-sync.mdc`、`module-discovery.mdc`、`generate-module-map.mdc`）；过滤测试中的 skills
 - **v0.1.6** - 重构 hooks 架构为项目相对路径；新增自动更新脚本 (`set-auto-update-plugins.sh`)；新增 git-flow snippets 自动同步脚本和 pre-commit hook；移除 Windows 支持；脚本日志增强
 - **v0.1.5** - `/sync:basic` 增加 GitLab MR 默认模板同步；SessionStart hooks 增加 gh/glab 检测脚本；新增 `/sync:git-cli-auth`
 - **v0.1.4** - 新增 Claude Plugin Skills 索引同步（`sync-claude-plugin.mdc`）
