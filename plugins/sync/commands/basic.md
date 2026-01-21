@@ -1,6 +1,6 @@
 ---
-allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(chmod:*), Bash(test:*), Bash(cp:*), TodoWrite
-description: 一键配置开发环境（MCP + Hooks + Cursor 同步）
+allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(chmod:*), Bash(test:*), Bash(cp:*), Bash(rm:*), Bash(grep:*), Bash(ls:*), TodoWrite
+description: 一键配置开发环境（MCP + Hooks + Cursor 同步 + Spec Skills）
 ---
 
 ## Context
@@ -8,7 +8,8 @@ description: 一键配置开发环境（MCP + Hooks + Cursor 同步）
 此命令会一次性完成开发环境的基础配置，包括：
 1. 配置 MCP 服务器（context7 + sequential-thinking）
 2. 配置自动更新钩子（SessionStart hook）
-3. 同步配置到 Cursor IDE
+3. 同步配置到 Cursor IDE（含 Spec Skills 规则）
+4. 同步 GitLab MR 模板
 
 每个步骤独立执行，某步骤失败不会阻止后续步骤。
 
@@ -22,7 +23,7 @@ description: 一键配置开发环境（MCP + Hooks + Cursor 同步）
 ```
 - 配置 MCP 服务器
 - 配置自动更新钩子
-- 同步到 Cursor IDE
+- 同步到 Cursor IDE（含 Spec Skills）
 - 同步 GitLab MR 模板
 ```
 
@@ -31,7 +32,8 @@ description: 一键配置开发环境（MCP + Hooks + Cursor 同步）
 记录每个步骤的执行状态，用于最后生成报告：
 - step1_mcp: pending
 - step2_hooks: pending
-- step3_cursor: pending
+- step3_cursor: pending（包含 git-flow 和 Spec Skills）
+- step3_spec_skills: pending（Spec Skills 子步骤状态）
 - step4_mr_template: pending
 
 **步骤 0.3：显示当前工作目录**
@@ -157,7 +159,7 @@ test -f ${LATEST_VERSION}skills/mcp-templates/sequential-thinking.json && echo "
 
 ### 阶段 3：同步到 Cursor IDE
 
-**目标**：同步 git-flow rules 和 git commands 到 Cursor
+**目标**：同步 git-flow rules、git commands 和 Spec Skills 到 Cursor
 
 **重要**：此阶段使用 `cp` 命令直接复制模板文件，避免 Write 工具的"先 Read 后 Write"限制。
 
@@ -165,6 +167,12 @@ test -f ${LATEST_VERSION}skills/mcp-templates/sequential-thinking.json && echo "
 
 ```bash
 mkdir -p .cursor/rules .cursor/commands
+```
+
+**步骤 3.1.1：删除旧的 sync-claude-plugin.mdc（如果存在）**
+
+```bash
+rm -f .cursor/rules/sync-claude-plugin.mdc
 ```
 
 **步骤 3.2：查找模板目录（两级优先级）**
@@ -203,13 +211,88 @@ cp "${TEMPLATE_DIR}/commands/git-commit-push.md" .cursor/commands/
 cp "${TEMPLATE_DIR}/commands/git-commit-push-pr.md" .cursor/commands/
 ```
 
-**步骤 3.4：记录执行结果**
+**步骤 3.4：同步 Spec Skills 到 Cursor Rules**
+
+**目标**：将 spec 插件的 skills 同步为独立的 `.mdc` 规则文件
+
+**3.4.1 查找 spec 插件的 skills 目录**：
+
+```bash
+# 检查 primary 路径
+test -d ~/.claude/plugins/marketplaces/taptap-plugins/plugins/spec/skills && echo "PRIMARY_FOUND" || echo "PRIMARY_NOT_FOUND"
+
+# 检查 cache 路径（复用 LATEST_VERSION，替换 sync 为 spec）
+SPEC_CACHE_VERSION=$(ls -d ~/.claude/plugins/cache/taptap-plugins/spec/*/ 2>/dev/null | sort -V | tail -1)
+test -d "${SPEC_CACHE_VERSION}skills" && echo "CACHE_FOUND" || echo "CACHE_NOT_FOUND"
+```
+
+**3.4.2 设置 SPEC_SKILLS_DIR 变量**：
+- 如果 PRIMARY_FOUND：`SPEC_SKILLS_DIR=~/.claude/plugins/marketplaces/taptap-plugins/plugins/spec/skills`
+- 否则如果 CACHE_FOUND：`SPEC_SKILLS_DIR=${SPEC_CACHE_VERSION}skills`
+- 否则记录警告并跳过 Spec Skills 同步，继续后续步骤
+
+**3.4.3 遍历 skill 目录并过滤**：
+
+对于 `${SPEC_SKILLS_DIR}` 下的每个子目录（skill 目录）：
+
+1. 读取 `SKILL.md` 文件的 frontmatter
+2. 检查 `description` 是否包含 "测试中"
+3. 如果包含 "测试中"，跳过该 skill
+4. 如果不包含，继续同步
+
+**过滤逻辑示例**：
+```bash
+# 检查 SKILL.md 是否包含 "测试中"
+grep -q "测试中" "${SPEC_SKILLS_DIR}/${skill_name}/SKILL.md" && echo "SKIP" || echo "SYNC"
+```
+
+**3.4.4 同步 SKILL.md 文件**：
+
+对于需要同步的 skill，将 `SKILL.md` 转换为 `.mdc` 格式：
+
+1. 使用 Read 工具读取 `${SPEC_SKILLS_DIR}/${skill_name}/SKILL.md`
+2. 提取 frontmatter 中的 `description` 值
+3. 生成新的 frontmatter 格式：
+   ```
+   ---
+   description: [原始 description 内容]
+   globs:
+   alwaysApply: true
+   ---
+   ```
+4. 保留 frontmatter 之后的正文内容
+5. 使用 Write 工具写入 `.cursor/rules/${skill_name}.mdc`
+
+**3.4.5 同步 skill 目录下的其他 .md 文件**：
+
+对于需要同步的 skill 目录下的其他 `.md` 文件（排除 SKILL.md、排除子目录如 scripts/、template/）：
+
+1. 使用 Read 工具读取 `${SPEC_SKILLS_DIR}/${skill_name}/${filename}.md`
+2. 生成新的 frontmatter（使用文件名作为 description）：
+   ```
+   ---
+   description: [文件名，不含扩展名]
+   globs:
+   alwaysApply: false
+   ---
+   ```
+3. 在 frontmatter 后添加原文件的完整内容
+4. 使用 Write 工具写入 `.cursor/rules/${filename}.mdc`
+
+**3.4.6 记录 Spec Skills 同步结果**：
+
+记录同步的 skill 列表：
+- 成功同步的 SKILL.md 文件列表（alwaysApply: true）
+- 成功同步的其他 .md 文件列表（alwaysApply: false）
+- 跳过的 skills（标记为 "测试中"）
+
+**步骤 3.5：记录执行结果**
 
 记录 Cursor 同步的执行结果：
-- 成功：step3_cursor = "success"，记录详情
+- 成功：step3_cursor = "success"，记录详情（包含 git-flow 和 Spec Skills）
 - 失败：step3_cursor = "failed"，记录错误信息
 
-**步骤 3.5：更新任务状态**
+**步骤 3.6：更新任务状态**
 
 标记 "同步到 Cursor IDE" 任务为 completed。
 
@@ -290,10 +373,11 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
 
 **步骤 5.1：统计执行结果**
 
-汇总四个步骤的执行状态：
+汇总各步骤的执行状态：
 - step1_mcp: success/failed
 - step2_hooks: success/failed/skipped
-- step3_cursor: success/failed
+- step3_cursor: success/failed（含 git-flow 和 Spec Skills）
+- step3_spec_skills: success/failed/skipped（Spec Skills 详情）
 - step4_mr_template: success/failed/skipped
 
 **步骤 5.2：输出执行报告**
@@ -317,6 +401,13 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
   ✅ Cursor 同步: 成功
      - Rules: git-flow.mdc
      - Commands: git-commit.md, git-commit-push.md, git-commit-push-pr.md
+     - Spec Skills (alwaysApply: true):
+       - doc-auto-sync.mdc
+       - module-discovery.mdc
+     - Spec Skills (alwaysApply: false):
+       - generate-module-map.mdc
+     - 已跳过（测试中）: implementing-from-task, merging-parallel-work
+     - 已删除旧文件: sync-claude-plugin.mdc（如果存在）
 
   ✅ GitLab MR 模板: 成功
      - 模板文件: .gitlab/merge_request_templates/default.md [新创建/已存在]
@@ -329,6 +420,7 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
 💡 提示：
   - 更新插件后重启会话，自动更新机制会生效
   - 在 Cursor 中输入 / 可查看所有命令
+  - Spec Skills 规则会在 Cursor 中自动应用
 ```
 
 **⚠️ 情况 B：部分步骤失败**
@@ -345,6 +437,10 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
 
   [✅/❌/⏭️ ] Cursor 同步: [成功/失败/跳过]
      详情: [具体信息]
+     - git-flow: [成功/失败]
+     - Spec Skills: [成功/失败/跳过]
+       - 已同步: [文件列表]
+       - 已跳过（测试中）: [skill 列表]
 
   [✅/❌/⏭️ ] GitLab MR 模板: [成功/失败/跳过]
      详情: [具体信息]
@@ -368,12 +464,15 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
   ❌ MCP 配置: [错误信息]
   ❌ 自动更新钩子: [错误信息]
   ❌ Cursor 同步: [错误信息]
+     - git-flow: [错误信息]
+     - Spec Skills: [错误信息]
   ❌ GitLab MR 模板: [错误信息]
 
 请检查：
   1. 文件权限是否正确
   2. JSON 格式是否有误
   3. 目录结构是否完整
+  4. spec 插件是否已安装
 
 或者尝试单独运行：
   - /sync:mcp
@@ -396,6 +495,11 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
 ### Cursor 同步
 - **Rules**: Git 工作流规范（git-flow.mdc）
 - **Commands**: git-commit、git-commit-push、git-commit-push-pr 命令
+- **Spec Skills**: 自动同步 spec 插件的 skills 规则
+  - `doc-auto-sync.mdc` - AI 改动模块代码时自动同步文档（alwaysApply: true）
+  - `module-discovery.mdc` - 开发前必须读取模块索引定位目标（alwaysApply: true）
+  - `generate-module-map.mdc` - 生成模块索引的 prompt（alwaysApply: false）
+  - 已跳过：`implementing-from-task`、`merging-parallel-work`（测试中）
 
 ### GitLab MR 模板
 - **default.md**: GitLab Merge Request 默认模板
@@ -410,6 +514,7 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
    - **MCP 配置**：已存在则跳过，不覆盖
    - **Hooks 配置**：检测差异并更新（如果配置有变化则自动更新）
    - **Cursor 同步**：直接覆盖（rules 和 commands 每次重新生成）
+   - **Spec Skills**：直接覆盖（每次从 spec 插件重新生成 .mdc 文件）
    - **GitLab MR 模板**：已存在则跳过，不覆盖（保留项目自定义配置）
    - 某步骤失败不影响后续步骤
 
