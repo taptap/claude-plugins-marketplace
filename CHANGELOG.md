@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.12
+
+### Sync Plugin (0.1.8)
+
+- Refactored Spec Skills sync: removed single index file `sync-claude-plugin.mdc`, now generates independent `.mdc` rule files
+- Added `doc-auto-sync.mdc` - auto-sync module docs when AI modifies code (alwaysApply: true)
+- Added `module-discovery.mdc` - must read module index before development (alwaysApply: true)
+- Added `generate-module-map.mdc` - prompt for generating module index (alwaysApply: false)
+- Filters out skills marked as "测试中" (testing): `implementing-from-task`, `merging-parallel-work`
+- Auto-deletes old `sync-claude-plugin.mdc` file for backward compatibility
+- Updated `/sync:basic` command to include Spec Skills sync stage
+
+### Marketplace
+
+- Bumped version from 0.1.11 to 0.1.12
+- Updated sync plugin to version 0.1.8
+
 ## 0.1.10
 
 ### Sync Plugin (0.1.6)
