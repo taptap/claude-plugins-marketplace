@@ -45,6 +45,7 @@ mkdir -p .claude && echo '{
 - ✅ 启用插件自动重载 + CLI 工具检测（修改后重启会话即可生效）
 - ✅ 同步配置到 Cursor（含 Spec Skills 规则）
 - ✅ 同步 GitLab Merge Request 默认模板
+- ✅ 支持 GitHub Pull Request 模板
 
 ### 3. 验证安装
 
@@ -95,7 +96,27 @@ mkdir -p .claude && echo '{
   - `chore/`：配置或维护任务
 - 如果在 main/master 分支，会询问分支描述并创建功能分支（如 `feat/TAP-12345-description`）
 - 分析代码变更，生成符合规范的提交信息
-- 推送代码并自动创建 Merge Request
+- 推送代码并自动创建 Merge Request / Pull Request
+
+**平台支持：**
+
+| 平台 | CLI 工具 | 模板路径 |
+|------|----------|----------|
+| GitLab | `glab` | `.gitlab/merge_request_templates/default.md` |
+| GitHub | `gh` | `.github/PULL_REQUEST_TEMPLATE.md` |
+
+> 💡 命令会自动检测仓库类型和可用的 CLI 工具，选择合适的方式创建 MR/PR。
+
+**CLI 工具配置：** 使用 `/sync:git-cli-auth` 命令检测和配置认证
+
+```bash
+# 配置 git cli Token
+/sync:git-cli-auth
+
+# 或使用原始命令
+gh auth login        # GitHub
+glab auth login      # GitLab
+```
 
 ### 快速提交与推送
 
