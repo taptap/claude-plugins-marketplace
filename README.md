@@ -6,7 +6,7 @@ TapTap 团队维护的 Claude Code 插件库，提供开发工作流自动化工
 
 对于团队项目，可以在项目根目录配置 `.claude/settings.json`，Claude Code 会自动安装插件，无需手动执行安装命令。
 
-### 1. 配置 settings 
+### 1. 配置 settings
 
 在项目根目录执行以下命令：
 
@@ -15,8 +15,8 @@ mkdir -p .claude && echo '{
   "extraKnownMarketplaces": {
     "taptap-plugins": {
       "source": {
-        "source": "git",
-        "url": "git@github.com:taptap/claude-plugins-marketplace.git"
+        "source": "github",
+        "repo": "taptap/claude-plugins-marketplace"
       }
     }
   },
@@ -41,6 +41,7 @@ mkdir -p .claude && echo '{
 ```
 
 **包含功能：**
+
 - ✅ 配置 context7 和 sequential-thinking MCP（自动获取最新文档）
 - ✅ 启用插件自动重载 + CLI 工具检测（修改后重启会话即可生效）
 - ✅ 同步配置到 Cursor（含 Spec Skills 规则）
@@ -59,12 +60,14 @@ mkdir -p .claude && echo '{
 
 ## 插件列表
 
-| 插件 | 版本 | 描述 |
-|------|------|------|
-| spec | 0.1.3 | Spec-Driven Development 工作流插件 |
-| git  | 0.1.5 | Git 工作流自动化插件（三种提交方式：commit、commit+push、commit+push+MR） |
-| sync | 0.1.9 | 开发环境配置同步插件（MCP + Hooks + Cursor + Spec Skills 规则 + Claude Skills） |
-| quality | 0.0.2 | AI 驱动的代码质量检查插件（9 个并行 Agent，支持 Bug 检测、代码质量、安全检查、性能分析） |
+
+| 插件      | 版本    | 描述                                                                |
+| ------- | ----- | ----------------------------------------------------------------- |
+| spec    | 0.1.3 | Spec-Driven Development 工作流插件                                     |
+| git     | 0.1.5 | Git 工作流自动化插件（三种提交方式：commit、commit+push、commit+push+MR）            |
+| sync    | 0.1.9 | 开发环境配置同步插件（MCP + Hooks + Cursor + Spec Skills 规则 + Claude Skills） |
+| quality | 0.0.2 | AI 驱动的代码质量检查插件（9 个并行 Agent，支持 Bug 检测、代码质量、安全检查、性能分析）              |
+
 
 详细说明请查看各插件目录下的 README.md。
 
@@ -85,6 +88,7 @@ mkdir -p .claude && echo '{
 ```
 
 **命令执行流程：**
+
 - 自动从任务链接提取 Task ID
 - **智能判断分支前缀**：分析 `git diff` 内容自动选择合适的前缀
   - `docs/`：仅修改文档文件
@@ -100,10 +104,12 @@ mkdir -p .claude && echo '{
 
 **平台支持：**
 
-| 平台 | CLI 工具 | 模板路径 |
-|------|----------|----------|
+
+| 平台     | CLI 工具 | 模板路径                                         |
+| ------ | ------ | -------------------------------------------- |
 | GitLab | `glab` | `.gitlab/merge_request_templates/default.md` |
-| GitHub | `gh` | `.github/PULL_REQUEST_TEMPLATE.md` |
+| GitHub | `gh`   | `.github/PULL_REQUEST_TEMPLATE.md`           |
+
 
 > 💡 命令会自动检测仓库类型和可用的 CLI 工具，选择合适的方式创建 MR/PR。
 
@@ -123,24 +129,28 @@ glab auth login      # GitLab
 Git 插件提供三种提交方式，根据需求选择：
 
 **1. 仅提交（本地开发）**
+
 ```bash
 # 适用于：还需要多次提交，暂不推送
 /git:commit
 ```
 
 **2. 提交并推送（备份到远程）**
+
 ```bash
 # 适用于：功能完成，需要备份到远程，但不创建 MR
 /git:commit-push
 ```
 
 **3. 提交、推送并创建 MR（完整流程）**
+
 ```bash
 # 适用于：功能完成，立即创建合并请求
 /git:commit-push-pr https://xindong.atlassian.net/browse/TAP-12345
 ```
 
 **说明**：
+
 - 所有命令都会自动从分支名提取 Task ID
 - 在 main/master 分支会自动创建功能分支
 - `/git:commit-push-pr` 支持智能分支前缀判断
@@ -160,13 +170,16 @@ Git 插件提供三种提交方式，根据需求选择：
 
 AI 开始工作时**自动读取**模块索引，快速了解项目结构：
 
-| 路径 | 说明 |
-|------|------|
-| `tap-agents/tap-agents-configs.md` | 项目配置文件（项目类型、项目名称、业务模块目录、主要类后缀、文件扩展名） |
-| `tap-agents/prompts/module-map.md` | 模块索引（P0/P1/P2 优先级分类 + 关键词定位表） |
-| `tap-agents/prompts/modules/[模块名].md` | 各模块详细文档 |
+
+| 路径                                    | 说明                                   |
+| ------------------------------------- | ------------------------------------ |
+| `tap-agents/tap-agents-configs.md`    | 项目配置文件（项目类型、项目名称、业务模块目录、主要类后缀、文件扩展名） |
+| `tap-agents/prompts/module-map.md`    | 模块索引（P0/P1/P2 优先级分类 + 关键词定位表）        |
+| `tap-agents/prompts/modules/[模块名].md` | 各模块详细文档                              |
+
 
 **工作流程：**
+
 1. AI 检查 `module-map.md` 是否存在
 2. 如不存在，询问用户是否生成（使用 `generate-module-map.md` prompt）
 3. 读取模块索引，利用关键词快速定位代码
@@ -175,14 +188,17 @@ AI 开始工作时**自动读取**模块索引，快速了解项目结构：
 
 AI 修改代码时**自动维护**模块文档：
 
-| 触发场景 | AI 行为 |
-|---------|--------|
+
+| 触发场景 | AI 行为                                      |
+| ---- | ------------------------------------------ |
 | 新增模块 | 创建 `modules/[模块名].md` + 更新 `module-map.md` |
-| 修改模块 | 检查并更新对应文档 |
-| 文档缺失 | 自动创建文档（强制执行） |
-| 文档过期 | 信任代码，自动更新文档 |
+| 修改模块 | 检查并更新对应文档                                  |
+| 文档缺失 | 自动创建文档（强制执行）                               |
+| 文档过期 | 信任代码，自动更新文档                                |
+
 
 **配置项（在 `tap-agents/tap-agents-configs.md` 中定义）：**
+
 - `「项目类型」`：iOS / Android / Web / Backend 等
 - `「项目名称」`：项目名称
 - `「业务模块目录」`：主要业务代码目录（如 `TapTap`、`src/modules`）
@@ -205,6 +221,7 @@ AI 修改代码时**自动维护**模块文档：
 ```
 
 **功能亮点：**
+
 - **9 个并行 Agent**：同时执行，审查速度快
 - **四维度审查**：Bug 检测、代码质量、安全检查、性能分析
 - **置信度评分**：阈值 80，自动过滤低置信度问题
@@ -231,6 +248,7 @@ AI 修改代码时**自动维护**模块文档：
 ```
 
 **功能说明：**
+
 - **MCP 服务器**：自动获取 GitHub 库的最新文档（context7）和结构化问题解决（sequential-thinking）
 - **自动重载**：修改插件后重启会话自动生效，无需手动重装
 - **Cursor 同步**：在 Cursor IDE 中使用 Git 命令和 Spec Skills 规则（doc-auto-sync、module-discovery 等）
