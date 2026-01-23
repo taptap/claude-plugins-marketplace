@@ -58,6 +58,15 @@ Generated-By: Claude Code <https://claude.ai/code>
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
+**重要：以下两个章节是必填项，缺一不可：**
+1. `## 改动内容` - 必须根据 `git diff` 分析填写
+2. `## 影响面` - 必须说明影响评估
+
+**验证清单（提交前必须确认）：**
+- [ ] `## 改动内容` 章节存在且非空
+- [ ] `## 影响面` 章节存在且非空
+- [ ] 两行签名格式正确
+
 ---
 
 ## 参考文档

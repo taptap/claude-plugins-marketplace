@@ -147,8 +147,16 @@ type(scope): 中文描述 #TASK-ID
 - [评估向后兼容性]
 - [风险评估（如有）]
 
+Generated-By: Claude Code <https://claude.ai/code>
+
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
+
+**验证清单（提交前必须确认）：**
+- [ ] `## 改动内容` 章节存在且非空
+- [ ] `## 影响面` 章节存在且非空
+- [ ] 两行签名格式正确（Generated-By 在前，Co-Authored-By 在后）
+- [ ] 签名不包含模型版本号（禁止 Claude Sonnet 4.5、Claude Opus 4.5 等）
 
 ### 第五步：执行 Commit
 
@@ -167,6 +175,8 @@ feat(api): 新增用户资料接口 #TAP-85404
 - 新增接口，不影响现有功能
 - 向后兼容
 - 数据库查询增加，需关注性能
+
+Generated-By: Claude Code <https://claude.ai/code>
 
 Co-Authored-By: Claude <noreply@anthropic.com>
 EOF

@@ -31,6 +31,21 @@
 - ✅ 验证连接状态
 - ✅ 避免重复配置
 
+### Grafana MCP 配置（可选）
+
+配置 Grafana MCP 以查询 Dashboard、Prometheus/Loki 数据源：
+
+```bash
+/sync:mcp-grafana <username> <password>
+```
+
+**功能：**
+- ✅ 自动安装 Golang 和 mcp-grafana（如果未安装）
+- ✅ 同时配置到 Claude Code 和 Cursor
+- ✅ 详细的安装日志
+
+**Cursor 用户**：如果没有配置 Claude Code，可以使用 `/sync-mcp-grafana` 命令（需先运行 `/sync:cursor` 同步命令模板）
+
 ## 使用场景
 
 ### 场景 1: 新成员加入团队
@@ -169,17 +184,24 @@ chmod +x .githooks/pre-commit
 |------|------|--------|
 | `/sync:basic` | 一键配置开发环境 | ⭐ 推荐 |
 | `/sync:mcp-feishu <URL>` | 配置飞书 MCP | 可选 |
+| `/sync:mcp-grafana <user> <pass>` | 配置 Grafana MCP（自动安装依赖） | 可选 |
 | `/sync:mcp` | 仅配置 MCP 服务器 | 高级 |
 | `/sync:hooks` | 仅配置自动更新钩子（autoUpdate） | 高级 |
 | `/sync:cursor` | 仅同步到 Cursor | 高级 |
 | `/sync:git-cli-auth` | 检测并配置 gh/glab 认证 | 高级 |
+
+**Cursor 专用命令**（通过 `/sync:cursor` 同步到项目）：
+
+| 命令 | 说明 |
+|------|------|
+| `/sync-mcp-grafana <user> <pass>` | 配置 Grafana MCP 到 Cursor |
 
 ## 配置文件位置
 
 ### Claude Code
 - `.mcp.json` - MCP 配置（项目级）
 - `.claude/hooks/hooks.json` - Hooks 配置（项目级）
-- `~/.claude.json` - 飞书 MCP 配置（Local scope）
+- `~/.claude.json` - 飞书/Grafana MCP 配置（Local scope）
 
 ### Cursor
 - `.cursor/mcp.json` - MCP 配置（项目级）
@@ -188,7 +210,13 @@ chmod +x .githooks/pre-commit
 - `.cursor/rules/module-discovery.mdc` - 模块发现规则
 - `.cursor/rules/generate-module-map.mdc` - 模块索引生成 prompt
 - `.cursor/commands/git-*.md` - Git 命令
-- `~/.cursor/mcp.json` - 飞书 MCP 配置（全局）
+- `.cursor/commands/sync-mcp-grafana.md` - Grafana MCP 配置命令
+- `~/.cursor/mcp.json` - 飞书/Grafana MCP 配置（全局）
+
+### Golang & mcp-grafana（由 `/sync:mcp-grafana` 安装）
+- `~/go-sdk/current/` - Golang 安装目录
+- `~/go/bin/mcp-grafana` - mcp-grafana 二进制
+- `~/.claude/plugins/logs/ensure-golang-*.log` - 安装日志
 
 ## 配置模板
 
@@ -234,6 +262,7 @@ chmod +x .githooks/pre-commit
 
 ## 版本历史
 
+- **v0.1.9** - 新增 `/sync:mcp-grafana` 命令（自动安装 Golang 和 mcp-grafana）；新增 `--dev` 开发模式参数；新增 Claude Skills 同步（`grafana-dashboard-design`）；新增 Cursor 命令 `sync-mcp-grafana.md`
 - **v0.1.8** - 重构 Spec Skills 同步：删除单一索引文件 `sync-claude-plugin.mdc`，改为独立 `.mdc` 规则文件（`doc-auto-sync.mdc`、`module-discovery.mdc`、`generate-module-map.mdc`）；过滤测试中的 skills
 - **v0.1.6** - 重构 hooks 架构为项目相对路径；新增自动更新脚本 (`set-auto-update-plugins.sh`)；新增 git-flow snippets 自动同步脚本和 pre-commit hook；移除 Windows 支持；脚本日志增强
 - **v0.1.5** - `/sync:basic` 增加 GitLab MR 默认模板同步；SessionStart hooks 增加 gh/glab 检测脚本；新增 `/sync:git-cli-auth`

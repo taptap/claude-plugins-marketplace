@@ -50,6 +50,12 @@ pwd
 test -d .git -o -f .gitignore && echo "OK: project root detected" || (echo "❌ 未检测到 .git 或 .gitignore，请在项目根目录执行 /sync:basic" && exit 1)
 ```
 
+**步骤 0.5：检查开发模式参数**
+
+检查用户是否传入了 `--dev` 参数：
+- 如果命令包含 `--dev`：设置 `USE_CACHE_FIRST=true`（优先使用 cache 路径）
+- 否则：设置 `USE_CACHE_FIRST=false`（默认优先使用 marketplaces 路径）
+
 ---
 
 ### 阶段 1：配置 MCP 服务器
@@ -75,23 +81,27 @@ test -f ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/mcp-te
 test -f ${LATEST_VERSION}skills/mcp-templates/context7.json && echo "CACHE_FOUND" || echo "CACHE_NOT_FOUND"
 ```
 
-**1.1.3 读取 context7.json**：
-- 如果 PRIMARY_FOUND，使用 Read 工具读取 `~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/mcp-templates/context7.json`
-- 否则如果 CACHE_FOUND，使用 Read 工具读取 `${LATEST_VERSION}skills/mcp-templates/context7.json`
-- 否则使用硬编码配置（步骤 1.2 中的 JSON）
+**1.1.3 读取 context7.json 和 sequential-thinking.json**：
 
-**1.1.4 对 sequential-thinking.json 重复相同步骤**：
+**如果 `USE_CACHE_FIRST=true`（开发模式 `--dev`）**：
+
+直接从 cache 路径读取：
+- `${LATEST_VERSION}skills/mcp-templates/context7.json`
+- `${LATEST_VERSION}skills/mcp-templates/sequential-thinking.json`
+- 如果文件不存在，使用硬编码配置（步骤 1.2 中的 JSON）
+
+**否则（默认模式）**：
+
+优先从 marketplaces 路径读取：
 ```bash
 # 检查 primary 路径
-test -f ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/mcp-templates/sequential-thinking.json && echo "PRIMARY_FOUND" || echo "PRIMARY_NOT_FOUND"
-
-# 检查 cache 路径
-test -f ${LATEST_VERSION}skills/mcp-templates/sequential-thinking.json && echo "CACHE_FOUND" || echo "CACHE_NOT_FOUND"
+test -f ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/mcp-templates/context7.json && echo "PRIMARY_FOUND" || echo "PRIMARY_NOT_FOUND"
 ```
+- 如果 PRIMARY_FOUND，使用 Read 工具读取 `~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/mcp-templates/context7.json`
+- 否则使用 Read 工具读取 `${LATEST_VERSION}skills/mcp-templates/context7.json`
+- 如果都不存在，使用硬编码配置（步骤 1.2 中的 JSON）
 
-然后使用 Read 工具读取找到的文件。
-
-**1.1.5 如果两个文件都不存在**：使用步骤 1.2 中的硬编码默认配置。
+对 sequential-thinking.json 重复相同逻辑。
 
 **步骤 1.2：同步到 .mcp.json**
 
@@ -177,23 +187,32 @@ rm -f .cursor/rules/sync-claude-plugin.mdc
 
 **步骤 3.2：查找模板目录（两级优先级）**
 
-**方法**：使用分步骤的简单命令
+**方法**：根据是否为开发模式，选择不同的路径优先级
 
 **3.2.1 查找最新缓存版本**（可复用之前的 `LATEST_VERSION` 结果）
 
-**3.2.2 检查模板目录**：
+**3.2.2 设置 TEMPLATE_DIR 变量**：
+
+**如果 `USE_CACHE_FIRST=true`（开发模式 `--dev`）**：
+
+直接使用 cache 路径：
+```bash
+TEMPLATE_DIR="${LATEST_VERSION}skills/cursor-templates"
+test -d "${TEMPLATE_DIR}" && echo "使用 cache 路径: ${TEMPLATE_DIR}" || echo "CACHE_NOT_FOUND"
+```
+- 如果 cache 路径存在：继续步骤 3.3
+- 如果 cache 路径不存在：记录错误并跳过此阶段
+
+**否则（默认模式）**：
+
+优先使用 marketplaces 路径：
 ```bash
 # 检查 primary 路径
 test -d ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/cursor-templates && echo "PRIMARY_FOUND" || echo "PRIMARY_NOT_FOUND"
-
-# 检查 cache 路径
-test -d ${LATEST_VERSION}skills/cursor-templates && echo "CACHE_FOUND" || echo "CACHE_NOT_FOUND"
 ```
-
-**3.2.3 设置 TEMPLATE_DIR 变量**：
 - 如果 PRIMARY_FOUND：`TEMPLATE_DIR=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/cursor-templates`
-- 否则如果 CACHE_FOUND：`TEMPLATE_DIR=${LATEST_VERSION}skills/cursor-templates`
-- 否则记录错误（step3_cursor = "failed"）并跳过此阶段，继续阶段 4
+- 否则检查 cache 路径：`TEMPLATE_DIR=${LATEST_VERSION}skills/cursor-templates`
+- 如果都不存在：记录错误（step3_cursor = "failed"）并跳过此阶段，继续阶段 4
 
 **步骤 3.3：复制文件（使用 cp 命令）**
 
@@ -209,6 +228,7 @@ cp -R "${TEMPLATE_DIR}/rules/git-flow/snippets" .cursor/rules/git-flow/
 cp "${TEMPLATE_DIR}/commands/git-commit.md" .cursor/commands/
 cp "${TEMPLATE_DIR}/commands/git-commit-push.md" .cursor/commands/
 cp "${TEMPLATE_DIR}/commands/git-commit-push-pr.md" .cursor/commands/
+test -f "${TEMPLATE_DIR}/commands/sync-mcp-grafana.md" && cp "${TEMPLATE_DIR}/commands/sync-mcp-grafana.md" .cursor/commands/ || echo "[WARN] sync-mcp-grafana.md 不存在，跳过"
 ```
 
 **步骤 3.4：同步 Spec Skills 到 Cursor Rules**
@@ -314,23 +334,32 @@ mkdir -p .gitlab/merge_request_templates
 
 **步骤 4.2：查找模板文件（两级优先级）**
 
-**方法**：使用分步骤的简单命令
+**方法**：根据是否为开发模式，选择不同的路径优先级
 
 **4.2.1 查找最新缓存版本**（可复用之前的 `LATEST_VERSION` 结果）
 
-**4.2.2 检查模板文件**：
+**4.2.2 设置 TEMPLATE_FILE 变量**：
+
+**如果 `USE_CACHE_FIRST=true`（开发模式 `--dev`）**：
+
+直接使用 cache 路径：
+```bash
+TEMPLATE_FILE="${LATEST_VERSION}skills/merge-request-templates/default.md"
+test -f "${TEMPLATE_FILE}" && echo "使用 cache 路径: ${TEMPLATE_FILE}" || echo "CACHE_NOT_FOUND"
+```
+- 如果 cache 路径存在：继续步骤 4.3
+- 如果 cache 路径不存在：跳到错误处理
+
+**否则（默认模式）**：
+
+优先使用 marketplaces 路径：
 ```bash
 # 检查 primary 路径
 test -f ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/merge-request-templates/default.md && echo "PRIMARY_FOUND" || echo "PRIMARY_NOT_FOUND"
-
-# 检查 cache 路径
-test -f ${LATEST_VERSION}skills/merge-request-templates/default.md && echo "CACHE_FOUND" || echo "CACHE_NOT_FOUND"
 ```
-
-**4.2.3 设置 TEMPLATE_FILE 变量**：
 - 如果 PRIMARY_FOUND：`TEMPLATE_FILE=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/merge-request-templates/default.md`
-- 否则如果 CACHE_FOUND：`TEMPLATE_FILE=${LATEST_VERSION}skills/merge-request-templates/default.md`
-- 否则跳到错误处理
+- 否则：`TEMPLATE_FILE=${LATEST_VERSION}skills/merge-request-templates/default.md`
+- 如果都不存在：跳到错误处理
 
 **错误处理**：
 - 如果所有路径都不存在或无法访问：
@@ -369,9 +398,61 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
 
 ---
 
-### 阶段 5：生成执行报告
+### 阶段 5：同步 Claude Skills
 
-**步骤 5.1：统计执行结果**
+**目标**：同步 sync 插件的 skills 到项目的 `.claude/skills/` 目录（供 Claude Code 使用）
+
+**重要**：此阶段使用 `cp` 命令直接复制 skill 目录。
+
+**步骤 5.1：查找 sync 插件的 skills 目录**
+
+**5.1.1 设置 SYNC_SKILLS_DIR 变量**：
+
+**如果 `USE_CACHE_FIRST=true`（开发模式 `--dev`）**：
+
+直接使用 cache 路径：
+```bash
+SYNC_SKILLS_DIR="${LATEST_VERSION}skills"
+test -d "${SYNC_SKILLS_DIR}/grafana-dashboard-design" && echo "FOUND" || echo "NOT_FOUND"
+```
+
+**否则（默认模式）**：
+
+优先使用 marketplaces 路径：
+```bash
+SYNC_SKILLS_DIR=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills
+test -d "${SYNC_SKILLS_DIR}/grafana-dashboard-design" && echo "PRIMARY_FOUND" || echo "PRIMARY_NOT_FOUND"
+```
+- 如果 PRIMARY_FOUND：使用 marketplaces 路径
+- 否则：使用 cache 路径 `${LATEST_VERSION}skills`
+- 如果都不存在：记录警告并跳过此阶段
+
+**步骤 5.2：创建目标目录并复制**
+
+```bash
+# 创建目标目录
+mkdir -p .claude/skills
+
+# 复制 grafana-dashboard-design skill
+cp -R "${SYNC_SKILLS_DIR}/grafana-dashboard-design" .claude/skills/
+```
+
+**步骤 5.3：记录执行结果**
+
+记录 Claude Skills 同步的执行结果：
+- 成功：step5_claude_skills = "success"
+- 跳过：step5_claude_skills = "skipped"（skill 目录不存在）
+- 失败：step5_claude_skills = "failed"，记录错误信息
+
+**步骤 5.4：更新任务状态**
+
+无论成功或失败，标记 "同步 Claude Skills" 任务为 completed，继续下一步。
+
+---
+
+### 阶段 6：生成执行报告
+
+**步骤 6.1：统计执行结果**
 
 汇总各步骤的执行状态：
 - step1_mcp: success/failed
@@ -379,8 +460,9 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
 - step3_cursor: success/failed（含 git-flow 和 Spec Skills）
 - step3_spec_skills: success/failed/skipped（Spec Skills 详情）
 - step4_mr_template: success/failed/skipped
+- step5_claude_skills: success/failed/skipped（Claude Skills 详情）
 
-**步骤 5.2：输出执行报告**
+**步骤 6.2：输出执行报告**
 
 根据执行结果输出相应的报告：
 
@@ -400,7 +482,7 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
 
   ✅ Cursor 同步: 成功
      - Rules: git-flow.mdc
-     - Commands: git-commit.md, git-commit-push.md, git-commit-push-pr.md
+     - Commands: git-commit.md, git-commit-push.md, git-commit-push-pr.md, sync-mcp-grafana.md
      - Spec Skills (alwaysApply: true):
        - doc-auto-sync.mdc
        - module-discovery.mdc
@@ -411,6 +493,10 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
 
   ✅ GitLab MR 模板: 成功
      - 模板文件: .gitlab/merge_request_templates/default.md [新创建/已存在]
+
+  ✅ Claude Skills 同步: 成功
+     - grafana-dashboard-design（Grafana Dashboard 设计规范）
+     - 位置: .claude/skills/grafana-dashboard-design/
 
 下一步：
   1. 重启 Claude Code 会话（MCP 配置生效）
@@ -445,6 +531,9 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
   [✅/❌/⏭️ ] GitLab MR 模板: [成功/失败/跳过]
      详情: [具体信息]
 
+  [✅/❌/⏭️ ] Claude Skills 同步: [成功/失败/跳过]
+     详情: [具体信息]
+
 失败步骤详情：
   [具体错误信息和建议]
 
@@ -467,6 +556,7 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
      - git-flow: [错误信息]
      - Spec Skills: [错误信息]
   ❌ GitLab MR 模板: [错误信息]
+  ❌ Claude Skills 同步: [错误信息]
 
 请检查：
   1. 文件权限是否正确
@@ -506,6 +596,12 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
 - **位置**: `.gitlab/merge_request_templates/default.md`
 - **效果**: 创建 MR 时自动使用此模板
 
+### Claude Skills
+- **grafana-dashboard-design**: Grafana Dashboard 设计规范
+  - 包含：SKILL.md（主技能）、design-patterns.md（设计模式）、platform-templates.md（多平台模板）
+- **位置**: `.claude/skills/grafana-dashboard-design/`
+- **效果**: Claude Code 在创建/修改 Grafana Dashboard 时自动应用设计规范
+
 ---
 
 ## 注意事项
@@ -516,6 +612,7 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
    - **Cursor 同步**：直接覆盖（rules 和 commands 每次重新生成）
    - **Spec Skills**：直接覆盖（每次从 spec 插件重新生成 .mdc 文件）
    - **GitLab MR 模板**：已存在则跳过，不覆盖（保留项目自定义配置）
+   - **Claude Skills**：直接覆盖（每次从 sync 插件重新复制）
    - 某步骤失败不影响后续步骤
 
 2. **配置生效**：
@@ -523,6 +620,7 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
    - 自动更新钩子：下次会话启动时生效
    - Cursor 配置：重启 Cursor IDE
    - GitLab MR 模板：立即生效，创建 MR 时使用
+   - Claude Skills：重启 Claude Code 会话后生效
 
 3. **单独命令**：
    如果某个步骤需要更详细的控制，可以单独运行：
@@ -530,3 +628,10 @@ test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不
    - `/sync:hooks` - 仅配置钩子
    - `/sync:cursor` - 仅同步 Cursor（包含冲突处理）
    - 未来可能添加：`/sync:gitlab-mr` - 仅同步 GitLab MR 模板
+
+4. **开发模式**：
+   如果你是插件开发者，可以使用 `--dev` 参数优先从 cache 读取最新版本：
+   ```
+   /sync:basic --dev
+   ```
+   这会让查找逻辑优先使用 `~/.claude/plugins/cache/` 路径，而不是 `~/.claude/plugins/marketplaces/` 路径。
