@@ -14,3 +14,10 @@ Thumbs.db
 
 # 测试文件
 test-*/
+
+# 开发中的插件
+plugins/migrator
+plugins/metrics
+
+# plans
+plans/

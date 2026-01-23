@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.1.13
+
+### Git Plugin (0.1.5)
+
+- Added security restrictions: prohibited `glab mr approve` and `glab mr merge` (MR approval/merge must be manual)
+- Added security restrictions: prohibited `git push --force` and variants
+- Refined `allowed-tools` for push commands (removed wildcard `git push:*`, explicitly listed safe push variants)
+- Added `glab` related allowed-tools (`glab mr create`, `glab auth status`, `which glab`)
+
+### Sync Plugin (0.1.9)
+
+- Added `/sync:mcp-grafana <username> <password>` command for Grafana MCP configuration
+- Auto-installs Golang and mcp-grafana if not present
+- Configures to both Claude Code and Cursor simultaneously
+- Added `--dev` parameter for `/sync:basic` to prioritize cache path (for plugin developers)
+- Added Stage 5: Sync Claude Skills (`grafana-dashboard-design`) to `.claude/skills/`
+- Added `sync-mcp-grafana.md` Cursor command template
+- Updated commit format to match git plugin (dual signature lines)
+
+### Marketplace
+
+- Bumped version from 0.1.12 to 0.1.13
+- Updated git plugin to version 0.1.5
+- Updated sync plugin to version 0.1.9
+
 ## 0.1.12
 
 ### Sync Plugin (0.1.8)

@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git push:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git checkout:*)
+allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git push), Bash(git push -u:*), Bash(git push --set-upstream:*), Bash(git push origin:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git checkout:*), Bash(glab mr create:*), Bash(glab auth status), Bash(which glab)
 description: 提交代码、推送分支并使用 GitLab push options 创建 Merge Request
 ---
 
@@ -46,6 +46,10 @@ description: 提交代码、推送分支并使用 GitLab push options 创建 Mer
    ```bash
    which glab && glab auth status
    ```
+
+   **安全限制（严格禁止）：**
+   - `glab mr approve` - 禁止自动审批
+   - `glab mr merge` - 禁止自动合并
 
 2. **生成 MR 标题和描述**：
 

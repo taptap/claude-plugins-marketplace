@@ -131,15 +131,34 @@ type(scope): 中文描述 #TASK-ID
 - 评估向后兼容性
 - 风险评估（如有）
 
+Generated-By: Claude Code <https://claude.ai/code>
+
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
+
+**重要：以下两个章节是必填项，缺一不可：**
+1. `## 改动内容` - 必须根据 `git diff` 分析填写
+2. `## 影响面` - 必须说明影响评估
 
 **格式要求：**
 - 标题和正文都使用中文
 - 标题和正文之间空一行
 - 各章节之间不空行
-- 正文和签名之间空一行
-- `Co-Authored-By` 行必须放在正文末尾
+- `## 影响面` 和 `Generated-By` 之间空一行
+- `Generated-By` 和 `Co-Authored-By` 之间空一行
+- 两行签名必须放在正文末尾
+
+**签名格式（严格要求）：**
+```
+Generated-By: Claude Code <https://claude.ai/code>
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+**严格禁止以下格式：**
+- ❌ `Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>` - 禁止带模型版本
+- ❌ `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>` - 禁止带模型版本
+- ❌ 缺少 `Generated-By` 行
 
 ### Commit 示例
 
@@ -155,6 +174,8 @@ feat(api): 新增用户资料接口 #TAP-85404
 - 新增接口，不影响现有功能
 - 向后兼容
 - 数据库查询增加，需关注性能
+
+Generated-By: Claude Code <https://claude.ai/code>
 
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
@@ -360,3 +381,32 @@ git branch --show-current
 - `*secret*` / `*password*` / `*token*`（配置文件）
 
 **警告用户：** 如果检测到这些文件，提示用户是否确认提交。
+
+---
+
+## 安全限制
+
+### Git Push 限制
+
+**严格禁止使用以下参数：**
+- `--force` / `-f` - 禁止强制推送
+- `--force-with-lease` - 禁止强制推送变体
+
+**允许的 push 命令：**
+- `git push` - 普通推送
+- `git push -u origin <branch>` - 设置 upstream 并推送
+- `git push --set-upstream origin <branch>` - 同上
+- `git push origin <branch>` - 指定远程和分支
+
+### GitLab CLI (glab) 限制
+
+**严格禁止：**
+- `glab mr approve` - 禁止自动审批 MR
+- `glab mr merge` - 禁止自动合并 MR
+
+**允许的 glab 命令：**
+- `glab mr create` - 创建 MR
+- `glab auth status` - 检查认证状态
+- `which glab` - 检查 glab 是否安装
+
+**原因：** MR 的审批和合并必须由人工完成，不能由 AI 自动执行。

@@ -186,10 +186,18 @@ type(scope): 中文描述 #TASK-ID
 ## 影响面
 - 说明影响的模块、向后兼容性、风险评估
 
+Generated-By: Claude Code <https://claude.ai/code>
+
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 **关键规则**：
 - 标题与正文空一行
-- 正文与签名空一行
-- `Co-Authored-By` 行必须放在正文末尾
+- `## 改动内容` 和 `## 影响面` 是必填项
+- `## 影响面` 与 `Generated-By` 空一行
+- `Generated-By` 与 `Co-Authored-By` 空一行
+- 两行签名必须放在正文末尾
+
+**严格禁止**：
+- ❌ `Co-Authored-By: Claude Sonnet 4.5 <...>` - 禁止带模型版本
+- ❌ `Co-Authored-By: Claude Opus 4.5 <...>` - 禁止带模型版本

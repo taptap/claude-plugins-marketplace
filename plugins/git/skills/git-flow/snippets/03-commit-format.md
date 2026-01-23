@@ -43,8 +43,14 @@ type(scope): 中文描述 #TASK-ID
 - 评估向后兼容性
 - 风险评估（如有）
 
+Generated-By: Claude Code <https://claude.ai/code>
+
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
+
+**重要：以下两个章节是必填项，缺一不可：**
+1. `## 改动内容` - 必须根据 `git diff` 分析填写
+2. `## 影响面` - 必须说明影响评估
 
 ## 格式要求
 
@@ -67,9 +73,25 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ### 2. 空行要求
 - 标题和正文之间：**空一行**
-- 各章节之间：**不空行**（`##改动内容` 和 `## 影响面` 连续）
-- 正文和签名之间：**空一行**
-- `Co-Authored-By` 行必须放在正文末尾
+- 各章节之间：**不空行**（`## 改动内容` 和 `## 影响面` 连续）
+- `## 影响面` 和 `Generated-By` 之间：**空一行**
+- `Generated-By` 和 `Co-Authored-By` 之间：**空一行**
+- 两行签名必须放在正文末尾
+
+### 2.1 签名格式（严格要求）
+
+**标准签名格式（两行，顺序固定）：**
+```
+Generated-By: Claude Code <https://claude.ai/code>
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+**严格禁止以下格式：**
+- ❌ `Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>` - 禁止带模型版本
+- ❌ `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>` - 禁止带模型版本
+- ❌ 缺少 `Generated-By` 行
+- ❌ 两行签名顺序颠倒
 
 ### 3. Type 类型
 
@@ -114,6 +136,8 @@ feat(api): 新增用户资料接口 #TAP-85404
 - 向后兼容
 - 数据库查询增加，需关注性能
 
+Generated-By: Claude Code <https://claude.ai/code>
+
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
@@ -132,6 +156,8 @@ fix(auth): 修复 token 过期后无法刷新的问题 #TAP-85405
 - 向后兼容
 - 可能减少 token 刷新接口的调用频率
 
+Generated-By: Claude Code <https://claude.ai/code>
+
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
@@ -148,6 +174,8 @@ docs: 更新 API 文档，补充认证流程说明 #no-ticket
 ## 影响面
 - 仅文档变更，不影响代码
 - 向后兼容
+
+Generated-By: Claude Code <https://claude.ai/code>
 
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```

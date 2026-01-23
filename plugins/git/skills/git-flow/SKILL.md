@@ -91,6 +91,10 @@ git commit -m "type(scope): 中文描述 #TASK-ID"
 which glab && glab auth status
 ```
 
+**安全限制（严格禁止）：**
+- `glab mr approve` - 禁止自动审批
+- `glab mr merge` - 禁止自动合并
+
 2. **准备 MR 标题和描述（模板优先）**：
 - **MR Title**：优先使用最新 commit 标题（`git log -1 --pretty=%s`）
 - **MR Description**：从 commit message 汇总生成（与 command 一致），并按以下规则填充 MR 模板：

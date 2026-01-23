@@ -53,8 +53,12 @@ type(scope): 中文描述 #TASK-ID
 ## 影响面
 - 说明影响的模块、功能
 
+Generated-By: Claude Code <https://claude.ai/code>
+
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
+
+**必填项验证：** `## 改动内容` 和 `## 影响面` 两个章节必须填写，缺一不可。
 
 ---
 
