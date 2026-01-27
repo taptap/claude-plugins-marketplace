@@ -65,7 +65,7 @@ mkdir -p .claude && echo '{
 | ------- | ----- | ----------------------------------------------------------------- |
 | spec    | 0.1.3 | Spec-Driven Development 工作流插件                                     |
 | git     | 0.1.5 | Git 工作流自动化插件（三种提交方式：commit、commit+push、commit+push+MR）            |
-| sync    | 0.1.9 | 开发环境配置同步插件（MCP + Hooks + Cursor + Spec Skills 规则 + Claude Skills） |
+| sync    | 0.1.10 | 开发环境配置同步插件（MCP + Hooks + Cursor + Spec Skills 规则 + Claude Skills） |
 | quality | 0.0.2 | AI 驱动的代码质量检查插件（9 个并行 Agent，支持 Bug 检测、代码质量、安全检查、性能分析）              |
 
 
@@ -240,8 +240,11 @@ AI 修改代码时**自动维护**模块文档：
 /sync:hooks          # 启用插件自动重载
 /sync:cursor         # 同步配置到 Cursor IDE
 
-# 配置飞书 MCP（可选）
+# 配置飞书文档 MCP（可选）
 /sync:mcp-feishu https://open.feishu.cn/mcp/stream/mcp_xxxxx
+
+# 配置飞书项目 MCP（可选）
+/sync:mcp-feishu-project https://project.feishu.cn/mcp_server/v1?mcpKey=xxx&projectKey=yyy&userKey=zzz
 
 # 配置 Grafana MCP（可选，自动安装 Golang 和 mcp-grafana）
 /sync:mcp-grafana <username> <password>

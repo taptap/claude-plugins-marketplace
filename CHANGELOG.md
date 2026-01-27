@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.14
+
+### Sync Plugin (0.1.10)
+
+- Added `/sync:mcp-feishu-project` command for configuring Feishu Project MCP (project.feishu.cn)
+- Added `mcp-feishu-project` skill that auto-triggers when user provides Feishu Project MCP URL
+
+### Marketplace
+
+- Bumped version from 0.1.13 to 0.1.14
+- Updated sync plugin to version 0.1.10
+
 ## 0.1.13
 
 ### Git Plugin (0.1.5)
@@ -139,7 +151,6 @@
 - Bumped version from 0.1.5 to 0.1.6
 - Updated Spec plugin to version 0.1.1
 
-
 ## 0.1.5
 
 ### Git Plugin (0.1.2)
@@ -229,3 +240,4 @@
 - Initial release with Git and Sync plugins
 - Added Git workflow automation (commit, push, merge request creation)
 - Added project configuration synchronization
+

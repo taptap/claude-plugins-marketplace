@@ -20,10 +20,16 @@
 
 ### 飞书 MCP 配置（可选）
 
-如果团队使用飞书 MCP：
+如果团队使用飞书文档 MCP：
 
 ```bash
 /sync:mcp-feishu https://open.feishu.cn/mcp/stream/mcp_xxxxx
+```
+
+如果团队使用飞书项目 MCP：
+
+```bash
+/sync:mcp-feishu-project https://project.feishu.cn/mcp_server/v1?mcpKey=xxx&projectKey=yyy&userKey=zzz
 ```
 
 **功能：**
@@ -176,14 +182,19 @@ chmod +x .githooks/pre-commit
 
 ### `mcp-feishu`
 
-当用户提供飞书 MCP URL 并请求配置时触发，自动同时配置到 Claude Code 和 Cursor。
+当用户提供飞书文档 MCP URL 并请求配置时触发，自动同时配置到 Claude Code 和 Cursor。
+
+### `mcp-feishu-project`
+
+当用户提供飞书项目 MCP URL 或请求配置飞书项目 MCP 时触发，自动同时配置到 Claude Code 和 Cursor。支持查询项目任务、工作项、需求等。
 
 ## Commands 列表
 
 | 命令 | 说明 | 推荐度 |
 |------|------|--------|
 | `/sync:basic` | 一键配置开发环境 | ⭐ 推荐 |
-| `/sync:mcp-feishu <URL>` | 配置飞书 MCP | 可选 |
+| `/sync:mcp-feishu <URL>` | 配置飞书文档 MCP | 可选 |
+| `/sync:mcp-feishu-project <URL>` | 配置飞书项目 MCP | 可选 |
 | `/sync:mcp-grafana <user> <pass>` | 配置 Grafana MCP（自动安装依赖） | 可选 |
 | `/sync:mcp` | 仅配置 MCP 服务器 | 高级 |
 | `/sync:hooks` | 仅配置自动更新钩子（autoUpdate） | 高级 |
@@ -262,6 +273,7 @@ chmod +x .githooks/pre-commit
 
 ## 版本历史
 
+- **v0.1.10** - 新增 `/sync:mcp-feishu-project` 命令，配置飞书项目 MCP（project.feishu.cn）；新增 `mcp-feishu-project` skill 自动触发
 - **v0.1.9** - 新增 `/sync:mcp-grafana` 命令（自动安装 Golang 和 mcp-grafana）；新增 `--dev` 开发模式参数；新增 Claude Skills 同步（`grafana-dashboard-design`）；新增 Cursor 命令 `sync-mcp-grafana.md`
 - **v0.1.8** - 重构 Spec Skills 同步：删除单一索引文件 `sync-claude-plugin.mdc`，改为独立 `.mdc` 规则文件（`doc-auto-sync.mdc`、`module-discovery.mdc`、`generate-module-map.mdc`）；过滤测试中的 skills
 - **v0.1.6** - 重构 hooks 架构为项目相对路径；新增自动更新脚本 (`set-auto-update-plugins.sh`)；新增 git-flow snippets 自动同步脚本和 pre-commit hook；移除 Windows 支持；脚本日志增强
