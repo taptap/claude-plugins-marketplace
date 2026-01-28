@@ -295,7 +295,7 @@ claude mcp get feishu-project-mcp
 
 **Cursor：**
 ```bash
-cat ~/.cursor/mcp.json | jq '.mcpServers["feishu-project-mcp"]'
+grep -A 3 "feishu-project-mcp" ~/.cursor/mcp.json
 # 检查配置是否正确
 ```
 
