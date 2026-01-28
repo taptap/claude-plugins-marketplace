@@ -237,15 +237,12 @@ https://project.feishu.cn/mcp_server/v1?mcpKey={mcpKey}&projectKey={projectKey}&
 | projectKey | 项目空间 ID，从飞书项目 URL 获取   |
 | userKey    | 用户 ID，从飞书项目头像菜单获取    |
 
-### 配置范围
+### 配置位置
 
-- **Claude Code**：Local scope（项目私有配置）
-  - 配置文件：`~/.claude.json [project: ...]`
-  - 仅当前项目可用
-
-- **Cursor**：全局配置
-  - 配置文件：`~/.cursor/mcp.json`
-  - 所有项目可用
+| 工具        | 配置文件                                       | 说明                 |
+| ----------- | ---------------------------------------------- | -------------------- |
+| Claude Code | `~/.claude.json` → `projects[path].mcpServers` | Local MCP，按项目区分 |
+| Cursor      | `~/.cursor/mcp.json` → `mcpServers`            | 用户级别，全局共用    |
 
 ### 为什么不提交到 git？
 
@@ -261,21 +258,46 @@ claude mcp get feishu-project-mcp
 
 **Cursor：**
 ```bash
-cat ~/.cursor/mcp.json | jq '.mcpServers["feishu-project-mcp"]'
+grep -A 3 "feishu-project-mcp" ~/.cursor/mcp.json
+# 检查配置是否正确
 ```
 
 ## 错误处理
 
 ### Claude Code 配置失败
 
+**常见错误：**
+1. URL 格式错误 → 检查参数是否完整
+2. 网络连接失败 → 检查网络连接
+3. 命令执行失败 → 检查 Claude Code 是否正确安装
+
+**解决方案：**
 ```bash
-# 手动配置
+# 手动验证配置
+claude mcp list
+
+# 手动添加配置
 claude mcp add --transport http feishu-project-mcp "<URL>"
+
+# 查看详细错误
+claude mcp get feishu-project-mcp
 ```
 
 ### Cursor 配置失败
 
-编辑 `~/.cursor/mcp.json`，参考上述 JSON 示例。
+**常见错误：**
+1. 文件权限不足 → 检查 `~/.cursor/` 目录权限
+2. JSON 格式错误 → 使用 JSON 验证工具检查格式
+3. 文件被占用 → 关闭 Cursor 后重试
+
+**解决方案：**
+```bash
+# 检查文件是否存在
+ls -la ~/.cursor/mcp.json
+
+# 查看文件内容
+cat ~/.cursor/mcp.json
+```
 
 ## 相关文档
 
