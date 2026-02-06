@@ -10,7 +10,7 @@
           },
           {
             "type": "command",
-            "command": "bash .claude/hooks/scripts/ensure-cli-tools.sh 2>/dev/null || true"
+            "command": "(bash .claude/hooks/scripts/ensure-cli-tools.sh >/dev/null 2>&1 &)"
           }
         ]
       }

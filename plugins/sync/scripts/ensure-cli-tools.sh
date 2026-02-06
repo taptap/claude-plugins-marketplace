@@ -9,8 +9,8 @@ LOG_DIR="$HOME/.claude/plugins/logs"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/ensure-cli-tools-$(date +%Y-%m-%d).log"
 
-# 重定向所有输出到日志文件（同时保留控制台输出）
-exec > >(tee -a "$LOG_FILE") 2>&1
+# 重定向所有输出到日志文件（后台运行，不输出到终端）
+exec >> "$LOG_FILE" 2>&1
 echo ""
 echo "===== $(date '+%Y-%m-%d %H:%M:%S') ====="
 

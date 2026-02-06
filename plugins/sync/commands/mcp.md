@@ -8,8 +8,8 @@ description: 同步 context7 和 sequential-thinking MCP 配置到 Claude Code �
 - 当前工作目录: !`pwd`
 - MCP 配置模板路径: `.claude/plugins/sync/skills/mcp-templates/`
 - 目标配置文件:
-  - `.mcp.json` (Claude Code 读取)
-  - `.cursor/mcp.json` (Cursor 读取)
+  - `~/.claude.json` (Claude Code 读取，用户级)
+  - `~/.cursor/mcp.json` (Cursor 读取，用户级)
 
 ## Your Task
 
@@ -27,8 +27,8 @@ description: 同步 context7 和 sequential-thinking MCP 配置到 Claude Code �
 MCP 列表: ["context7", "sequential-thinking"]
 模板目录: .claude/plugins/sync/skills/mcp-templates/
 目标文件:
-  - .mcp.json (Claude Code)
-  - .cursor/mcp.json (Cursor)
+  - ~/.claude.json (Claude Code，用户级)
+  - ~/.cursor/mcp.json (Cursor，用户级)
 ```
 
 **步骤 0.2：创建任务跟踪**
@@ -36,8 +36,8 @@ MCP 列表: ["context7", "sequential-thinking"]
 使用 TodoWrite 创建任务清单：
 ```
 - 读取配置模板
-- 同步到 .mcp.json
-- 同步到 .cursor/mcp.json
+- 同步到 ~/.claude.json
+- 同步到 ~/.cursor/mcp.json
 ```
 
 #### 阶段 1：读取配置模板
@@ -58,19 +58,19 @@ MCP 列表: ["context7", "sequential-thinking"]
 
 将读取的 JSON 内容解析为对象，准备用于同步。
 
-#### 阶段 2：同步到 .mcp.json
+#### 阶段 2：同步到 ~/.claude.json
 
-**步骤 2.1：读取 .mcp.json**
+**步骤 2.1：读取 ~/.claude.json**
 
-使用 Read 工具读取 `.mcp.json`。
+使用 Read 工具读取 `~/.claude.json`。
 
 **判断逻辑：**
 - 文件不存在 → 跳至步骤 2.2（创建文件）
 - 文件存在 → 跳至步骤 2.3（更新文件）
 
-**步骤 2.2：创建 .mcp.json（文件不存在时）**
+**步骤 2.2：创建 ~/.claude.json（文件不存在时）**
 
-使用 Write 工具创建 `.mcp.json`：
+使用 Write 工具创建 `~/.claude.json`：
 
 ```json
 {
@@ -90,7 +90,7 @@ MCP 列表: ["context7", "sequential-thinking"]
 
 完成后跳至阶段 3。
 
-**步骤 2.3：更新 .mcp.json（文件存在时）**
+**步骤 2.3：更新 ~/.claude.json（文件存在时）**
 
 检查文件内容并处理不同情况：
 
@@ -113,19 +113,19 @@ MCP 列表: ["context7", "sequential-thinking"]
 - 保留其他 MCP 配置不变
 - 文件末尾保留一个空行
 
-#### 阶段 3：同步到 .cursor/mcp.json
+#### 阶段 3：同步到 ~/.cursor/mcp.json
 
-**步骤 3.1：读取 .cursor/mcp.json**
+**步骤 3.1：读取 ~/.cursor/mcp.json**
 
-使用 Read 工具读取 `.cursor/mcp.json`。
+使用 Read 工具读取 `~/.cursor/mcp.json`。
 
 **判断逻辑：**
 - 文件不存在 → 跳至步骤 3.2（创建文件）
 - 文件存在 → 跳至步骤 3.3（更新文件）
 
-**步骤 3.2：创建 .cursor/mcp.json（文件不存在时）**
+**步骤 3.2：创建 ~/.cursor/mcp.json（文件不存在时）**
 
-使用 Write 工具创建 `.cursor/mcp.json`：
+使用 Write 工具创建 `~/.cursor/mcp.json`：
 
 ```json
 {
@@ -145,7 +145,7 @@ MCP 列表: ["context7", "sequential-thinking"]
 
 完成后跳至阶段 4。
 
-**步骤 3.3：更新 .cursor/mcp.json（文件存在时）**
+**步骤 3.3：更新 ~/.cursor/mcp.json（文件存在时）**
 
 检查文件内容并处理不同情况：
 
@@ -173,10 +173,10 @@ MCP 列表: ["context7", "sequential-thinking"]
 **步骤 4.1：统计同步情况**
 
 记录每个配置文件的同步结果：
-- `.mcp.json`:
+- `~/.claude.json`:
   - context7: 新增 / 已存在 / 失败
   - sequential-thinking: 新增 / 已存在 / 失败
-- `.cursor/mcp.json`:
+- `~/.cursor/mcp.json`:
   - context7: 新增 / 已存在 / 失败
   - sequential-thinking: 新增 / 已存在 / 失败
 
@@ -190,17 +190,17 @@ MCP 列表: ["context7", "sequential-thinking"]
 ✅ MCP 配置同步完成！
 
 同步结果：
-  .mcp.json:
+  ~/.claude.json:
     - context7: [新增配置 / 已存在]
     - sequential-thinking: [新增配置 / 已存在]
 
-  .cursor/mcp.json:
+  ~/.cursor/mcp.json:
     - context7: [新增配置 / 已存在]
     - sequential-thinking: [新增配置 / 已存在]
 
 配置说明：
-  - .mcp.json: Claude Code 默认读取此配置
-  - .cursor/mcp.json: Cursor 默认读取此配置
+  - ~/.claude.json: Claude Code 用户级 MCP 配置（跨项目复用）
+  - ~/.cursor/mcp.json: Cursor 用户级 MCP 配置（跨项目复用）
 
 下一步：
   1. 重启 Claude Code 会话（如果有新增配置）
@@ -218,11 +218,11 @@ MCP 功能说明：
 ⚠️ MCP 配置部分同步成功
 
 同步结果：
-  .mcp.json:
+  ~/.claude.json:
     - context7: [✅ 新增配置 / ✅ 已存在 / ❌ 失败]
     - sequential-thinking: [✅ 新增配置 / ✅ 已存在 / ❌ 失败]
 
-  .cursor/mcp.json:
+  ~/.cursor/mcp.json:
     - context7: [✅ 新增配置 / ✅ 已存在 / ❌ 失败]
     - sequential-thinking: [✅ 新增配置 / ✅ 已存在 / ❌ 失败]
 
@@ -242,8 +242,8 @@ MCP 功能说明：
 ❌ MCP 配置同步失败
 
 失败详情：
-  .mcp.json: [错误信息]
-  .cursor/mcp.json: [错误信息]
+  ~/.claude.json: [错误信息]
+  ~/.cursor/mcp.json: [错误信息]
 
 请检查：
   1. 配置文件路径是否正确
@@ -256,13 +256,13 @@ MCP 功能说明：
 
 ### 配置文件说明
 
-- **`.mcp.json`**：Claude Code 默认读取的配置文件
-  - 位置：项目根目录
-  - 可以提交到 git，供团队成员共享
+- **`~/.claude.json`**：Claude Code 用户级 MCP 配置文件
+  - 位置：用户 Home 目录
+  - 跨项目复用，无需每个项目单独配置
 
-- **`.cursor/mcp.json`**：Cursor 默认读取的配置文件
-  - 位置：项目根目录
-  - 可以提交到 git，供团队成员共享
+- **`~/.cursor/mcp.json`**：Cursor 用户级 MCP 配置文件
+  - 位置：用户 Home 目录
+  - 跨项目复用，无需每个项目单独配置
 
 ### MCP 功能说明
 

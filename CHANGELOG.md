@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.15
+
+### Sync Plugin (0.1.11)
+
+- Added `/sync:statusline` command for configuring Claude Code custom status line (project/branch/context/model/worktree)
+- Added MCP lazy-loading configuration to `/sync:basic` (ENABLE_TOOL_SEARCH=auto:1)
+- Added Stage 6 to `/sync:basic`: Status Line configuration (copy script + update settings.json)
+- Added TapTap Plugins auto-enable to `/sync:basic` (spec/sync/git/quality)
+- Changed MCP config (context7 + sequential-thinking) target from project-level (`.mcp.json` / `.cursor/mcp.json`) to user-level (`~/.claude.json` / `~/.cursor/mcp.json`) for cross-project reuse
+- Changed Spec Skills sync to `--with-spec` optional parameter in `/sync:basic` (not synced by default)
+- Changed ensure-cli-tools.sh to run silently in background (non-blocking session startup, no terminal output)
+- Changed hooks.json ensure-cli-tools to async background execution
+- Cleaned up statusline.sh debug output
+- Updated grafana-dashboard-design skill description
+
+### Marketplace
+
+- Bumped version from 0.1.14 to 0.1.15
+- Updated sync plugin to version 0.1.11
+
 ## 0.1.14
 
 ### Sync Plugin (0.1.10)
