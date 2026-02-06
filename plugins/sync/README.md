@@ -316,6 +316,7 @@ chmod +x .githooks/pre-commit
 
 ## 版本历史
 
+- **v0.1.12** - 重构 `/sync:basic` 为并行 agent 架构（Phase 0 路径解析 + 6 个命名 subagent）；命令执行行数从 ~550 精简至 ~150（Phase 0: ≤2 Bash 调用）；新增 4 个辅助脚本（ensure-mcp.sh、ensure-plugins.sh、ensure-statusline.sh、ensure-tool-search.sh）；新增 agents/ 目录包含 6 个专用 subagent；更新 hooks、mcp-feishu、mcp-feishu-project、mcp-grafana 命令的错误处理和路径解析；更新 hooks.json 配置结构；更新 mcp-feishu 和 mcp-feishu-project skill 定义
 - **v0.1.11** - MCP 配置（context7 + sequential-thinking）改为写入用户级文件（`~/.claude.json` + `~/.cursor/mcp.json`），跨项目复用；新增 `/sync:statusline` 命令（配置状态栏：项目/分支/Context/模型/Worktree）；`/sync:basic` 新增 Status Line 配置阶段、TapTap Plugins 自动启用、MCP 懒加载配置；Spec Skills 改为 `--with-spec` 可选参数；ensure-cli-tools 改为后台静默运行；新增 MCP 懒加载配置文档；清理 statusline.sh debug 输出
 - **v0.1.10** - 新增 `/sync:mcp-feishu-project` 命令，配置飞书项目 MCP（project.feishu.cn）；新增 `mcp-feishu-project` skill 自动触发
 - **v0.1.9** - 新增 `/sync:mcp-grafana` 命令（自动安装 Golang 和 mcp-grafana）；新增 `--dev` 开发模式参数；新增 Claude Skills 同步（`grafana-dashboard-design`）；新增 Cursor 命令 `sync-mcp-grafana.md`

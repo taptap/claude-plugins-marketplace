@@ -1,5 +1,5 @@
 {
-  "description": "启用 marketplace 插件自动更新 + 检查 CLI 工具",
+  "description": "启用 marketplace 插件自动更新 + 检查 CLI 工具 + 配置状态栏、MCP、插件启用和 ToolSearch",
   "hooks": {
     "SessionStart": [
       {
@@ -11,6 +11,14 @@
           {
             "type": "command",
             "command": "(bash .claude/hooks/scripts/ensure-cli-tools.sh >/dev/null 2>&1 &)"
+          },
+          {
+            "type": "command",
+            "command": "(bash .claude/hooks/scripts/ensure-statusline.sh; bash .claude/hooks/scripts/ensure-plugins.sh; bash .claude/hooks/scripts/ensure-tool-search.sh) >/dev/null 2>&1 &"
+          },
+          {
+            "type": "command",
+            "command": "(bash .claude/hooks/scripts/ensure-mcp.sh >/dev/null 2>&1 &)"
           }
         ]
       }

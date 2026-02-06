@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(chmod:*), Bash(test:*), Bash(cp:*), Bash(rm:*), Bash(grep:*), Bash(ls:*), TodoWrite
+allowed-tools: Read, Bash(echo:*), Bash(test:*), Bash(ls:*), Bash(pwd:*), Task
 description: 一键配置开发环境（MCP + Hooks + Cursor 同步）
 ---
 
@@ -10,552 +10,112 @@ description: 一键配置开发环境（MCP + Hooks + Cursor 同步）
 2. 配置自动更新钩子（SessionStart hook）
 3. 同步配置到 Cursor IDE
 4. 同步 GitLab MR 模板
+5. 同步 Claude Skills
+6. 配置 Status Line
 
-每个步骤独立执行，某步骤失败不会阻止后续步骤。
+**架构**：Phase 0 用 1-2 条合并 Bash 解析所有路径，Phase 1 用 6 个命名 subagent 并行执行，Phase 2 汇总报告。
 
 ## Your Task
 
-### 阶段 0：准备工作
+### Phase 0：准备工作（主 agent，目标 ≤ 2 个 Bash 调用）
 
-**步骤 0.1：创建任务清单**
+**步骤 0.1：检查参数**
 
-使用 TodoWrite 创建任务清单，跟踪执行进度：
-```
-- 配置 MCP 服务器
-- 配置自动更新钩子
-- 同步到 Cursor IDE
-- 同步 GitLab MR 模板
-- 同步 Claude Skills
-- 配置 Status Line
-```
+检查用户是否传入了参数：
+- `--dev`：设置 `USE_CACHE_FIRST=true`（优先使用 cache 路径）
+- `--with-spec`：设置 `SYNC_SPEC=true`（执行 Spec Skills 同步）
+- 默认：`USE_CACHE_FIRST=false`，`SYNC_SPEC=false`
 
-**步骤 0.2：初始化执行状态**
+**步骤 0.2：执行合并路径解析命令**
 
-记录每个步骤的执行状态，用于最后生成报告：
-- step1_mcp: pending
-- step2_hooks: pending
-- step3_cursor: pending
-- step3_spec_skills: pending（仅 --with-spec 时使用）
-- step4_mr_template: pending
+根据参数选择对应的命令（二选一），在单条 Bash 中完成所有路径解析。
 
-**步骤 0.3：显示当前工作目录**
-
-执行 `pwd` 命令显示当前工作目录，确保命令在正确的项目根目录下执行：
+**默认模式**（`USE_CACHE_FIRST=false`，marketplace 优先）：
 
 ```bash
-pwd
+echo "PROJECT_ROOT=$(pwd)" && \
+(test -d .git -o -f .gitignore && echo "GIT_CHECK=OK" || echo "GIT_CHECK=FAIL") && \
+LATEST=$(ls -d ~/.claude/plugins/cache/taptap-plugins/sync/*/ 2>/dev/null | sort -V | tail -1) && \
+echo "LATEST_VERSION=${LATEST}" && \
+MP=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync && \
+(test -d "${MP}/scripts" && echo "SCRIPTS_DIR=${MP}/scripts" || (test -n "${LATEST}" && test -d "${LATEST}scripts" && echo "SCRIPTS_DIR=${LATEST}scripts" || echo "SCRIPTS_DIR=none")) && \
+(test -d "${MP}/skills/mcp-templates" && echo "MCP_TEMPLATES_DIR=${MP}/skills/mcp-templates" || (test -n "${LATEST}" && test -d "${LATEST}skills/mcp-templates" && echo "MCP_TEMPLATES_DIR=${LATEST}skills/mcp-templates" || echo "MCP_TEMPLATES_DIR=none")) && \
+(test -d "${MP}/skills/cursor-templates" && echo "CURSOR_TEMPLATE_DIR=${MP}/skills/cursor-templates" || (test -n "${LATEST}" && test -d "${LATEST}skills/cursor-templates" && echo "CURSOR_TEMPLATE_DIR=${LATEST}skills/cursor-templates" || echo "CURSOR_TEMPLATE_DIR=none")) && \
+(test -d "${MP}/skills/merge-request-templates" && echo "MR_TEMPLATE_DIR=${MP}/skills/merge-request-templates" || (test -n "${LATEST}" && test -d "${LATEST}skills/merge-request-templates" && echo "MR_TEMPLATE_DIR=${LATEST}skills/merge-request-templates" || echo "MR_TEMPLATE_DIR=none")) && \
+(test -d "${MP}/skills" && echo "SKILLS_DIR=${MP}/skills" || (test -n "${LATEST}" && test -d "${LATEST}skills" && echo "SKILLS_DIR=${LATEST}skills" || echo "SKILLS_DIR=none"))
 ```
 
-**步骤 0.4：确认在项目根目录执行（防止写入错误位置）**
+**开发模式**（`USE_CACHE_FIRST=true`，`--dev` 参数，cache 优先）：
 
 ```bash
-test -d .git -o -f .gitignore && echo "OK: project root detected" || (echo "❌ 未检测到 .git 或 .gitignore，请在项目根目录执行 /sync:basic" && exit 1)
+echo "PROJECT_ROOT=$(pwd)" && \
+(test -d .git -o -f .gitignore && echo "GIT_CHECK=OK" || echo "GIT_CHECK=FAIL") && \
+LATEST=$(ls -d ~/.claude/plugins/cache/taptap-plugins/sync/*/ 2>/dev/null | sort -V | tail -1) && \
+echo "LATEST_VERSION=${LATEST}" && \
+MP=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync && \
+(test -n "${LATEST}" && test -d "${LATEST}scripts" && echo "SCRIPTS_DIR=${LATEST}scripts" || (test -d "${MP}/scripts" && echo "SCRIPTS_DIR=${MP}/scripts" || echo "SCRIPTS_DIR=none")) && \
+(test -n "${LATEST}" && test -d "${LATEST}skills/mcp-templates" && echo "MCP_TEMPLATES_DIR=${LATEST}skills/mcp-templates" || (test -d "${MP}/skills/mcp-templates" && echo "MCP_TEMPLATES_DIR=${MP}/skills/mcp-templates" || echo "MCP_TEMPLATES_DIR=none")) && \
+(test -n "${LATEST}" && test -d "${LATEST}skills/cursor-templates" && echo "CURSOR_TEMPLATE_DIR=${LATEST}skills/cursor-templates" || (test -d "${MP}/skills/cursor-templates" && echo "CURSOR_TEMPLATE_DIR=${MP}/skills/cursor-templates" || echo "CURSOR_TEMPLATE_DIR=none")) && \
+(test -n "${LATEST}" && test -d "${LATEST}skills/merge-request-templates" && echo "MR_TEMPLATE_DIR=${LATEST}skills/merge-request-templates" || (test -d "${MP}/skills/merge-request-templates" && echo "MR_TEMPLATE_DIR=${MP}/skills/merge-request-templates" || echo "MR_TEMPLATE_DIR=none")) && \
+(test -n "${LATEST}" && test -d "${LATEST}skills" && echo "SKILLS_DIR=${LATEST}skills" || (test -d "${MP}/skills" && echo "SKILLS_DIR=${MP}/skills" || echo "SKILLS_DIR=none"))
 ```
 
-**步骤 0.5：检查参数**
+**如果 `GIT_CHECK=FAIL`**：立即停止，提示用户在项目根目录执行。
 
-检查用户是否传入了 `--dev` 参数：
-- 如果命令包含 `--dev`：设置 `USE_CACHE_FIRST=true`（优先使用 cache 路径）
-- 否则：设置 `USE_CACHE_FIRST=false`（默认优先使用 marketplaces 路径）
+**步骤 0.3：（仅 `--with-spec` 时）解析 Spec 路径**
 
-检查用户是否传入了 `--with-spec` 参数：
-- 如果命令包含 `--with-spec`：设置 `SYNC_SPEC=true`（执行 Spec Skills 同步）
-- 否则：设置 `SYNC_SPEC=false`（跳过 Spec Skills 同步）
+追加一条 Bash 命令解析 spec 的 skills 路径：
+
+```bash
+MP_SPEC=~/.claude/plugins/marketplaces/taptap-plugins/plugins/spec && \
+LATEST_SPEC=$(ls -d ~/.claude/plugins/cache/taptap-plugins/spec/*/ 2>/dev/null | sort -V | tail -1) && \
+(test -d "${MP_SPEC}/skills" && echo "SPEC_SKILLS_DIR=${MP_SPEC}/skills" || (test -n "${LATEST_SPEC}" && test -d "${LATEST_SPEC}skills" && echo "SPEC_SKILLS_DIR=${LATEST_SPEC}skills" || echo "SPEC_SKILLS_DIR=none"))
+```
+
+如果 `USE_CACHE_FIRST=true`，反转优先级（先查 cache 再查 marketplace）。
+
+如果 `SYNC_SPEC=false`，跳过此步骤，`SPEC_SKILLS_DIR=无`。
 
 ---
 
-### 阶段 1：配置 MCP 服务器
+### Phase 1：并行执行 6 个命名 Subagent
 
-**目标**：同步 context7 和 sequential-thinking MCP 配置到 `~/.claude.json` 和 `~/.cursor/mcp.json`
+从 Phase 0 输出中提取 `KEY=VALUE` 值，将 `none` 替换为 `无`，然后**在单条消息中同时发出所有 6 个 Task 调用**。
 
-**步骤 1.1：读取 MCP 配置模板（两级查找）**
+| # | subagent_type | model | prompt 内容 |
+|---|--------------|-------|------------|
+| 1 | `sync:mcp-config` | haiku | `MCP_TEMPLATES_DIR={值}` |
+| 2 | `sync:hooks-config` | haiku | `PROJECT_ROOT={值}`<br>`SCRIPTS_DIR={值}` |
+| 3 | `sync:cursor-sync` | haiku（`--with-spec` 时用 sonnet） | `PROJECT_ROOT={值}`<br>`CURSOR_TEMPLATE_DIR={值}`<br>`SYNC_SPEC={true/false}`<br>`SPEC_SKILLS_DIR={值}` |
+| 4 | `sync:mr-template` | haiku | `PROJECT_ROOT={值}`<br>`MR_TEMPLATE_DIR={值}` |
+| 5 | `sync:skills-sync` | haiku | `PROJECT_ROOT={值}`<br>`SKILLS_DIR={值}` |
+| 6 | `sync:statusline-config` | haiku | `SCRIPTS_DIR={值}` |
 
-**方法**：使用分步骤的简单命令，避免复杂嵌套导致的解析错误
-
-**1.1.1 查找最新缓存版本**：
-```bash
-ls -d ~/.claude/plugins/cache/taptap-plugins/sync/*/ 2>/dev/null | sort -V | tail -1
-```
-记录结果为 `LATEST_VERSION`（例如：`/Users/xxx/.claude/plugins/cache/taptap-plugins/sync/0.1.14/`）
-
-**1.1.2 检查 context7.json**：
-```bash
-# 检查 primary 路径
-test -f ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/mcp-templates/context7.json && echo "PRIMARY_FOUND" || echo "PRIMARY_NOT_FOUND"
-
-# 检查 cache 路径（使用上一步获取的 LATEST_VERSION）
-test -f ${LATEST_VERSION}skills/mcp-templates/context7.json && echo "CACHE_FOUND" || echo "CACHE_NOT_FOUND"
-```
-
-**1.1.3 读取 context7.json 和 sequential-thinking.json**：
-
-**如果 `USE_CACHE_FIRST=true`（开发模式 `--dev`）**：
-
-直接从 cache 路径读取：
-- `${LATEST_VERSION}skills/mcp-templates/context7.json`
-- `${LATEST_VERSION}skills/mcp-templates/sequential-thinking.json`
-- 如果文件不存在，使用硬编码配置（步骤 1.2 中的 JSON）
-
-**否则（默认模式）**：
-
-优先从 marketplaces 路径读取：
-```bash
-# 检查 primary 路径
-test -f ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/mcp-templates/context7.json && echo "PRIMARY_FOUND" || echo "PRIMARY_NOT_FOUND"
-```
-- 如果 PRIMARY_FOUND，使用 Read 工具读取 `~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/mcp-templates/context7.json`
-- 否则使用 Read 工具读取 `${LATEST_VERSION}skills/mcp-templates/context7.json`
-- 如果都不存在，使用硬编码配置（步骤 1.2 中的 JSON）
-
-对 sequential-thinking.json 重复相同逻辑。
-
-**步骤 1.2：同步到 ~/.claude.json**
-
-1. 读取 `~/.claude.json`（使用 Read 工具）
-2. 判断文件是否存在：
-   - **不存在**：创建新文件，写入完整配置：
-     ```json
-     {
-       "mcpServers": {
-         "context7": {
-           "command": "npx",
-           "args": ["-y", "@upstash/context7-mcp"],
-           "env": {}
-         },
-         "sequential-thinking": {
-           "command": "npx",
-           "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
-         }
-       }
-     }
-     ```
-   - **存在**：检查 mcpServers 内容
-     - 如果 context7 不存在，使用 Edit 工具添加
-     - 如果 sequential-thinking 不存在，使用 Edit 工具添加
-     - 如果已存在，跳过（记录日志）
-
-**步骤 1.3：同步到 ~/.cursor/mcp.json**
-
-1. 读取 `~/.cursor/mcp.json`（使用 Read 工具）
-2. 判断文件是否存在：
-   - **不存在**：创建新文件，写入完整配置（同上）
-   - **存在**：检查 mcpServers 内容
-     - 如果 context7 不存在，使用 Edit 工具添加
-     - 如果 sequential-thinking 不存在，使用 Edit 工具添加
-     - 如果已存在，跳过（记录日志）
-
-**步骤 1.4：记录执行结果**
-
-记录 MCP 配置的执行结果：
-- 成功：step1_mcp = "success"，记录详情（新增/已存在）
-- 失败：step1_mcp = "failed"，记录错误信息
-
-**步骤 1.5：更新任务状态**
-
-无论成功或失败，标记 "配置 MCP 服务器" 任务为 completed，继续下一步。
+**注意**：
+- prompt 只传运行时参数（几行 KEY=VALUE），agent 的完整指令由 agents/ 目录中的 .md 文件定义
+- description 字段用简短中文描述（如 "配置 MCP 服务器"、"配置 Hooks" 等）
 
 ---
 
-### 阶段 2：配置自动更新钩子
+### Phase 2：汇总报告（主 agent 串行）
 
-**目标**：同步 hooks（脚本 + hooks.json），详见 [hooks.md](./hooks.md)
+等待所有 6 个 Task 返回结果后，从每个 agent 的返回值中提取状态和详情，生成执行报告。
 
-**执行方式**：此阶段不重复描述细节，请读取并按 [`hooks.md`](./hooks.md) 的 **Your Task** 完整执行（包含：定位源 scripts → 复制到 `.claude/hooks/scripts/` → chmod → 生成/合并 `.claude/hooks/hooks.json` → 验证）。
+**步骤 2.1：提取结果**
 
-**复用说明**：如果阶段 1 已经计算过 `LATEST_VERSION`，此处可直接复用。
+从每个 Task 返回值中提取：
+- Agent 1 → step1_mcp
+- Agent 2 → step2_hooks
+- Agent 3 → step3_cursor（含 spec_skills 信息）
+- Agent 4 → step4_mr_template
+- Agent 5 → step5_claude_skills
+- Agent 6 → step6_statusline
 
-**记录 Hooks 执行结果（总控）**：
-- 成功：step2_hooks = "success"
-- 失败：step2_hooks = "failed"（记录错误信息）
-- 已存在/无需更新：step2_hooks = "skipped"
-
-无论成功或失败，标记 "配置自动更新钩子" 任务为 completed，继续下一步。
-
----
-
-### 阶段 3：同步到 Cursor IDE
-
-**目标**：同步 git-flow rules、git commands 到 Cursor（Spec Skills 需 `--with-spec` 参数）
-
-**重要**：此阶段使用 `cp` 命令直接复制模板文件，避免 Write 工具的"先 Read 后 Write"限制。
-
-**步骤 3.1：创建目标目录**
-
-```bash
-mkdir -p .cursor/rules .cursor/commands
-```
-
-**步骤 3.1.1：删除旧的 sync-claude-plugin.mdc（如果存在）**
-
-```bash
-rm -f .cursor/rules/sync-claude-plugin.mdc
-```
-
-**步骤 3.2：查找模板目录（两级优先级）**
-
-**方法**：根据是否为开发模式，选择不同的路径优先级
-
-**3.2.1 查找最新缓存版本**（可复用之前的 `LATEST_VERSION` 结果）
-
-**3.2.2 设置 TEMPLATE_DIR 变量**：
-
-**如果 `USE_CACHE_FIRST=true`（开发模式 `--dev`）**：
-
-直接使用 cache 路径：
-```bash
-TEMPLATE_DIR="${LATEST_VERSION}skills/cursor-templates"
-test -d "${TEMPLATE_DIR}" && echo "使用 cache 路径: ${TEMPLATE_DIR}" || echo "CACHE_NOT_FOUND"
-```
-- 如果 cache 路径存在：继续步骤 3.3
-- 如果 cache 路径不存在：记录错误并跳过此阶段
-
-**否则（默认模式）**：
-
-优先使用 marketplaces 路径：
-```bash
-# 检查 primary 路径
-test -d ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/cursor-templates && echo "PRIMARY_FOUND" || echo "PRIMARY_NOT_FOUND"
-```
-- 如果 PRIMARY_FOUND：`TEMPLATE_DIR=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/cursor-templates`
-- 否则检查 cache 路径：`TEMPLATE_DIR=${LATEST_VERSION}skills/cursor-templates`
-- 如果都不存在：记录错误（step3_cursor = "failed"）并跳过此阶段，继续阶段 4
-
-**步骤 3.3：复制文件（使用 cp 命令）**
-
-```bash
-# 复制 rules
-cp "${TEMPLATE_DIR}/rules/git-flow.mdc" .cursor/rules/git-flow.mdc
-
-# 复制 rules snippets（commands 中会引用这些文件）
-mkdir -p .cursor/rules/git-flow
-cp -R "${TEMPLATE_DIR}/rules/git-flow/snippets" .cursor/rules/git-flow/
-
-# 复制 commands
-cp "${TEMPLATE_DIR}/commands/git-commit.md" .cursor/commands/
-cp "${TEMPLATE_DIR}/commands/git-commit-push.md" .cursor/commands/
-cp "${TEMPLATE_DIR}/commands/git-commit-push-pr.md" .cursor/commands/
-test -f "${TEMPLATE_DIR}/commands/sync-mcp-grafana.md" && cp "${TEMPLATE_DIR}/commands/sync-mcp-grafana.md" .cursor/commands/ || echo "[WARN] sync-mcp-grafana.md 不存在，跳过"
-```
-
-**步骤 3.4：同步 Spec Skills 到 Cursor Rules**
-
-**前置检查**：如果 `SYNC_SPEC=false`，跳过整个步骤 3.4，记录 step3_spec_skills = "skipped"（未启用 --with-spec），直接进入步骤 3.5。
-
-**目标**：将 spec 插件的 skills 同步为独立的 `.mdc` 规则文件
-
-**3.4.1 查找 spec 插件的 skills 目录**：
-
-```bash
-# 检查 primary 路径
-test -d ~/.claude/plugins/marketplaces/taptap-plugins/plugins/spec/skills && echo "PRIMARY_FOUND" || echo "PRIMARY_NOT_FOUND"
-
-# 检查 cache 路径（复用 LATEST_VERSION，替换 sync 为 spec）
-SPEC_CACHE_VERSION=$(ls -d ~/.claude/plugins/cache/taptap-plugins/spec/*/ 2>/dev/null | sort -V | tail -1)
-test -d "${SPEC_CACHE_VERSION}skills" && echo "CACHE_FOUND" || echo "CACHE_NOT_FOUND"
-```
-
-**3.4.2 设置 SPEC_SKILLS_DIR 变量**：
-- 如果 PRIMARY_FOUND：`SPEC_SKILLS_DIR=~/.claude/plugins/marketplaces/taptap-plugins/plugins/spec/skills`
-- 否则如果 CACHE_FOUND：`SPEC_SKILLS_DIR=${SPEC_CACHE_VERSION}skills`
-- 否则记录警告并跳过 Spec Skills 同步，继续后续步骤
-
-**3.4.3 遍历 skill 目录并过滤**：
-
-对于 `${SPEC_SKILLS_DIR}` 下的每个子目录（skill 目录）：
-
-1. 读取 `SKILL.md` 文件的 frontmatter
-2. 检查 `description` 是否包含 "测试中"
-3. 如果包含 "测试中"，跳过该 skill
-4. 如果不包含，继续同步
-
-**过滤逻辑示例**：
-```bash
-# 检查 SKILL.md 是否包含 "测试中"
-grep -q "测试中" "${SPEC_SKILLS_DIR}/${skill_name}/SKILL.md" && echo "SKIP" || echo "SYNC"
-```
-
-**3.4.4 同步 SKILL.md 文件**：
-
-对于需要同步的 skill，将 `SKILL.md` 转换为 `.mdc` 格式：
-
-1. 使用 Read 工具读取 `${SPEC_SKILLS_DIR}/${skill_name}/SKILL.md`
-2. 提取 frontmatter 中的 `description` 值
-3. 生成新的 frontmatter 格式：
-   ```
-   ---
-   description: [原始 description 内容]
-   globs:
-   alwaysApply: true
-   ---
-   ```
-4. 保留 frontmatter 之后的正文内容
-5. 使用 Write 工具写入 `.cursor/rules/${skill_name}.mdc`
-
-**3.4.5 同步 skill 目录下的其他 .md 文件**：
-
-对于需要同步的 skill 目录下的其他 `.md` 文件（排除 SKILL.md、排除子目录如 scripts/、template/）：
-
-1. 使用 Read 工具读取 `${SPEC_SKILLS_DIR}/${skill_name}/${filename}.md`
-2. 生成新的 frontmatter（使用文件名作为 description）：
-   ```
-   ---
-   description: [文件名，不含扩展名]
-   globs:
-   alwaysApply: false
-   ---
-   ```
-3. 在 frontmatter 后添加原文件的完整内容
-4. 使用 Write 工具写入 `.cursor/rules/${filename}.mdc`
-
-**3.4.6 记录 Spec Skills 同步结果**：
-
-记录同步的 skill 列表：
-- 成功同步的 SKILL.md 文件列表（alwaysApply: true）
-- 成功同步的其他 .md 文件列表（alwaysApply: false）
-- 跳过的 skills（标记为 "测试中"）
-
-**步骤 3.5：记录执行结果**
-
-记录 Cursor 同步的执行结果：
-- 成功：step3_cursor = "success"，记录详情（git-flow）
-- 失败：step3_cursor = "failed"，记录错误信息
-
-**步骤 3.6：更新任务状态**
-
-标记 "同步到 Cursor IDE" 任务为 completed。
-
-**详细逻辑**：参见 [cursor.md](./cursor.md)
-
----
-
-### 阶段 4：同步 GitLab MR 模板
-
-**目标**：同步 GitLab MR 默认模板到项目的 `.gitlab/merge_request_templates/` 目录
-
-**重要**：此阶段使用 `cp` 命令直接复制模板文件，避免 Write 工具的"先 Read 后 Write"限制。
-
-**步骤 4.1：创建目标目录**
-
-```bash
-mkdir -p .gitlab/merge_request_templates
-```
-
-**步骤 4.2：查找模板文件（两级优先级）**
-
-**方法**：根据是否为开发模式，选择不同的路径优先级
-
-**4.2.1 查找最新缓存版本**（可复用之前的 `LATEST_VERSION` 结果）
-
-**4.2.2 设置 TEMPLATE_FILE 变量**：
-
-**如果 `USE_CACHE_FIRST=true`（开发模式 `--dev`）**：
-
-直接使用 cache 路径：
-```bash
-TEMPLATE_FILE="${LATEST_VERSION}skills/merge-request-templates/default.md"
-test -f "${TEMPLATE_FILE}" && echo "使用 cache 路径: ${TEMPLATE_FILE}" || echo "CACHE_NOT_FOUND"
-```
-- 如果 cache 路径存在：继续步骤 4.3
-- 如果 cache 路径不存在：跳到错误处理
-
-**否则（默认模式）**：
-
-优先使用 marketplaces 路径：
-```bash
-# 检查 primary 路径
-test -f ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/merge-request-templates/default.md && echo "PRIMARY_FOUND" || echo "PRIMARY_NOT_FOUND"
-```
-- 如果 PRIMARY_FOUND：`TEMPLATE_FILE=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/merge-request-templates/default.md`
-- 否则：`TEMPLATE_FILE=${LATEST_VERSION}skills/merge-request-templates/default.md`
-- 如果都不存在：跳到错误处理
-
-**错误处理**：
-- 如果所有路径都不存在或无法访问：
-  1. 记录错误：step4_mr_template = "failed"，原因：插件 MR 模板文件在所有位置都不存在
-  2. 跳过步骤 4.3-4.5
-  3. 继续阶段 5
-
-**步骤 4.3：检查目标文件是否存在**
-
-检查 `.gitlab/merge_request_templates/default.md` 是否存在：
-```bash
-test -f .gitlab/merge_request_templates/default.md && echo "存在" || echo "不存在"
-```
-
-**步骤 4.4：复制文件（如果不存在）**
-
-- **文件不存在**：
-  ```bash
-  cp "${TEMPLATE_FILE}" .gitlab/merge_request_templates/default.md
-  ```
-  记录：step4_mr_template = "success"（已创建）
-
-- **文件已存在**：
-  跳过复制，记录：step4_mr_template = "skipped"（文件已存在）
-
-**步骤 4.5：记录执行结果**
-
-记录 MR 模板同步的执行结果：
-- 成功：step4_mr_template = "success"（已创建）
-- 跳过：step4_mr_template = "skipped"（文件已存在）
-- 失败：step4_mr_template = "failed"，记录错误信息
-
-**步骤 4.6：更新任务状态**
-
-无论成功或失败，标记 "同步 GitLab MR 模板" 任务为 completed，继续下一步。
-
----
-
-### 阶段 5：同步 Claude Skills
-
-**目标**：同步 sync 插件的 skills 到项目的 `.claude/skills/` 目录（供 Claude Code 使用）
-
-**重要**：此阶段使用 `cp` 命令直接复制 skill 目录。
-
-**步骤 5.1：查找 sync 插件的 skills 目录**
-
-**5.1.1 设置 SYNC_SKILLS_DIR 变量**：
-
-**如果 `USE_CACHE_FIRST=true`（开发模式 `--dev`）**：
-
-直接使用 cache 路径：
-```bash
-SYNC_SKILLS_DIR="${LATEST_VERSION}skills"
-test -d "${SYNC_SKILLS_DIR}/grafana-dashboard-design" && echo "FOUND" || echo "NOT_FOUND"
-```
-
-**否则（默认模式）**：
-
-优先使用 marketplaces 路径：
-```bash
-SYNC_SKILLS_DIR=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills
-test -d "${SYNC_SKILLS_DIR}/grafana-dashboard-design" && echo "PRIMARY_FOUND" || echo "PRIMARY_NOT_FOUND"
-```
-- 如果 PRIMARY_FOUND：使用 marketplaces 路径
-- 否则：使用 cache 路径 `${LATEST_VERSION}skills`
-- 如果都不存在：记录警告并跳过此阶段
-
-**步骤 5.2：创建目标目录并复制**
-
-```bash
-# 创建目标目录
-mkdir -p .claude/skills
-
-# 复制 grafana-dashboard-design skill
-cp -R "${SYNC_SKILLS_DIR}/grafana-dashboard-design" .claude/skills/
-```
-
-**步骤 5.3：记录执行结果**
-
-记录 Claude Skills 同步的执行结果：
-- 成功：step5_claude_skills = "success"
-- 跳过：step5_claude_skills = "skipped"（skill 目录不存在）
-- 失败：step5_claude_skills = "failed"，记录错误信息
-
-**步骤 5.4：更新任务状态**
-
-无论成功或失败，标记 "同步 Claude Skills" 任务为 completed，继续下一步。
-
----
-
-### 阶段 6：配置 Status Line
-
-**目标**：配置 Claude Code 自定义状态栏，显示项目/分支/Context/模型/Worktree
-
-**步骤 6.1：查找脚本文件（两级优先级）**
-
-**6.1.1 查找最新缓存版本**（可复用之前的 `LATEST_VERSION` 结果）
-
-**6.1.2 检查脚本文件**：
-```bash
-# 检查 primary 路径
-test -f ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/scripts/statusline.sh && echo "PRIMARY_FOUND" || echo "PRIMARY_NOT_FOUND"
-
-# 检查 cache 路径
-test -f ${LATEST_VERSION}scripts/statusline.sh && echo "CACHE_FOUND" || echo "CACHE_NOT_FOUND"
-```
-
-**6.1.3 设置 SCRIPT_PATH 变量**：
-- 如果 PRIMARY_FOUND：`SCRIPT_PATH=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/scripts/statusline.sh`
-- 否则如果 CACHE_FOUND：`SCRIPT_PATH=${LATEST_VERSION}scripts/statusline.sh`
-- 否则：记录警告并跳过此阶段（step6_statusline = "skipped"）
-
-**步骤 6.2：复制脚本到用户目录**
-
-```bash
-mkdir -p ~/.claude/scripts
-cp "${SCRIPT_PATH}" ~/.claude/scripts/statusline.sh
-chmod +x ~/.claude/scripts/statusline.sh
-```
-
-**步骤 6.3：更新 settings.json**
-
-1. 使用 Read 工具读取 `~/.claude/settings.json`
-2. 判断文件是否存在：
-   - **不存在**：创建新文件，写入配置：
-     ```json
-     {
-       "statusLine": {
-         "type": "command",
-         "command": "~/.claude/scripts/statusline.sh",
-         "padding": 0
-       },
-       "enabledPlugins": {
-         "spec@taptap-plugins": true,
-         "sync@taptap-plugins": true,
-         "git@taptap-plugins": true,
-         "quality@taptap-plugins": true
-       },
-       "env": {
-         "ENABLE_TOOL_SEARCH": "auto:1"
-       }
-     }
-     ```
-   - **存在**：
-     - 使用 Edit 工具添加或更新 statusLine 配置
-     - **合并 enabledPlugins 配置**：
-       - 如果 enabledPlugins 不存在，添加完整的 enabledPlugins 对象
-       - 如果 enabledPlugins 存在，合并添加以下键（保留用户已有的其他插件配置）：
-         - `"spec@taptap-plugins": true`
-         - `"sync@taptap-plugins": true`
-         - `"git@taptap-plugins": true`
-         - `"quality@taptap-plugins": true`
-     - **合并 env 配置**：
-       - 如果 env 不存在，添加完整的 env 对象
-       - 如果 env 存在但 `ENABLE_TOOL_SEARCH` 不存在，添加 `"ENABLE_TOOL_SEARCH": "auto:1"`
-       - 如果 env.ENABLE_TOOL_SEARCH 已存在，**跳过不覆盖**，记录日志：`MCP 懒加载: 已有配置 "${当前值}"，跳过`
-
-**步骤 6.4：记录执行结果**
-
-记录 Status Line 配置的执行结果：
-- 成功：step6_statusline = "success"
-- 跳过：step6_statusline = "skipped"（脚本文件不存在）
-- 失败：step6_statusline = "failed"，记录错误信息
-
-**步骤 6.5：更新任务状态**
-
-无论成功或失败，标记 "配置 Status Line" 任务为 completed，继续下一步。
-
----
-
-### 阶段 7：生成执行报告
-
-**步骤 7.1：统计执行结果**
-
-汇总各步骤的执行状态：
-- step1_mcp: success/failed
-- step2_hooks: success/failed/skipped
-- step3_cursor: success/failed
-- step3_spec_skills: success/failed/skipped（仅 --with-spec 时显示）
-- step4_mr_template: success/failed/skipped
-- step5_claude_skills: success/failed/skipped（Claude Skills 详情）
-- step6_statusline: success/failed/skipped（Status Line 配置）
-
-**步骤 7.2：输出执行报告**
+**步骤 2.2：输出执行报告**
 
 根据执行结果输出相应的报告：
 
-**✅ 情况 A：所有步骤都成功**
+**情况 A：所有步骤都成功**
 
 ```
 ✅ 开发环境配置完成！
@@ -568,6 +128,8 @@ chmod +x ~/.claude/scripts/statusline.sh
   ✅ 自动更新钩子: 成功
      - 配置文件: .claude/hooks/hooks.json
      - 自动更新脚本: .claude/hooks/scripts/set-auto-update-plugins.sh
+     - 插件启用: .claude/hooks/scripts/ensure-plugins.sh
+     - MCP 懒加载: .claude/hooks/scripts/ensure-tool-search.sh
 
   ✅ Cursor 同步: 成功
      - Rules: git-flow.mdc
@@ -592,8 +154,6 @@ chmod +x ~/.claude/scripts/statusline.sh
      - 脚本: ~/.claude/scripts/statusline.sh
      - 配置: ~/.claude/settings.json
      - 显示: [模型] 项目 git:(分支) [进度条] % | 版本 计划
-     - Plugins: spec, sync, git, quality 已启用
-     - MCP 懒加载: ENABLE_TOOL_SEARCH=auto:1 [已配置/已有配置 "xxx"，跳过]
 
 下一步：
   1. 重启 Claude Code 会话（MCP 配置生效）
@@ -606,7 +166,7 @@ chmod +x ~/.claude/scripts/statusline.sh
   - 使用 --with-spec 参数可同步 Spec Skills 到 Cursor
 ```
 
-**⚠️ 情况 B：部分步骤失败**
+**情况 B：部分步骤失败**
 
 ```
 ⚠️ 开发环境配置部分完成
@@ -634,8 +194,6 @@ chmod +x ~/.claude/scripts/statusline.sh
 
   [✅/❌/⏭️ ] Status Line 配置: [成功/失败/跳过]
      详情: [具体信息]
-     - Plugins: [已启用/跳过]
-     - MCP 懒加载: [已配置/跳过]
 
 失败步骤详情：
   [具体错误信息和建议]
@@ -647,7 +205,7 @@ chmod +x ~/.claude/scripts/statusline.sh
     - Cursor 同步: /sync:cursor
 ```
 
-**❌ 情况 C：所有步骤都失败**
+**情况 C：所有步骤都失败**
 
 ```
 ❌ 开发环境配置失败
@@ -685,6 +243,8 @@ chmod +x ~/.claude/scripts/statusline.sh
 
 ### 自动更新钩子
 - **SessionStart hook**: 会话启动时自动启用 marketplace 插件自动更新（autoUpdate）
+- **插件启用 hook**: 确保 `enabledPlugins` 包含 spec, sync, git, quality 插件
+- **ToolSearch hook**: 确保 `env.ENABLE_TOOL_SEARCH` 已配置（不覆盖已有值）
 - **效果**: 插件更新将由 Claude marketplace 自动更新机制接管（无需手动 uninstall + install）
 
 ### Cursor 同步

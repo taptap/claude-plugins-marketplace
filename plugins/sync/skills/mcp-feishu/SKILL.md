@@ -69,7 +69,7 @@ claude mcp get feishu-mcp
 
 执行命令：
 ```bash
-claude mcp add --transport http feishu-mcp "<提取的 URL>"
+claude mcp add --transport http --scope user feishu-mcp "<提取的 URL>"
 ```
 
 **1.3 验证配置**
@@ -189,7 +189,7 @@ claude mcp get feishu-mcp
   Cursor:      ✅ [新增配置 / 已配置]
 
 配置位置：
-  - Claude Code: ~/.claude.json [project: /path/to/project]
+  - Claude Code: ~/.claude.json（user scope，所有项目可用）
   - Cursor: ~/.cursor/mcp.json
 
 下一步：
@@ -279,7 +279,7 @@ claude mcp get feishu-mcp
 claude mcp list
 
 # 手动添加配置
-claude mcp add --transport http feishu-mcp "<URL>"
+claude mcp add --transport http --scope user feishu-mcp "<URL>"
 
 # 查看详细错误
 claude mcp get feishu-mcp
