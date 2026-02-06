@@ -1,6 +1,6 @@
 ---
 allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(chmod:*), Bash(test:*), Bash(cp:*), Bash(rm:*), Bash(grep:*), Bash(ls:*), TodoWrite
-description: 一键配置开发环境（MCP + Hooks + Cursor 同步 + Spec Skills）
+description: 一键配置开发环境（MCP + Hooks + Cursor 同步）
 ---
 
 ## Context
@@ -8,7 +8,7 @@ description: 一键配置开发环境（MCP + Hooks + Cursor 同步 + Spec Skill
 此命令会一次性完成开发环境的基础配置，包括：
 1. 配置 MCP 服务器（context7 + sequential-thinking）
 2. 配置自动更新钩子（SessionStart hook）
-3. 同步配置到 Cursor IDE（含 Spec Skills 规则）
+3. 同步配置到 Cursor IDE
 4. 同步 GitLab MR 模板
 
 每个步骤独立执行，某步骤失败不会阻止后续步骤。
@@ -23,8 +23,10 @@ description: 一键配置开发环境（MCP + Hooks + Cursor 同步 + Spec Skill
 ```
 - 配置 MCP 服务器
 - 配置自动更新钩子
-- 同步到 Cursor IDE（含 Spec Skills）
+- 同步到 Cursor IDE
 - 同步 GitLab MR 模板
+- 同步 Claude Skills
+- 配置 Status Line
 ```
 
 **步骤 0.2：初始化执行状态**
@@ -32,8 +34,8 @@ description: 一键配置开发环境（MCP + Hooks + Cursor 同步 + Spec Skill
 记录每个步骤的执行状态，用于最后生成报告：
 - step1_mcp: pending
 - step2_hooks: pending
-- step3_cursor: pending（包含 git-flow 和 Spec Skills）
-- step3_spec_skills: pending（Spec Skills 子步骤状态）
+- step3_cursor: pending
+- step3_spec_skills: pending（仅 --with-spec 时使用）
 - step4_mr_template: pending
 
 **步骤 0.3：显示当前工作目录**
@@ -50,17 +52,21 @@ pwd
 test -d .git -o -f .gitignore && echo "OK: project root detected" || (echo "❌ 未检测到 .git 或 .gitignore，请在项目根目录执行 /sync:basic" && exit 1)
 ```
 
-**步骤 0.5：检查开发模式参数**
+**步骤 0.5：检查参数**
 
 检查用户是否传入了 `--dev` 参数：
 - 如果命令包含 `--dev`：设置 `USE_CACHE_FIRST=true`（优先使用 cache 路径）
 - 否则：设置 `USE_CACHE_FIRST=false`（默认优先使用 marketplaces 路径）
 
+检查用户是否传入了 `--with-spec` 参数：
+- 如果命令包含 `--with-spec`：设置 `SYNC_SPEC=true`（执行 Spec Skills 同步）
+- 否则：设置 `SYNC_SPEC=false`（跳过 Spec Skills 同步）
+
 ---
 
 ### 阶段 1：配置 MCP 服务器
 
-**目标**：同步 context7 和 sequential-thinking MCP 配置到 `.mcp.json` 和 `.cursor/mcp.json`
+**目标**：同步 context7 和 sequential-thinking MCP 配置到 `~/.claude.json` 和 `~/.cursor/mcp.json`
 
 **步骤 1.1：读取 MCP 配置模板（两级查找）**
 
@@ -103,9 +109,9 @@ test -f ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/mcp-te
 
 对 sequential-thinking.json 重复相同逻辑。
 
-**步骤 1.2：同步到 .mcp.json**
+**步骤 1.2：同步到 ~/.claude.json**
 
-1. 读取 `.mcp.json`（使用 Read 工具）
+1. 读取 `~/.claude.json`（使用 Read 工具）
 2. 判断文件是否存在：
    - **不存在**：创建新文件，写入完整配置：
      ```json
@@ -128,9 +134,9 @@ test -f ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/mcp-te
      - 如果 sequential-thinking 不存在，使用 Edit 工具添加
      - 如果已存在，跳过（记录日志）
 
-**步骤 1.3：同步到 .cursor/mcp.json**
+**步骤 1.3：同步到 ~/.cursor/mcp.json**
 
-1. 读取 `.cursor/mcp.json`（使用 Read 工具）
+1. 读取 `~/.cursor/mcp.json`（使用 Read 工具）
 2. 判断文件是否存在：
    - **不存在**：创建新文件，写入完整配置（同上）
    - **存在**：检查 mcpServers 内容
@@ -169,7 +175,7 @@ test -f ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/skills/mcp-te
 
 ### 阶段 3：同步到 Cursor IDE
 
-**目标**：同步 git-flow rules、git commands 和 Spec Skills 到 Cursor
+**目标**：同步 git-flow rules、git commands 到 Cursor（Spec Skills 需 `--with-spec` 参数）
 
 **重要**：此阶段使用 `cp` 命令直接复制模板文件，避免 Write 工具的"先 Read 后 Write"限制。
 
@@ -232,6 +238,8 @@ test -f "${TEMPLATE_DIR}/commands/sync-mcp-grafana.md" && cp "${TEMPLATE_DIR}/co
 ```
 
 **步骤 3.4：同步 Spec Skills 到 Cursor Rules**
+
+**前置检查**：如果 `SYNC_SPEC=false`，跳过整个步骤 3.4，记录 step3_spec_skills = "skipped"（未启用 --with-spec），直接进入步骤 3.5。
 
 **目标**：将 spec 插件的 skills 同步为独立的 `.mdc` 规则文件
 
@@ -309,7 +317,7 @@ grep -q "测试中" "${SPEC_SKILLS_DIR}/${skill_name}/SKILL.md" && echo "SKIP" |
 **步骤 3.5：记录执行结果**
 
 记录 Cursor 同步的执行结果：
-- 成功：step3_cursor = "success"，记录详情（包含 git-flow 和 Spec Skills）
+- 成功：step3_cursor = "success"，记录详情（git-flow）
 - 失败：step3_cursor = "failed"，记录错误信息
 
 **步骤 3.6：更新任务状态**
@@ -450,19 +458,100 @@ cp -R "${SYNC_SKILLS_DIR}/grafana-dashboard-design" .claude/skills/
 
 ---
 
-### 阶段 6：生成执行报告
+### 阶段 6：配置 Status Line
 
-**步骤 6.1：统计执行结果**
+**目标**：配置 Claude Code 自定义状态栏，显示项目/分支/Context/模型/Worktree
+
+**步骤 6.1：查找脚本文件（两级优先级）**
+
+**6.1.1 查找最新缓存版本**（可复用之前的 `LATEST_VERSION` 结果）
+
+**6.1.2 检查脚本文件**：
+```bash
+# 检查 primary 路径
+test -f ~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/scripts/statusline.sh && echo "PRIMARY_FOUND" || echo "PRIMARY_NOT_FOUND"
+
+# 检查 cache 路径
+test -f ${LATEST_VERSION}scripts/statusline.sh && echo "CACHE_FOUND" || echo "CACHE_NOT_FOUND"
+```
+
+**6.1.3 设置 SCRIPT_PATH 变量**：
+- 如果 PRIMARY_FOUND：`SCRIPT_PATH=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/scripts/statusline.sh`
+- 否则如果 CACHE_FOUND：`SCRIPT_PATH=${LATEST_VERSION}scripts/statusline.sh`
+- 否则：记录警告并跳过此阶段（step6_statusline = "skipped"）
+
+**步骤 6.2：复制脚本到用户目录**
+
+```bash
+mkdir -p ~/.claude/scripts
+cp "${SCRIPT_PATH}" ~/.claude/scripts/statusline.sh
+chmod +x ~/.claude/scripts/statusline.sh
+```
+
+**步骤 6.3：更新 settings.json**
+
+1. 使用 Read 工具读取 `~/.claude/settings.json`
+2. 判断文件是否存在：
+   - **不存在**：创建新文件，写入配置：
+     ```json
+     {
+       "statusLine": {
+         "type": "command",
+         "command": "~/.claude/scripts/statusline.sh",
+         "padding": 0
+       },
+       "enabledPlugins": {
+         "spec@taptap-plugins": true,
+         "sync@taptap-plugins": true,
+         "git@taptap-plugins": true,
+         "quality@taptap-plugins": true
+       },
+       "env": {
+         "ENABLE_TOOL_SEARCH": "auto:1"
+       }
+     }
+     ```
+   - **存在**：
+     - 使用 Edit 工具添加或更新 statusLine 配置
+     - **合并 enabledPlugins 配置**：
+       - 如果 enabledPlugins 不存在，添加完整的 enabledPlugins 对象
+       - 如果 enabledPlugins 存在，合并添加以下键（保留用户已有的其他插件配置）：
+         - `"spec@taptap-plugins": true`
+         - `"sync@taptap-plugins": true`
+         - `"git@taptap-plugins": true`
+         - `"quality@taptap-plugins": true`
+     - **合并 env 配置**：
+       - 如果 env 不存在，添加完整的 env 对象
+       - 如果 env 存在但 `ENABLE_TOOL_SEARCH` 不存在，添加 `"ENABLE_TOOL_SEARCH": "auto:1"`
+       - 如果 env.ENABLE_TOOL_SEARCH 已存在，**跳过不覆盖**，记录日志：`MCP 懒加载: 已有配置 "${当前值}"，跳过`
+
+**步骤 6.4：记录执行结果**
+
+记录 Status Line 配置的执行结果：
+- 成功：step6_statusline = "success"
+- 跳过：step6_statusline = "skipped"（脚本文件不存在）
+- 失败：step6_statusline = "failed"，记录错误信息
+
+**步骤 6.5：更新任务状态**
+
+无论成功或失败，标记 "配置 Status Line" 任务为 completed，继续下一步。
+
+---
+
+### 阶段 7：生成执行报告
+
+**步骤 7.1：统计执行结果**
 
 汇总各步骤的执行状态：
 - step1_mcp: success/failed
 - step2_hooks: success/failed/skipped
-- step3_cursor: success/failed（含 git-flow 和 Spec Skills）
-- step3_spec_skills: success/failed/skipped（Spec Skills 详情）
+- step3_cursor: success/failed
+- step3_spec_skills: success/failed/skipped（仅 --with-spec 时显示）
 - step4_mr_template: success/failed/skipped
 - step5_claude_skills: success/failed/skipped（Claude Skills 详情）
+- step6_statusline: success/failed/skipped（Status Line 配置）
 
-**步骤 6.2：输出执行报告**
+**步骤 7.2：输出执行报告**
 
 根据执行结果输出相应的报告：
 
@@ -473,8 +562,8 @@ cp -R "${SYNC_SKILLS_DIR}/grafana-dashboard-design" .claude/skills/
 
 执行结果：
   ✅ MCP 配置: 成功
-     - .mcp.json: [新增/已存在] context7, sequential-thinking
-     - .cursor/mcp.json: [新增/已存在] context7, sequential-thinking
+     - ~/.claude.json: [新增/已存在] context7, sequential-thinking
+     - ~/.cursor/mcp.json: [新增/已存在] context7, sequential-thinking
 
   ✅ 自动更新钩子: 成功
      - 配置文件: .claude/hooks/hooks.json
@@ -483,6 +572,7 @@ cp -R "${SYNC_SKILLS_DIR}/grafana-dashboard-design" .claude/skills/
   ✅ Cursor 同步: 成功
      - Rules: git-flow.mdc
      - Commands: git-commit.md, git-commit-push.md, git-commit-push-pr.md, sync-mcp-grafana.md
+     （以下仅在 --with-spec 时显示）
      - Spec Skills (alwaysApply: true):
        - doc-auto-sync.mdc
        - module-discovery.mdc
@@ -498,6 +588,13 @@ cp -R "${SYNC_SKILLS_DIR}/grafana-dashboard-design" .claude/skills/
      - grafana-dashboard-design（Grafana Dashboard 设计规范）
      - 位置: .claude/skills/grafana-dashboard-design/
 
+  ✅ Status Line 配置: 成功
+     - 脚本: ~/.claude/scripts/statusline.sh
+     - 配置: ~/.claude/settings.json
+     - 显示: [模型] 项目 git:(分支) [进度条] % | 版本 计划
+     - Plugins: spec, sync, git, quality 已启用
+     - MCP 懒加载: ENABLE_TOOL_SEARCH=auto:1 [已配置/已有配置 "xxx"，跳过]
+
 下一步：
   1. 重启 Claude Code 会话（MCP 配置生效）
   2. 重启 Cursor IDE（配置生效）
@@ -506,7 +603,7 @@ cp -R "${SYNC_SKILLS_DIR}/grafana-dashboard-design" .claude/skills/
 💡 提示：
   - 更新插件后重启会话，自动更新机制会生效
   - 在 Cursor 中输入 / 可查看所有命令
-  - Spec Skills 规则会在 Cursor 中自动应用
+  - 使用 --with-spec 参数可同步 Spec Skills 到 Cursor
 ```
 
 **⚠️ 情况 B：部分步骤失败**
@@ -524,6 +621,7 @@ cp -R "${SYNC_SKILLS_DIR}/grafana-dashboard-design" .claude/skills/
   [✅/❌/⏭️ ] Cursor 同步: [成功/失败/跳过]
      详情: [具体信息]
      - git-flow: [成功/失败]
+     （以下仅在 --with-spec 时显示）
      - Spec Skills: [成功/失败/跳过]
        - 已同步: [文件列表]
        - 已跳过（测试中）: [skill 列表]
@@ -533,6 +631,11 @@ cp -R "${SYNC_SKILLS_DIR}/grafana-dashboard-design" .claude/skills/
 
   [✅/❌/⏭️ ] Claude Skills 同步: [成功/失败/跳过]
      详情: [具体信息]
+
+  [✅/❌/⏭️ ] Status Line 配置: [成功/失败/跳过]
+     详情: [具体信息]
+     - Plugins: [已启用/跳过]
+     - MCP 懒加载: [已配置/跳过]
 
 失败步骤详情：
   [具体错误信息和建议]
@@ -554,15 +657,17 @@ cp -R "${SYNC_SKILLS_DIR}/grafana-dashboard-design" .claude/skills/
   ❌ 自动更新钩子: [错误信息]
   ❌ Cursor 同步: [错误信息]
      - git-flow: [错误信息]
+     （以下仅在 --with-spec 时显示）
      - Spec Skills: [错误信息]
   ❌ GitLab MR 模板: [错误信息]
   ❌ Claude Skills 同步: [错误信息]
+  ❌ Status Line 配置: [错误信息]
 
 请检查：
   1. 文件权限是否正确
   2. JSON 格式是否有误
   3. 目录结构是否完整
-  4. spec 插件是否已安装
+  4. spec 插件是否已安装（仅 --with-spec 时相关）
 
 或者尝试单独运行：
   - /sync:mcp
@@ -585,7 +690,7 @@ cp -R "${SYNC_SKILLS_DIR}/grafana-dashboard-design" .claude/skills/
 ### Cursor 同步
 - **Rules**: Git 工作流规范（git-flow.mdc）
 - **Commands**: git-commit、git-commit-push、git-commit-push-pr 命令
-- **Spec Skills**: 自动同步 spec 插件的 skills 规则
+- **Spec Skills**（需 `--with-spec` 参数启用）: 自动同步 spec 插件的 skills 规则
   - `doc-auto-sync.mdc` - AI 改动模块代码时自动同步文档（alwaysApply: true）
   - `module-discovery.mdc` - 开发前必须读取模块索引定位目标（alwaysApply: true）
   - `generate-module-map.mdc` - 生成模块索引的 prompt（alwaysApply: false）
@@ -602,6 +707,23 @@ cp -R "${SYNC_SKILLS_DIR}/grafana-dashboard-design" .claude/skills/
 - **位置**: `.claude/skills/grafana-dashboard-design/`
 - **效果**: Claude Code 在创建/修改 Grafana Dashboard 时自动应用设计规范
 
+### Status Line
+- **statusline.sh**: 自定义状态栏脚本
+- **位置**: `~/.claude/scripts/statusline.sh`
+- **配置**: `~/.claude/settings.json` 中的 `statusLine` 字段
+- **显示内容**:
+  - 模型名（蓝色）
+  - 项目名
+  - Git 分支（绿色）
+  - Context 使用率（进度条 + 百分比，颜色随阈值变化）
+  - Worktree 名（青色，如有）
+  - 版本号（灰色）
+  - 订阅计划（紫色）
+- **颜色阈值**:
+  - 绿色：0-59%（正常）
+  - 黄色：60-79%（注意）
+  - 红色：80-100%（警告）
+
 ---
 
 ## 注意事项
@@ -610,9 +732,10 @@ cp -R "${SYNC_SKILLS_DIR}/grafana-dashboard-design" .claude/skills/
    - **MCP 配置**：已存在则跳过，不覆盖
    - **Hooks 配置**：检测差异并更新（如果配置有变化则自动更新）
    - **Cursor 同步**：直接覆盖（rules 和 commands 每次重新生成）
-   - **Spec Skills**：直接覆盖（每次从 spec 插件重新生成 .mdc 文件）
+   - **Spec Skills**：直接覆盖（每次从 spec 插件重新生成 .mdc 文件）（仅 --with-spec 时执行）
    - **GitLab MR 模板**：已存在则跳过，不覆盖（保留项目自定义配置）
    - **Claude Skills**：直接覆盖（每次从 sync 插件重新复制）
+   - **Status Line**：直接覆盖（每次重新复制脚本并更新配置）
    - 某步骤失败不影响后续步骤
 
 2. **配置生效**：
@@ -621,12 +744,14 @@ cp -R "${SYNC_SKILLS_DIR}/grafana-dashboard-design" .claude/skills/
    - Cursor 配置：重启 Cursor IDE
    - GitLab MR 模板：立即生效，创建 MR 时使用
    - Claude Skills：重启 Claude Code 会话后生效
+   - Status Line：重启 Claude Code 会话后生效
 
 3. **单独命令**：
    如果某个步骤需要更详细的控制，可以单独运行：
    - `/sync:mcp` - 仅配置 MCP
    - `/sync:hooks` - 仅配置钩子
    - `/sync:cursor` - 仅同步 Cursor（包含冲突处理）
+   - `/sync:statusline` - 仅配置 Status Line
    - 未来可能添加：`/sync:gitlab-mr` - 仅同步 GitLab MR 模板
 
 4. **开发模式**：
@@ -635,3 +760,9 @@ cp -R "${SYNC_SKILLS_DIR}/grafana-dashboard-design" .claude/skills/
    /sync:basic --dev
    ```
    这会让查找逻辑优先使用 `~/.claude/plugins/cache/` 路径，而不是 `~/.claude/plugins/marketplaces/` 路径。
+
+5. **Spec Skills 同步**：
+   默认不同步 Spec Skills，如需同步请使用 `--with-spec` 参数：
+   ```
+   /sync:basic --with-spec
+   ```

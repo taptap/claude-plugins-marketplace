@@ -1,6 +1,6 @@
 ---
 name: grafana-dashboard-design
-description: 创建/修改 Grafana Dashboard 时触发。提供专业的设计规范，打造好看、炫酷的监控面板。
+description: 创建/修改 Grafana Dashboard 时触发，提供专业的设计规范。
 ---
 
 # Grafana Dashboard 设计规范

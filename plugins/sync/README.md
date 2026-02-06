@@ -14,9 +14,13 @@
 
 这个命令会自动完成：
 - ✅ 配置 MCP 服务器（context7 + sequential-thinking）
-- ✅ 启用自动更新钩子（Marketplace autoUpdate）+ CLI 工具检测（更新插件后自动生效）
-- ✅ 同步配置到 Cursor IDE（包括 Spec Skills 规则）
+- ✅ 启用自动更新钩子（Marketplace autoUpdate）+ CLI 工具检测
+- ✅ 同步配置到 Cursor IDE（git-flow rules + commands）
 - ✅ 同步 GitLab Merge Request 默认模板
+- ✅ 同步 Claude Skills（grafana-dashboard-design）
+- ✅ 配置 Status Line（项目/分支/Context/模型/Worktree）
+- ✅ 启用 TapTap Plugins（spec/sync/git/quality）
+- 📎 可选：`--with-spec` 同步 Spec Skills 到 Cursor
 
 ### 飞书 MCP 配置（可选）
 
@@ -110,8 +114,8 @@ chmod +x .githooks/pre-commit
 ```
 
 **功能：**
-- 同步到 `.mcp.json`（Claude Code 读取）
-- 同步到 `.cursor/mcp.json`（Cursor 读取）
+- 同步到 `~/.claude.json`（Claude Code 用户级配置）
+- 同步到 `~/.cursor/mcp.json`（Cursor 用户级配置）
 - 跳过已存在的配置，不覆盖用户自定义内容
 
 **MCP 说明：**
@@ -150,7 +154,7 @@ chmod +x .githooks/pre-commit
 
 **功能：**
 - 同步 Git Flow Rules 到 `.cursor/rules/git-flow.mdc`
-- 同步 Spec Skills 规则到 `.cursor/rules/`（独立 `.mdc` 文件）
+- 同步 Spec Skills 规则到 `.cursor/rules/`（需 `/sync:basic --with-spec`）
   - `doc-auto-sync.mdc` - AI 改动模块代码时自动同步文档（alwaysApply: true）
   - `module-discovery.mdc` - 开发前必须读取模块索引定位目标（alwaysApply: true）
   - `generate-module-map.mdc` - 生成模块索引的 prompt（alwaysApply: false）
@@ -199,6 +203,7 @@ chmod +x .githooks/pre-commit
 | `/sync:mcp` | 仅配置 MCP 服务器 | 高级 |
 | `/sync:hooks` | 仅配置自动更新钩子（autoUpdate） | 高级 |
 | `/sync:cursor` | 仅同步到 Cursor | 高级 |
+| `/sync:statusline` | 配置 Status Line（状态栏） | 高级 |
 | `/sync:git-cli-auth` | 检测并配置 gh/glab 认证 | 高级 |
 
 **Cursor 专用命令**（通过 `/sync:cursor` 同步到项目）：
@@ -207,22 +212,60 @@ chmod +x .githooks/pre-commit
 |------|------|
 | `/sync-mcp-grafana <user> <pass>` | 配置 Grafana MCP 到 Cursor |
 
+## MCP 懒加载配置
+
+当配置了多个 MCP 服务器时，所有工具描述会占用大量 context。Claude Code 支持懒加载配置，超过阈值时延迟加载 MCP 工具描述。
+
+### 配置方法
+
+在 `~/.claude/settings.json` 或项目级 `.claude/settings.json` 中添加：
+
+```json
+{
+  "env": {
+    "ENABLE_TOOL_SEARCH": "auto:1"
+  }
+}
+```
+
+### 参数说明
+
+| 值 | 行为 |
+|---|---|
+| `auto` | 默认值，超过 10% context 时延迟加载 |
+| `auto:1` | 超过 1% context 时延迟加载（推荐） |
+| `auto:N` | 超过 N% context 时延迟加载 |
+| `true` | 始终启用工具搜索 |
+| `false` | 禁用，所有 MCP 工具预加载 |
+
+### 工作原理
+
+1. 会话启动时计算 MCP 工具描述占 context 的百分比
+2. 超过阈值时，工具描述不预加载
+3. 需要使用时通过 MCPSearch 工具按需发现
+
+### 验证
+
+1. 配置后重启 Claude Code
+2. 配置多个 MCP 后观察是否有工具被延迟加载
+3. 使用 MCP 工具时会先通过 MCPSearch 发现
+
 ## 配置文件位置
 
 ### Claude Code
-- `.mcp.json` - MCP 配置（项目级）
+- `~/.claude.json` - MCP 配置（context7 + sequential-thinking + 飞书/Grafana，用户级）
 - `.claude/hooks/hooks.json` - Hooks 配置（项目级）
-- `~/.claude.json` - 飞书/Grafana MCP 配置（Local scope）
+- `~/.claude/settings.json` - 用户级配置（MCP 懒加载等）
 
 ### Cursor
-- `.cursor/mcp.json` - MCP 配置（项目级）
+- `~/.cursor/mcp.json` - MCP 配置（context7 + sequential-thinking + 飞书/Grafana，全局）
 - `.cursor/rules/git-flow.mdc` - Git 工作流规范
-- `.cursor/rules/doc-auto-sync.mdc` - 模块文档自动同步规则
-- `.cursor/rules/module-discovery.mdc` - 模块发现规则
-- `.cursor/rules/generate-module-map.mdc` - 模块索引生成 prompt
+- `.cursor/rules/doc-auto-sync.mdc` - 模块文档自动同步规则（--with-spec）
+- `.cursor/rules/module-discovery.mdc` - 模块发现规则（--with-spec）
+- `.cursor/rules/generate-module-map.mdc` - 模块索引生成 prompt（--with-spec）
 - `.cursor/commands/git-*.md` - Git 命令
 - `.cursor/commands/sync-mcp-grafana.md` - Grafana MCP 配置命令
-- `~/.cursor/mcp.json` - 飞书/Grafana MCP 配置（全局）
+- `~/.claude/scripts/statusline.sh` - Status Line 脚本
 
 ### Golang & mcp-grafana（由 `/sync:mcp-grafana` 安装）
 - `~/go-sdk/current/` - Golang 安装目录
@@ -273,6 +316,7 @@ chmod +x .githooks/pre-commit
 
 ## 版本历史
 
+- **v0.1.11** - MCP 配置（context7 + sequential-thinking）改为写入用户级文件（`~/.claude.json` + `~/.cursor/mcp.json`），跨项目复用；新增 `/sync:statusline` 命令（配置状态栏：项目/分支/Context/模型/Worktree）；`/sync:basic` 新增 Status Line 配置阶段、TapTap Plugins 自动启用、MCP 懒加载配置；Spec Skills 改为 `--with-spec` 可选参数；ensure-cli-tools 改为后台静默运行；新增 MCP 懒加载配置文档；清理 statusline.sh debug 输出
 - **v0.1.10** - 新增 `/sync:mcp-feishu-project` 命令，配置飞书项目 MCP（project.feishu.cn）；新增 `mcp-feishu-project` skill 自动触发
 - **v0.1.9** - 新增 `/sync:mcp-grafana` 命令（自动安装 Golang 和 mcp-grafana）；新增 `--dev` 开发模式参数；新增 Claude Skills 同步（`grafana-dashboard-design`）；新增 Cursor 命令 `sync-mcp-grafana.md`
 - **v0.1.8** - 重构 Spec Skills 同步：删除单一索引文件 `sync-claude-plugin.mdc`，改为独立 `.mdc` 规则文件（`doc-auto-sync.mdc`、`module-discovery.mdc`、`generate-module-map.mdc`）；过滤测试中的 skills

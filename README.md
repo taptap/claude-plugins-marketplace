@@ -1,3 +1,5 @@
+[English](./README.en.md) | 中文
+
 # TapTap Claude Code Plugins Marketplace
 
 TapTap 团队维护的 Claude Code 插件库，提供开发工作流自动化工具。
@@ -65,7 +67,7 @@ mkdir -p .claude && echo '{
 | ------- | ----- | ----------------------------------------------------------------- |
 | spec    | 0.1.3 | Spec-Driven Development 工作流插件                                     |
 | git     | 0.1.5 | Git 工作流自动化插件（三种提交方式：commit、commit+push、commit+push+MR）            |
-| sync    | 0.1.10 | 开发环境配置同步插件（MCP + Hooks + Cursor + Spec Skills 规则 + Claude Skills） |
+| sync    | 0.1.11 | 开发环境配置同步插件（MCP + Hooks + Cursor + Spec Skills 规则 + Claude Skills） |
 | quality | 0.0.2 | AI 驱动的代码质量检查插件（9 个并行 Agent，支持 Bug 检测、代码质量、安全检查、性能分析）              |
 
 
