@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.16
+
+### Sync Plugin (0.1.12)
+
+- Refactored `/sync:basic` command to use parallel agent architecture (Phase 0 path resolution + 6 named subagents)
+- Reduced command execution from ~550 lines to ~150 lines (Phase 0: ≤2 Bash calls)
+- Added 4 new helper scripts: `ensure-mcp.sh`, `ensure-plugins.sh`, `ensure-statusline.sh`, `ensure-tool-search.sh`
+- Added `agents/` directory with 6 specialized subagents for parallel execution
+- Updated `/sync:hooks` command with improved error handling and path resolution
+- Updated `/sync:mcp-feishu` command with enhanced configuration logic
+- Updated `/sync:mcp-feishu-project` command with streamlined setup process
+- Updated `/sync:mcp-grafana` command with better validation and error messages
+- Updated hooks.json configuration structure
+- Updated mcp-feishu and mcp-feishu-project skill definitions
+
+### Marketplace
+
+- Bumped version from 0.1.15 to 0.1.16
+- Updated sync plugin to version 0.1.12
+
 ## 0.1.15
 
 ### Sync Plugin (0.1.11)

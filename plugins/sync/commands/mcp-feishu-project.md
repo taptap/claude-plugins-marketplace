@@ -71,7 +71,7 @@ claude mcp get feishu-project-mcp
 **步骤 1.2：添加配置**
 
 ```bash
-claude mcp add --transport http feishu-project-mcp "<完整 URL>"
+claude mcp add --transport http --scope user feishu-project-mcp "<完整 URL>"
 ```
 
 **步骤 1.3：验证配置**
@@ -177,7 +177,7 @@ claude mcp get feishu-project-mcp
   Cursor:      ✅ [新增配置 / 已配置]
 
 配置位置：
-  - Claude Code: ~/.claude.json [project: /path/to/project]
+  - Claude Code: ~/.claude.json（user scope，所有项目可用）
   - Cursor: ~/.cursor/mcp.json
 
 下一步：
@@ -239,10 +239,10 @@ https://project.feishu.cn/mcp_server/v1?mcpKey={mcpKey}&projectKey={projectKey}&
 
 ### 配置位置
 
-| 工具        | 配置文件                                       | 说明                 |
-| ----------- | ---------------------------------------------- | -------------------- |
-| Claude Code | `~/.claude.json` → `projects[path].mcpServers` | Local MCP，按项目区分 |
-| Cursor      | `~/.cursor/mcp.json` → `mcpServers`            | 用户级别，全局共用    |
+| 工具        | 配置文件                                | 说明                 |
+| ----------- | --------------------------------------- | -------------------- |
+| Claude Code | `~/.claude.json` → `mcpServers`         | User scope，所有项目可用 |
+| Cursor      | `~/.cursor/mcp.json` → `mcpServers`     | 用户级别，全局共用    |
 
 ### 为什么不提交到 git？
 
@@ -277,7 +277,7 @@ grep -A 3 "feishu-project-mcp" ~/.cursor/mcp.json
 claude mcp list
 
 # 手动添加配置
-claude mcp add --transport http feishu-project-mcp "<URL>"
+claude mcp add --transport http --scope user feishu-project-mcp "<URL>"
 
 # 查看详细错误
 claude mcp get feishu-project-mcp

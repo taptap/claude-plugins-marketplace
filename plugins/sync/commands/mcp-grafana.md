@@ -115,7 +115,7 @@ claude mcp get grafana
 cat ~/.claude.json 2>/dev/null || echo "{}"
 ```
 
-然后使用 Edit 工具在 `mcpServers` 字段中添加或更新 grafana 配置：
+然后使用 Edit 工具在 **顶层** `mcpServers` 字段中添加或更新 grafana 配置：
 
 ```json
 {
@@ -233,7 +233,7 @@ cat ~/.claude.json | grep -A 10 '"grafana"'
   Cursor:      ✅ [新增配置 / 已配置]
 
 配置位置：
-  - Claude Code: ~/.claude.json [project: /path/to/project]
+  - Claude Code: ~/.claude.json（user scope，所有项目可用）
   - Cursor: ~/.cursor/mcp.json
 
 Grafana 配置：
@@ -274,9 +274,9 @@ Grafana 配置：
 
 ### 配置范围
 
-- **Claude Code**：Local scope（项目私有配置）
-  - 配置文件：`~/.claude.json [project: ...]`
-  - 仅当前项目可用
+- **Claude Code**：User scope（所有项目可用）
+  - 配置文件：`~/.claude.json`（顶层 mcpServers）
+  - 所有项目可用
 
 - **Cursor**：全局配置
   - 配置文件：`~/.cursor/mcp.json`

@@ -48,7 +48,7 @@ claude mcp get feishu-mcp
 **步骤 1.2：添加配置**
 
 ```bash
-claude mcp add --transport http feishu-mcp "<提取的 URL>"
+claude mcp add --transport http --scope user feishu-mcp "<提取的 URL>"
 ```
 
 **步骤 1.3：验证配置**
@@ -167,7 +167,7 @@ claude mcp get feishu-mcp
   Cursor:      ✅ [新增配置 / 已配置]
 
 配置位置：
-  - Claude Code: ~/.claude.json [project: /path/to/project]
+  - Claude Code: ~/.claude.json（user scope，所有项目可用）
   - Cursor: ~/.cursor/mcp.json
 
 下一步：
@@ -221,9 +221,9 @@ claude mcp get feishu-mcp
 
 ### 配置范围
 
-- **Claude Code**：Local scope（项目私有配置）
-  - 配置文件：`~/.claude.json [project: ...]`
-  - 仅当前项目可用
+- **Claude Code**：User scope（所有项目可用）
+  - 配置文件：`~/.claude.json`（顶层 mcpServers）
+  - 所有项目可用
 
 - **Cursor**：全局配置
   - 配置文件：`~/.cursor/mcp.json`
@@ -268,7 +268,7 @@ cat ~/.cursor/mcp.json
 
 **手动配置：**
 ```bash
-claude mcp add --transport http feishu-mcp "<URL>"
+claude mcp add --transport http --scope user feishu-mcp "<URL>"
 ```
 
 ### Cursor 配置失败
