@@ -31,6 +31,25 @@ mkdir -p .claude && echo '{
 }' > .claude/settings.json
 ```
 
+**可选：按仓库配置 Git 插件行为**
+
+在 `.claude/settings.json` 的 `env` 字段中可配置 Git 插件行为：
+
+| 环境变量 | 默认值 | 说明 |
+|----------|--------|------|
+| `GIT_ALLOW_NO_TICKET` | `"true"` | 是否允许 no-ticket 提交，设为 `"false"` 可禁用 |
+
+示例（禁用 no-ticket，要求必须提供任务 ID）：
+
+```json
+{
+  "env": {
+    "GIT_ALLOW_NO_TICKET": "false"
+  },
+  "enabledPlugins": { ... }
+}
+```
+
 ### 2. 执行 /sync
 
 一键配置 MCP、自动更新和 Cursor 同步：
@@ -66,8 +85,8 @@ mkdir -p .claude && echo '{
 | 插件      | 版本    | 描述                                                                |
 | ------- | ----- | ----------------------------------------------------------------- |
 | spec    | 0.1.3 | Spec-Driven Development 工作流插件                                     |
-| git     | 0.1.5 | Git 工作流自动化插件（三种提交方式：commit、commit+push、commit+push+MR）            |
-| sync    | 0.1.12 | 开发环境配置同步插件（MCP + Hooks + Cursor + Spec Skills 规则 + Claude Skills） |
+| git     | 0.1.6 | Git 工作流自动化插件（三种提交方式：commit、commit+push、commit+push+MR）            |
+| sync    | 0.1.13 | 开发环境配置同步插件（MCP + Hooks + Cursor + Spec Skills 规则 + Claude Skills） |
 | quality | 0.0.2 | AI 驱动的代码质量检查插件（9 个并行 Agent，支持 Bug 检测、代码质量、安全检查、性能分析）              |
 
 

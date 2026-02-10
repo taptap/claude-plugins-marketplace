@@ -54,12 +54,20 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ## 格式要求
 
-### 0. `no-ticket` 使用前必须确认（重要）
+### 0. `no-ticket` 使用规则（重要）
 
-当准备在 commit 标题中使用 `#no-ticket`（无论是你主动填写，还是从上下文推断出来）时，**必须先询问并确认**：
+**严格禁止 AI 自动推断或主动填写 `#no-ticket`。** `no-ticket` 只能在以下条件同时满足时使用：
 
-- 本次变更是否仅涉及文档/注释/配置/格式化等非功能性变更？
-- 如果涉及功能开发、Bug 修复、重构、性能优化等：**不得使用 `no-ticket`**，必须让用户提供工单 ID（或先创建工单）
+1. 环境变量 `GIT_ALLOW_NO_TICKET` 不为 `false`（未设置视为允许）
+2. 用户在任务 ID 提取步骤中**主动选择**了 `no-ticket`（通过 AskUserQuestion 明确选择）
+3. 经过二次确认，用户确认本次变更仅涉及文档/注释/配置/格式化等非功能性变更
+
+**禁止场景：**
+- ❌ AI 根据变更内容（如仅修改了文档）自动推断使用 `no-ticket`
+- ❌ AI 在没有用户明确选择的情况下填写 `#no-ticket`
+- ❌ 绕过任务 ID 提取流程直接使用 `no-ticket`
+
+如果任务 ID 提取步骤 1 和 2 都失败，且用户未选择 no-ticket，则必须要求用户提供任务 ID。
 
 ### 1. 语言要求
 - 标题和正文都使用**中文**
@@ -99,11 +107,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 |------|------|------|
 | **feat** | 新功能 | `feat(api): 新增用户资料接口 #TAP-85404` |
 | **fix** | 错误修复 | `fix(auth): 修复 token 过期问题 #TAP-85405` |
-| **docs** | 文档变更 | `docs: 更新 API 文档 #no-ticket` |
-| **style** | 格式化、缺少分号等 | `style: 格式化代码 #no-ticket` |
+| **docs** | 文档变更 | `docs: 更新 API 文档 #TAP-85408` |
+| **style** | 格式化、缺少分号等 | `style: 格式化代码 #TAP-85409` |
 | **refactor** | 代码重构 | `refactor(service): 抽取公共逻辑 #TAP-85406` |
 | **test** | 添加测试 | `test: 添加用户服务单元测试 #TAP-85407` |
-| **chore** | 维护任务 | `chore: 更新依赖 #no-ticket` |
+| **chore** | 维护任务 | `chore: 更新依赖 #TAP-85410` |
 | **perf** | 性能优化 | `perf(query): 优化数据库查询 #TAP-85408` |
 | **revert** | 回滚先前的提交 | `revert: 回滚登录功能提交 #TAP-85410` |
 

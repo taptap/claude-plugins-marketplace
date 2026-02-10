@@ -73,13 +73,17 @@ fi
 
 ### 3. 询问用户（如果步骤 1 和 2 都失败）
 
+**前置检查：** 检查环境变量 `GIT_ALLOW_NO_TICKET`：
+- 值为 `false`：不提供 `no-ticket` 选项，仅显示「提供任务 ID」
+- 值为 `true` 或未设置：显示「提供任务 ID」和「使用 no-ticket」两个选项
+
 使用 `AskUserQuestion` 工具询问用户：
 
 **问题**：当前分支未包含任务 ID，你希望：
 
 **选项**：
 - 提供任务 ID（用户输入 TAP-xxxxx 或纯数字）
-- 使用 `no-ticket`（仅用于文档、配置等非功能性变更；选择该项前需要二次确认）
+- 使用 `no-ticket`（仅用于文档、配置等非功能性变更；选择该项前需要二次确认）（**仅当 `GIT_ALLOW_NO_TICKET` 不为 `false` 时显示**）
 
 **处理用户输入**：
 - 如果用户输入纯数字（如 `85404`），自动补充 `TAP-` 前缀：`TAP-85404`
@@ -95,7 +99,7 @@ else
 fi
 ```
 
-#### no-ticket 二次确认（必须）
+#### no-ticket 二次确认（必须，仅当 GIT_ALLOW_NO_TICKET 不为 false 时）
 
 当用户选择 `no-ticket` 时，再追问一次：
 
