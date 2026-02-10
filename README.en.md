@@ -31,6 +31,25 @@ mkdir -p .claude && echo '{
 }' > .claude/settings.json
 ```
 
+**Optional: Per-repo Git plugin configuration**
+
+You can configure Git plugin behavior via the `env` field in `.claude/settings.json`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GIT_ALLOW_NO_TICKET` | `"true"` | Whether to allow no-ticket commits, set to `"false"` to disable |
+
+Example (disable no-ticket, require task ID):
+
+```json
+{
+  "env": {
+    "GIT_ALLOW_NO_TICKET": "false"
+  },
+  "enabledPlugins": { ... }
+}
+```
+
 ### 2. Run /sync
 
 One-click configuration for MCP, auto-update, and Cursor synchronization:

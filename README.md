@@ -31,6 +31,25 @@ mkdir -p .claude && echo '{
 }' > .claude/settings.json
 ```
 
+**可选：按仓库配置 Git 插件行为**
+
+在 `.claude/settings.json` 的 `env` 字段中可配置 Git 插件行为：
+
+| 环境变量 | 默认值 | 说明 |
+|----------|--------|------|
+| `GIT_ALLOW_NO_TICKET` | `"true"` | 是否允许 no-ticket 提交，设为 `"false"` 可禁用 |
+
+示例（禁用 no-ticket，要求必须提供任务 ID）：
+
+```json
+{
+  "env": {
+    "GIT_ALLOW_NO_TICKET": "false"
+  },
+  "enabledPlugins": { ... }
+}
+```
+
 ### 2. 执行 /sync
 
 一键配置 MCP、自动更新和 Cursor 同步：
