@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.1.17
+
+### Git Plugin (0.1.6)
+
+- Added `GIT_ALLOW_NO_TICKET` environment variable support for per-repo no-ticket configuration
+- Added env var context line to all three commands (commit, commit-push, commit-push-pr)
+- Changed no-ticket behavior: AI is now strictly prohibited from auto-inferring or filling `#no-ticket`
+- Changed section 0 in commit format spec to enforce explicit user selection via AskUserQuestion
+- Changed step 3 in task ID extraction to conditionally show no-ticket option based on env var
+- Changed docs/style/chore type examples from `#no-ticket` to `#TAP-xxxxx` to avoid implying AI auto-use
+- Added step 0 (config check) to SKILL.md execution flow
+
+### Sync Plugin (0.1.13)
+
+- Mirrored Git Plugin no-ticket configuration changes to cursor-templates
+- Added `GIT_ALLOW_NO_TICKET` env var context to Cursor command templates
+- Updated cursor-templates git-flow.mdc with repo-level config section and no-ticket rules
+- Changed cursor-templates snippets (02-extract-task-id.md, 03-commit-format.md) to match git plugin
+
+### Marketplace
+
+- Bumped version from 0.1.16 to 0.1.17
+- Updated git plugin to version 0.1.6
+- Updated sync plugin to version 0.1.13
+
 ## 0.1.16
 
 ### Sync Plugin (0.1.12)

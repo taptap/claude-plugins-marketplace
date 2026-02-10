@@ -17,6 +17,12 @@ description: 当用户用自然语言请求提交代码时触发（如「帮我�
 
 ## 执行流程
 
+### 0. 检查仓库配置（前置）
+
+检查环境变量 `GIT_ALLOW_NO_TICKET`（通过 `.claude/settings.json` 的 `env` 配置）：
+- 值为 `false`：后续步骤禁用 `no-ticket` 选项
+- 值为 `true` 或未设置：允许 no-ticket（但仍需用户主动选择）
+
 ### 1. 检查分支
 
 **检测仓库默认分支（三级检测 + 用户确认）：**
@@ -63,7 +69,7 @@ git diff --cached
 详细步骤参见：[reference.md](./reference.md#任务ID提取)
 
 **概要：** 按优先级从分支名、用户输入、用户询问中获取任务 ID
-（若需使用 `no-ticket`，必须先与用户确认是否为纯文档/配置等非功能性变更；否则要求用户提供/创建工单 ID）
+**no-ticket 仅在用户主动选择时可用，AI 不得自动推断使用。** 若 `GIT_ALLOW_NO_TICKET` 为 `false` 则不提供该选项。
 
 ### 4. 生成提交信息
 

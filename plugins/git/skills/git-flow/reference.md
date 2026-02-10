@@ -77,11 +77,11 @@ type(scope): 中文描述 #TASK-ID
 |------|------|------|
 | feat | 新功能 | `feat(api): 新增用户资料接口 #TAP-85404` |
 | fix | 错误修复 | `fix(auth): 修复 token 过期问题 #TAP-85405` |
-| docs | 文档变更 | `docs: 更新 API 文档 #no-ticket` |
-| style | 格式化、缺少分号等 | `style: 格式化代码 #no-ticket` |
+| docs | 文档变更 | `docs: 更新 API 文档 #TAP-85408` |
+| style | 格式化、缺少分号等 | `style: 格式化代码 #TAP-85409` |
 | refactor | 代码重构 | `refactor(service): 抽取公共逻辑 #TAP-85406` |
 | test | 添加测试 | `test: 添加用户服务单元测试 #TAP-85407` |
-| chore | 维护任务 | `chore: 更新依赖 #no-ticket` |
+| chore | 维护任务 | `chore: 更新依赖 #TAP-85410` |
 | revert | 回滚先前的提交 | `revert: 回滚登录功能提交 #TAP-85410` |
 
 ### 任务 ID
@@ -91,7 +91,7 @@ type(scope): 中文描述 #TASK-ID
 - 支持从任务链接提取：
   - 飞书链接：`https://*.feishu.cn/**`
   - Jira 链接：`https://xindong.atlassian.net/browse/TAP-xxxxx`
-- 无法提取时使用 `#no-ticket`
+- 无法提取时询问用户提供任务 ID 或选择 `#no-ticket`（仅用户主动选择时可用，AI 不得自动推断）
 
 ### 中文描述生成规范
 
@@ -206,6 +206,23 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 ## 执行逻辑（Claude Code 特有）
 
 以下内容供 Claude Code 执行 git 命令时使用。
+
+### 仓库级配置
+
+git 插件支持通过 `.claude/settings.json` 的 `env` 字段配置行为：
+
+| 环境变量 | 类型 | 默认值 | 说明 |
+|----------|------|--------|------|
+| `GIT_ALLOW_NO_TICKET` | string | `"true"` | 是否允许 no-ticket 提交，设为 `"false"` 禁用 |
+
+**配置示例（android/ios repo 禁用 no-ticket）：**
+```json
+{
+  "env": {
+    "GIT_ALLOW_NO_TICKET": "false"
+  }
+}
+```
 
 ### 任务 ID 提取
 

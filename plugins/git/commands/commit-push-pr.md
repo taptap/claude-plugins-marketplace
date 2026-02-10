@@ -10,6 +10,7 @@ description: 提交代码、推送分支并使用 GitLab push options 创建 Mer
 - Staged 和 unstaged 变更: !`git diff HEAD --stat`
 - 最近提交历史: !`git log --oneline -5`
 - 远程分支: !`git branch -r | head -10`
+- no-ticket 配置: !`echo "${GIT_ALLOW_NO_TICKET:-true}"`
 
 ## Your Task
 
