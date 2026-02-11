@@ -649,7 +649,11 @@ panic("错误")
 
 ## 版本历史
 
-### v0.0.1 (当前版本)
+### v0.0.3
+
+- 修复 review 命令 allowed-tools 缺失 mkdir、echo、date 权限声明
+
+### v0.0.1
 
 - ✅ 9 个并行 Agent 架构
 - ✅ 置信度评分和冗余确认机制

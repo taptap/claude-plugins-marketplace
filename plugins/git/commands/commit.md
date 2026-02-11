@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git checkout:*)
+allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git checkout:*), Bash(printenv:*), Bash(echo:*), Bash(grep:*)
 description: 创建符合规范的 git commit，自动从分支名提取 Task ID
 ---
 
@@ -9,7 +9,7 @@ description: 创建符合规范的 git commit，自动从分支名提取 Task ID
 - 当前分支: !`git branch --show-current`
 - Staged 和 unstaged 变更: !`git diff HEAD --stat`
 - 最近提交历史: !`git log --oneline -5`
-- no-ticket 配置: !`echo "${GIT_ALLOW_NO_TICKET:-true}"`
+- no-ticket 配置: !`printenv GIT_ALLOW_NO_TICKET || echo true`
 
 ## Your Task
 

@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git push), Bash(git push -u:*), Bash(git push --set-upstream:*), Bash(git push origin:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*)
+allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git push), Bash(git push -u:*), Bash(git push --set-upstream:*), Bash(git push origin:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(printenv:*), Bash(echo:*), Bash(grep:*)
 description: 提交代码并推送到远程分支
 ---
 
@@ -9,7 +9,7 @@ description: 提交代码并推送到远程分支
 - 当前分支: !`git branch --show-current`
 - Staged 和 unstaged 变更: !`git diff HEAD --stat`
 - 最近提交历史: !`git log --oneline -5`
-- no-ticket 配置: !`echo "${GIT_ALLOW_NO_TICKET:-true}"`
+- no-ticket 配置: !`printenv GIT_ALLOW_NO_TICKET || echo true`
 
 ## Your Task
 

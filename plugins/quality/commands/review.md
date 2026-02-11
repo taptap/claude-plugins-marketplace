@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(git:*), Read, Grep, Glob, Task
+allowed-tools: Bash(git:*), Bash(mkdir:*), Bash(echo:*), Bash(date:*), Read, Grep, Glob, Task
 description: AI 驱动的代码审查，9 个并行 Agent 全维度分析（Bug/质量/安全/性能）
 ---
 

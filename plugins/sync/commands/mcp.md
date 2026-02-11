@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Write, Edit, TodoWrite
+allowed-tools: Bash(pwd:*), Read, Write, Edit, TodoWrite
 description: 同步 context7 和 sequential-thinking MCP 配置到 Claude Code 和 Cursor
 ---
 

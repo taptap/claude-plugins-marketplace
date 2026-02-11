@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.1.18
+
+### Git Plugin (0.1.7)
+
+- Fixed missing `allowed-tools` entries for `printenv`, `echo`, `grep` in commit/commit-push/commit-push-pr commands
+- Fixed missing `head`, `python3`, `cat` entries in commit-push-pr command
+- Changed `GIT_ALLOW_NO_TICKET` context from `echo "$VAR"` to `printenv` for proper permission handling
+
+### Sync Plugin (0.1.14)
+
+- Fixed missing `allowed-tools` entries across 10 command files (git-cli-auth, mcp, hooks, cursor, statusline, basic, mcp-grafana, mcp-feishu-project, and cursor-templates)
+- Added missing `printenv`, `head`, `pwd`, `cp`, `ls`, `sort`, `tail`, `echo`, `wc`, `claude`, `bash`, `mv`, `tr`, `grep`, `cat` entries where needed
+- Changed `GIT_ALLOW_NO_TICKET` context in cursor-templates from `echo "$VAR"` to `printenv`
+
+### Quality Plugin (0.0.3)
+
+- Fixed missing `allowed-tools` entries for `mkdir`, `echo`, `date` in review command
+
+### Spec Plugin (0.1.4)
+
+- Fixed missing `allowed-tools` entry for `pwd` in spec command
+
+### Marketplace
+
+- Bumped version from 0.1.17 to 0.1.18
+- Updated git plugin to version 0.1.7
+- Updated sync plugin to version 0.1.14
+- Updated quality plugin to version 0.0.3
+- Updated spec plugin to version 0.1.4
+
 ## 0.1.17
 
 ### Git Plugin (0.1.6)

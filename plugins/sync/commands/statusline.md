@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(chmod:*), Bash(cp:*), Bash(test:*), Bash(ls:*)
+allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(chmod:*), Bash(cp:*), Bash(test:*), Bash(ls:*), Bash(sort:*), Bash(tail:*), Bash(echo:*)
 description: 配置 Claude Code 状态栏（显示项目/分支/Context/模型/Worktree）
 ---
 

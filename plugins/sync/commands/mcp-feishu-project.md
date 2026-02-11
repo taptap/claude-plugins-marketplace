@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(claude mcp:*), Read, Write, Edit, TodoWrite
+allowed-tools: Bash(claude mcp:*), Bash(grep:*), Bash(ls:*), Bash(cat:*), Read, Write, Edit, TodoWrite
 description: 配置飞书项目 MCP 服务器到 Claude Code 和 Cursor
 ---
 
