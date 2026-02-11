@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(ls:*), Bash(cat:*), Bash(git:*)
+allowed-tools: Bash(ls:*), Bash(cat:*), Bash(git:*), Bash(pwd:*)
 description: 查看当前 SDD 工作流状态，显示 spec/plan/tasks 进度
 ---
 

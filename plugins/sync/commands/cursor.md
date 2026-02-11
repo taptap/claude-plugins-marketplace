@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Bash(mkdir:*), Bash(cp:*), Bash(ls:*), Bash(cat:*)
+allowed-tools: Read, Bash(mkdir:*), Bash(cp:*), Bash(ls:*), Bash(cat:*), Bash(head:*), Bash(wc:*)
 description: 同步配置到 Cursor IDE
 ---
 

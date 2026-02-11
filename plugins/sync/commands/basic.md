@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Bash(echo:*), Bash(test:*), Bash(ls:*), Bash(pwd:*), Task
+allowed-tools: Read, Bash(echo:*), Bash(test:*), Bash(ls:*), Bash(pwd:*), Bash(sort:*), Bash(tail:*), Task
 description: 一键配置开发环境（MCP + Hooks + Cursor 同步）
 ---
 

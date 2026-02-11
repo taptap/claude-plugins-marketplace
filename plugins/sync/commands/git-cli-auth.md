@@ -1,17 +1,17 @@
 ---
-allowed-tools: Bash(uname:*), Bash(echo:*), Bash(grep:*), Bash(which:*), Bash(gh:*), Bash(glab:*), Bash(source:*), Read, Write, Edit, TodoWrite
+allowed-tools: Bash(uname:*), Bash(echo:*), Bash(grep:*), Bash(which:*), Bash(gh:*), Bash(glab:*), Bash(source:*), Bash(printenv:*), Bash(head:*), Read, Write, Edit, TodoWrite
 description: 检测 gh/glab 安装状态，配置 GitHub/GitLab CLI 认证 Token
 ---
 
 ## Context
 
 - 当前操作系统: !`uname -s 2>/dev/null || echo "Windows"`
-- 当前 Shell: !`echo $SHELL`
+- 当前 Shell: !`printenv SHELL`
 - gh 安装状态: !`which gh 2>/dev/null && gh --version | head -1 || echo "未安装"`
 - glab 安装状态: !`which glab 2>/dev/null && glab --version | head -1 || echo "未安装"`
-- GH_TOKEN: !`[ -n "$GH_TOKEN" ] && echo "已配置" || echo "未配置"`
-- GITLAB_TOKEN: !`[ -n "$GITLAB_TOKEN" ] && echo "已配置" || echo "未配置"`
-- GITLAB_HOST: !`[ -n "$GITLAB_HOST" ] && echo "$GITLAB_HOST" || echo "未配置 (默认 gitlab.com)"`
+- GH_TOKEN: !`printenv GH_TOKEN >/dev/null 2>&1 && echo "已配置" || echo "未配置"`
+- GITLAB_TOKEN: !`printenv GITLAB_TOKEN >/dev/null 2>&1 && echo "已配置" || echo "未配置"`
+- GITLAB_HOST: !`printenv GITLAB_HOST 2>/dev/null || echo "未配置 (默认 gitlab.com)"`
 
 ## Your Task
 

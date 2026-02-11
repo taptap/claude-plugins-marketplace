@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(command:*), Bash(which:*), Bash(curl:*), Bash(tar:*), Bash(mkdir:*), Bash(chmod:*), Bash(ln:*), Bash(rm:*), Bash(ls:*), Bash(grep:*), Bash(cat:*), Bash(echo:*), Bash(source:*), Bash(export:*), Bash(go:*), Bash(test:*), Bash(uname:*), Bash(basename:*), Read, Write, Edit, TodoWrite
+allowed-tools: Bash(command:*), Bash(which:*), Bash(curl:*), Bash(tar:*), Bash(mkdir:*), Bash(chmod:*), Bash(ln:*), Bash(rm:*), Bash(ls:*), Bash(grep:*), Bash(cat:*), Bash(echo:*), Bash(source:*), Bash(export:*), Bash(go:*), Bash(test:*), Bash(uname:*), Bash(basename:*), Bash(mv:*), Bash(tr:*), Read, Write, Edit, TodoWrite
 description: 配置 Grafana MCP 服务器到 Cursor（自动安装 golang 和 mcp-grafana）
 ---
 

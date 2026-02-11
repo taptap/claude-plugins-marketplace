@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git push), Bash(git push -u:*), Bash(git push --set-upstream:*), Bash(git push origin:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git checkout:*), Bash(glab mr create:*), Bash(glab auth status), Bash(which glab)
+allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git push), Bash(git push -u:*), Bash(git push --set-upstream:*), Bash(git push origin:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git checkout:*), Bash(glab mr create:*), Bash(glab auth status), Bash(which glab), Bash(printenv:*), Bash(echo:*), Bash(head:*), Bash(python3:*), Bash(cat:*), Bash(grep:*)
 description: 提交代码、推送分支并使用 GitLab push options 创建 Merge Request
 ---
 
@@ -10,7 +10,7 @@ description: 提交代码、推送分支并使用 GitLab push options 创建 Mer
 - Staged 和 unstaged 变更: !`git diff HEAD --stat`
 - 最近提交历史: !`git log --oneline -5`
 - 远程分支: !`git branch -r | head -10`
-- no-ticket 配置: !`echo "${GIT_ALLOW_NO_TICKET:-true}"`
+- no-ticket 配置: !`printenv GIT_ALLOW_NO_TICKET || echo true`
 
 ## Your Task
 

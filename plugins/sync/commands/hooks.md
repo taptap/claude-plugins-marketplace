@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(chmod:*), Bash(test:*), Bash(cat:*)
+allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(chmod:*), Bash(test:*), Bash(cat:*), Bash(pwd:*), Bash(cp:*), Bash(ls:*), Bash(sort:*), Bash(tail:*), Bash(echo:*)
  description: 同步 plugin hooks 配置到项目级，启用自动更新功能
 ---
 
