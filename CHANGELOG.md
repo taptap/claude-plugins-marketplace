@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.1.20
+
+### Git Plugin (0.1.9)
+
+- Added Pipeline Watch to commit-push command (monitors existing MR pipeline after push)
+- Added Pipeline Watch foreground mode with MANDATORY marker to prevent AI skipping
+- Added fix-conflict skill for automated branch merge conflict resolution
+- Added auto-detection and assignment of claude reviewer when creating MR
+
+### Sync Plugin (0.1.16)
+
+- Added review-checklist sync to skills-sync agent (skip if already exists)
+- Fixed Claude Skills override policy docs in basic.md (review-checklist preserves custom version)
+- Fixed missing execute permissions on 4 hook scripts
+- Added Pipeline Watch to Cursor git-commit-push template
+- Added MANDATORY marker to pipeline watcher in Cursor git-commit-push-pr template
+
+### Marketplace
+
+- Bumped version from 0.1.19 to 0.1.20
+- Updated git plugin to version 0.1.9
+- Updated sync plugin to version 0.1.16
+
 ## 0.1.19
 
 ### Sync Plugin (0.1.15)

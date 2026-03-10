@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git push), Bash(git push -u:*), Bash(git push --set-upstream:*), Bash(git push origin:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(printenv:*), Bash(echo:*), Bash(grep:*)
+allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git push), Bash(git push -u:*), Bash(git push --set-upstream:*), Bash(git push origin:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(printenv:*), Bash(echo:*), Bash(grep:*), Bash(glab api:*), Bash(glab auth status), Bash(which glab), Bash(sleep:*), Bash(osascript:*), Bash(python3:*), Bash(cat:*), Bash(head:*)
 description: 提交代码并推送到远程分支
 ---
 
@@ -92,6 +92,53 @@ Commit: feat(api): 新增用户资料接口 #TAP-85404
   - 使用 /git:commit-push-pr 命令创建 Merge Request
   - 或手动在 GitLab 中创建 MR
 ```
+
+### 第七步：Pipeline Watch（仅已有 MR 时自动执行）
+
+推送成功后，检查当前分支是否已有关联的 MR。如有，自动进入 Pipeline 监控模式。
+
+#### 1. 检查是否存在 MR
+
+```bash
+which glab && glab auth status
+```
+
+如果 glab 不可用 → 跳过此步骤。
+
+如果 glab 可用：
+
+```bash
+# 获取 remote URL 信息
+REMOTE_URL=$(git remote get-url origin)
+# 从 remote URL 提取 project_path 和 host
+BRANCH=$(git branch --show-current)
+
+# 获取 project_id
+PROJECT_ID=$(glab api projects/$(python3 -c "import urllib.parse; print(urllib.parse.quote('${project_path}', safe=''))") --hostname {host} | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+
+# 查询当前分支是否有 opened 状态的 MR
+MR_RESULT=$(glab api "projects/${PROJECT_ID}/merge_requests?source_branch=${BRANCH}&state=opened&per_page=1" --hostname {host})
+MR_IID=$(echo "$MR_RESULT" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['iid'] if d else '')" 2>/dev/null)
+```
+
+- 如果 `MR_IID` 为空 → 输出 `ℹ️ 当前分支无关联 MR，跳过 Pipeline 监控` 并结束
+- 如果 `MR_IID` 有值 → 进入步骤 2
+
+#### 2. 轮询 Pipeline 状态
+
+与 `/git:commit-push-pr` 第七步的 Pipeline Watch 完全一致。使用 **单个 Bash 命令** 执行轮询循环。
+
+**轮询参数**：
+- 首次查询前等待：15 秒
+- 轮询间隔：30 秒
+- 最大轮询次数：60 次（约 30 分钟）
+
+使用 MR pipelines API 查询：
+```bash
+glab api "projects/${PROJECT_ID}/merge_requests/${MR_IID}/pipelines?per_page=1" --hostname {host}
+```
+
+轮询脚本、失败分析、自动修复逻辑均与 `/git:commit-push-pr` 第七步保持一致。
 
 ---
 

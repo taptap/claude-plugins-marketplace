@@ -178,10 +178,20 @@ else
   MR_DESC="$COMMIT_SUMMARY"
 fi
 
+# 检测项目是否有 claude reviewer（有则自动指派）
+GIT_HOST=$(git remote get-url origin | sed 's|git@||;s|:.*||')
+PROJECT_PATH=$(git remote get-url origin | sed 's|git@[^:]*:||;s|\.git$||')
+PROJECT_ENC=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1],safe=''))" "$PROJECT_PATH")
+HAS_CLAUDE=$(glab api "projects/${PROJECT_ENC}/members/all?query=claude" --hostname "$GIT_HOST" 2>/dev/null | \
+  python3 -c "import json,sys; d=json.load(sys.stdin); print('1' if any(u.get('username')=='claude' for u in d) else '0')" 2>/dev/null)
+REVIEWER_FLAG=""
+[ "$HAS_CLAUDE" = "1" ] && REVIEWER_FLAG="--reviewer claude"
+
 glab mr create \
   --title "$(git log -1 --pretty=%s)" \
   --description "$MR_DESC" \
-  --yes --remove-source-branch
+  --yes --remove-source-branch \
+  $REVIEWER_FLAG
 ```
 
 **如果 glab 不可用（fallback）：**
@@ -192,16 +202,20 @@ git push -u origin $(git branch --show-current) -o merge_request.create -o merge
 
 4. **输出结果**：显示 MR/PR 链接，并使用系统默认浏览器打开（如果可获取到链接）。
 
-### 8. Pipeline Watch（推送并创建 MR/PR 后自动执行）
+### 8. Pipeline Watch（推送并创建 MR/PR 后 **必须执行，禁止跳过**）
+
+> **MANDATORY** — 此步骤不可省略。MR/PR 创建成功后，必须立即执行 Pipeline 监控。
 
 与 `/git:commit-push-pr` 第七步保持一致。MR/PR 创建成功后自动进入 Pipeline 监控。
 
 流程概要：
-1. 轮询 Pipeline/Check 状态（30s 间隔，最长 30 分钟）
-2. 全绿 → macOS 通知（`osascript`）+ 终端输出
-3. 有红 → 拉取失败 job 日志，分析原因
-4. lint/test 类错误 → 自动修复代码（不 commit，等用户确认）
-5. 其他错误 → macOS 通知 + 输出日志摘要和修复建议
+1. **前台阻塞运行**，实时输出 pipeline 状态（不使用后台模式）
+2. 轮询 Pipeline/Check 状态（30s 间隔，最长 30 分钟）
+3. 全绿 → macOS 通知（`osascript`）+ 终端输出
+4. 有红 → 拉取失败 job 日志，分析原因：
+   - merge 冲突（job 名含 `merge-to-` 或日志含 `CONFLICT`）→ 自动调用 `Skill("git:fix-conflict", ...)`
+   - lint/test 类错误 → 自动修复代码（不 commit，等用户确认）
+   - 其他错误 → macOS 通知 + 输出日志摘要和修复建议
 
 平台支持：GitLab（`glab api`）和 GitHub（`gh pr checks` / `gh run view --log-failed`）。
 

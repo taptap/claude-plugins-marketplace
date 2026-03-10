@@ -1,7 +1,6 @@
 ---
 name: clear-cache
 description: 清理本地插件缓存，用于调试或重新加载插件。
-disable-model-invocation: true
 ---
 
 ## 执行命令

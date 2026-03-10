@@ -21,17 +21,31 @@ permissionMode: acceptEdits
 ### 1. 检查源目录
 
 ```bash
-test -d "{SKILLS_DIR}/grafana-dashboard-design" && echo "FOUND" || echo "NOT_FOUND"
+test -d "{SKILLS_DIR}/grafana-dashboard-design" && echo "GRAFANA_FOUND" || echo "GRAFANA_NOT_FOUND"
+test -d "{SKILLS_DIR}/code-reviewing" && echo "CHECKLIST_FOUND" || echo "CHECKLIST_NOT_FOUND"
 ```
 
-如果 NOT_FOUND，返回 skipped 状态。
+### 2. 复制 grafana-dashboard-design
 
-### 2. 复制 skill 目录
-
+如果 GRAFANA_FOUND：
 ```bash
 mkdir -p {PROJECT_ROOT}/.claude/skills
 cp -R "{SKILLS_DIR}/grafana-dashboard-design" {PROJECT_ROOT}/.claude/skills/
 ```
+
+### 3. 复制 review-checklist（code review 检查清单）
+
+如果 CHECKLIST_FOUND：
+```bash
+mkdir -p {PROJECT_ROOT}/.claude/skills/code-reviewing
+# 仅在文件不存在时复制（不覆盖项目自定义版本）
+test -f {PROJECT_ROOT}/.claude/skills/code-reviewing/review-checklist.md || \
+  cp "{SKILLS_DIR}/code-reviewing/review-checklist.md" {PROJECT_ROOT}/.claude/skills/code-reviewing/
+```
+
+**重要**：使用 `test -f ... ||` 确保不覆盖项目已有的自定义 checklist。
+
+如果目标文件已存在，记录为 "已存在（跳过）"。
 
 ## 输出格式（严格遵循）
 
@@ -39,4 +53,5 @@ cp -R "{SKILLS_DIR}/grafana-dashboard-design" {PROJECT_ROOT}/.claude/skills/
 - 状态: success / failed / skipped
 - 详情:
   - grafana-dashboard-design: [已复制/源目录不存在（跳过）]
+  - review-checklist: [已复制/已存在（跳过）/源目录不存在（跳过）]
 - 错误: [如有]
