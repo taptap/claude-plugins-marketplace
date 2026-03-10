@@ -1,7 +1,6 @@
 ---
 name: prepare-release
 description: 发布前准备。重置版本号、更新 CHANGELOG 和 README、校验一致性。
-disable-model-invocation: true
 ---
 
 ## 执行流程

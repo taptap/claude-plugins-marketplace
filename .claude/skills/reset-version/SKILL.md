@@ -1,7 +1,6 @@
 ---
 name: reset-version
 description: 发布前重置版本号。将本地版本重置为 origin/main 生产版本 +1。
-disable-model-invocation: true
 ---
 
 ## 执行流程

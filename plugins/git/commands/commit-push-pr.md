@@ -169,10 +169,20 @@ Skill(skill: "git:code-reviewing", args: "review committed changes on current br
      MR_DESC="$COMMIT_SUMMARY"
    fi
 
+   # 检测项目是否有 claude reviewer（有则自动指派）
+   GIT_HOST=$(git remote get-url origin | sed 's|git@||;s|:.*||')
+   PROJECT_PATH=$(git remote get-url origin | sed 's|git@[^:]*:||;s|\.git$||')
+   PROJECT_ENC=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1],safe=''))" "$PROJECT_PATH")
+   HAS_CLAUDE=$(glab api "projects/${PROJECT_ENC}/members/all?query=claude" --hostname "$GIT_HOST" 2>/dev/null | \
+     python3 -c "import json,sys; d=json.load(sys.stdin); print('1' if any(u.get('username')=='claude' for u in d) else '0')" 2>/dev/null)
+   REVIEWER_FLAG=""
+   [ "$HAS_CLAUDE" = "1" ] && REVIEWER_FLAG="--reviewer claude"
+
    glab mr create \
      --title "$(git log -1 --pretty=%s)" \
      --description "$MR_DESC" \
-     --yes --remove-source-branch
+     --yes --remove-source-branch \
+     $REVIEWER_FLAG
    ```
 
    **如果 glab 不可用（fallback）：**
@@ -187,7 +197,10 @@ Skill(skill: "git:code-reviewing", args: "review committed changes on current br
 3. 显示任务工单链接（如有）
 4. 使用系统默认浏览器打开 MR/PR 链接
 
-### 第七步：Pipeline Watch（MR/PR 创建后自动执行）
+### 第七步：Pipeline Watch（MR/PR 创建后 **必须执行，禁止跳过**）
+
+> **MANDATORY** — 此步骤不可省略。MR/PR 创建成功后，必须立即执行 Pipeline 监控。
+> 不要在输出 MR 链接后就结束，Pipeline Watch 是本命令的核心功能之一。
 
 MR/PR 创建成功后，自动进入 Pipeline 监控模式。根据第五步检测到的平台（GitLab/GitHub）选择对应 API。
 
@@ -217,7 +230,7 @@ gh pr checks {PR_NUMBER} --repo {owner}/{repo}
 
 #### 2. 轮询状态
 
-使用 **单个后台 Bash 命令**（`Bash(run_in_background=true)`）执行轮询循环。
+使用 **单个前台 Bash 命令**（直接阻塞运行，用户可实时看到输出）执行轮询循环。
 **禁止**用多个独立的 `sleep N && 查询` 命令手动轮询 — 必须使用下方的循环脚本。
 
 **轮询参数**：
@@ -323,6 +336,7 @@ gh run view {run_id} --repo {owner}/{repo} --log-failed
 
 | 类型 | 判断依据 | 处理 |
 |------|----------|------|
+| merge 冲突 | job 名含 `merge-to-` 或日志含 `CONFLICT` / `Merge conflict` | → 调用 `Skill("git:fix-conflict", "source-branch:{branch} target-branch:{target} mr-iid:{iid}")` |
 | lint 错误 | golangci-lint / eslint / flake8 等输出 | → 自动修复 |
 | 单元测试失败 | `go test` / jest / pytest 等输出 | → 自动修复 |
 | 编译错误 | `build failed` / `compilation error` | → 分析并给出修复建议 |
