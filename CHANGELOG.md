@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.25 — Codex skills sync
+
+### Sync Plugin (0.1.21)
+
+- Added `ensure-codex-skills.sh` to sync plugin skills to `~/.agents/skills/` for Codex discovery
+- Added manifest-based tracking (`~/.cache/codex-skills-sync/managed.txt`) to safely manage symlinks without touching user-created files
+- Added migration logic to clean old hardlinks and symlinks from `~/.codex/skills/` and `~/.agents/skills/`
+- Added `EXCLUDE_PLUGINS` and `EXCLUDE_SKILLS` config to skip unpublished plugins (e.g., ralph)
+- Added marketplace filter (`INCLUDE_MARKETPLACE`) to only sync skills from our own marketplace
+- Registered `ensure-codex-skills.sh` as SessionStart hook for automatic sync on session start
+
+### Marketplace
+
+- Bumped version from 0.1.24 to 0.1.25
+- Updated sync plugin to version 0.1.21
+
 ## 0.1.24 — Codex statusline fixes
 
 ### Sync Plugin (0.1.20)
