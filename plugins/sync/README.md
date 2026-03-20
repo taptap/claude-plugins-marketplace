@@ -344,6 +344,7 @@ chmod +x .githooks/pre-commit
 
 ## 版本历史
 
+- **v0.1.23** - 移除 context7@claude-plugins-official 自动安装（避免与项目级 .mcp.json 冲突）
 - **v0.1.22** - 新增 Codex 官方 TUI status_line 同步到 ~/.codex/config.toml；更新 codex-statusline agent/skill 文档；GitLab 域名从 git.gametaptap.com 迁移到 git.tapsvc.com
 - **v0.1.21** - 新增 ensure-codex-skills.sh 自动同步插件 skills 到 ~/.agents/skills/（Codex 可发现）；基于 manifest 跟踪管理的 symlink；迁移清理旧硬链接和非本 marketplace symlink；排除未发布插件（ralph）；注册为 SessionStart hook
 - **v0.1.20** - 修复 context usage 显示 100% 问题（改用 last_token_usage）；修复多实例 context 串扰；修复 tmux 普通模式无 statusline（_is_tmux_cc 区分 -CC 模式）；修复 tmux -CC 报错（passthrough 包裹）；iTerm2 配置改用 defaults export/import（防止被覆盖）；zsh hooks 更新检测改用 hash 比较；新增 /clean-codex-statusline skill

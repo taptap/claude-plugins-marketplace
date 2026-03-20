@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.27 — Remove context7 from auto-install plugins
+
+### Sync Plugin (0.1.23)
+
+- Removed `context7@claude-plugins-official` from auto-install plugin list to avoid conflict with project-level `.mcp.json` context7 config
+
+### Marketplace
+
+- Bumped version from 0.1.26 to 0.1.27
+- Updated sync plugin to version 0.1.23
+
 ## 0.1.26 — GitLab domain migration & Codex TUI statusline
 
 ### Git Plugin (0.1.13)
