@@ -1,12 +1,12 @@
 ---
 name: codex-statusline
-description: 安装/更新 Codex statusline
+description: 安装/更新 Codex statusline（tmux + iTerm2 + 官方 TUI status_line）
 user_invocable: true
 ---
 
 # Codex Statusline 安装
 
-安装 Codex statusline 到 tmux + iTerm2。
+安装 Codex statusline 到 tmux + iTerm2，并同步 Codex 官方 TUI `status_line` 到 `~/.codex/config.toml`。
 
 ## 步骤 1：定位脚本目录
 
@@ -29,7 +29,8 @@ bash "{SCRIPTS_DIR}/ensure-codex-statusline.sh"
 ```bash
 echo "=== 检查结果 ===" && \
 (test -f ~/.local/bin/codex-status && echo "✅ codex-status: 已安装" || echo "❌ codex-status: 未安装") && \
-(grep -q "codex-statusline BEGIN" ~/.zshrc.local 2>/dev/null && echo "✅ zsh hooks: 已配置" || echo "❌ zsh hooks: 未配置")
+(grep -q "codex-statusline BEGIN" ~/.zshrc.local 2>/dev/null && echo "✅ zsh hooks: 已配置" || echo "❌ zsh hooks: 未配置") && \
+(grep -q '^status_line = \\[\"model-with-reasoning\", \"fast-mode\", \"current-dir\", \"context-used\", \"codex-version\"\\]$' ~/.codex/config.toml 2>/dev/null && echo "✅ Codex TUI status_line: 已同步" || echo "❌ Codex TUI status_line: 未同步")
 ```
 
 向用户报告结果。如果是首次安装 iTerm2 配置，提示需要重启 iTerm2。

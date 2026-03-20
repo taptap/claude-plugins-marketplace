@@ -85,8 +85,8 @@ One-click configuration for MCP, auto-update, and Cursor synchronization:
 | Plugin  | Version | Description                                                                                          |
 | ------- | ------- | ---------------------------------------------------------------------------------------------------- |
 | spec    | 0.1.4   | Spec-Driven Development workflow plugin                                                              |
-| git     | 0.1.12  | Git workflow automation plugin (commit/push/MR + dual-mode code review + remote platform ops)        |
-| sync    | 0.1.21  | Dev environment config sync plugin (MCP + LSP + Hooks + Cursor + Claude Skills)                      |
+| git     | 0.1.13  | Git workflow automation plugin (commit/push/MR + dual-mode code review + remote platform ops)        |
+| sync    | 0.1.22  | Dev environment config sync plugin (MCP + LSP + Hooks + Cursor + Claude Skills)                      |
 | quality | 0.0.4   | AI-powered code quality plugin (9 parallel Agents: Bug detection, code quality, security, performance) |
 
 

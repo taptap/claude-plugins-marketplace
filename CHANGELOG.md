@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.26 — GitLab domain migration & Codex TUI statusline
+
+### Git Plugin (0.1.13)
+
+- Updated self-hosted GitLab domain from `git.gametaptap.com` to `git.tapsvc.com` across code-reviewing, git-remote-operations, and gitlab-operations docs
+
+### Sync Plugin (0.1.22)
+
+- Added Codex official TUI `status_line` sync to `~/.codex/config.toml` via `ensure-codex-statusline.sh`
+- Updated codex-statusline agent and skill docs to include Codex TUI sync
+- Updated self-hosted GitLab domain from `git.gametaptap.com` to `git.tapsvc.com` in git-cli-auth command
+
+### Marketplace
+
+- Bumped version from 0.1.25 to 0.1.26
+- Updated git plugin to version 0.1.13
+- Updated sync plugin to version 0.1.22
+
 ## 0.1.25 — Codex skills sync
 
 ### Sync Plugin (0.1.21)
@@ -485,4 +503,3 @@
 - Initial release with Git and Sync plugins
 - Added Git workflow automation (commit, push, merge request creation)
 - Added project configuration synchronization
-

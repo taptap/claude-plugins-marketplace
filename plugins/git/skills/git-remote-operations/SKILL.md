@@ -1,6 +1,6 @@
 ---
 name: git-remote-operations
-description: 创建和管理 PR/MR、Issue 和 CI/CD 工作流/流水线。支持 GitHub、GitLab 和 git.gametaptap.com，自动检测平台并使用 gh（GitHub）或 glab（GitLab）CLI。当用户提及 git.gametaptap.com URL、创建/管理 PR/MR、处理 Issue、检查流水线状态或执行任何 Git 远程平台操作时触发。
+description: 创建和管理 PR/MR、Issue 和 CI/CD 工作流/流水线。支持 GitHub、GitLab 和 git.tapsvc.com，自动检测平台并使用 gh（GitHub）或 glab（GitLab）CLI。当用户提及 git.tapsvc.com URL、创建/管理 PR/MR、处理 Issue、检查流水线状态或执行任何 Git 远程平台操作时触发。
 ---
 
 # Git 远程平台操作
@@ -18,7 +18,7 @@ git remote get-url origin
 | URL 模式 | 平台 | CLI 工具 |
 |----------|------|----------|
 | `github.com` | GitHub | `gh` |
-| `gitlab.com` 或 `git.gametaptap.com` | GitLab | `glab` |
+| `gitlab.com` 或 `git.tapsvc.com` | GitLab | `glab` |
 
 ### 步骤 2：加载平台操作指南
 
@@ -65,7 +65,7 @@ which glab  # GitLab
 
 ```bash
 gh auth login                              # GitHub
-glab auth login --host git.gametaptap.com  # GitLab（自托管）
+glab auth login --host git.tapsvc.com  # GitLab（自托管）
 ```
 
 ### 权限不足

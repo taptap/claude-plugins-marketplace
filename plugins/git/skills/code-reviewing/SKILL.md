@@ -308,7 +308,7 @@ GitHub: `https://github.com/{owner}/{repo}/pull/{number}`
 
 ### 步骤 2：获取 MR/PR 元数据
 
-对于自托管 GitLab（如 `git.gametaptap.com`），glab 不加 `--repo` 会默认指向 `gitlab.com`，导致 404。必须指定：
+对于自托管 GitLab（如 `git.tapsvc.com`），glab 不加 `--repo` 会默认指向 `gitlab.com`，导致 404。必须指定：
 
 **GitLab**:
 ```bash

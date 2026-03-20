@@ -65,7 +65,7 @@ export GH_TOKEN="<token>"
 3. 追加内容格式：
 ```bash
 # GitLab CLI Token
-export GITLAB_HOST="git.gametaptap.com"
+export GITLAB_HOST="git.tapsvc.com"
 export GITLAB_TOKEN="<token>"
 ```
 
@@ -79,7 +79,7 @@ export GITLAB_TOKEN="<token>"
 
 source 后自动执行 glab auth login 完成认证：
 ```bash
-echo "$GITLAB_TOKEN" | glab auth login --hostname git.gametaptap.com --stdin
+echo "$GITLAB_TOKEN" | glab auth login --hostname git.tapsvc.com --stdin
 ```
 
 #### 阶段 3：输出报告
@@ -96,7 +96,7 @@ glab: [✅ 已安装 vX.X.X / ❌ 未安装]
 ========
 GH_TOKEN:     [✅ 已配置 / ❌ 未配置]
 GITLAB_TOKEN: [✅ 已配置 / ❌ 未配置]
-GITLAB_HOST:  [✅ git.gametaptap.com / ❌ 未配置 (默认 gitlab.com)]
+GITLAB_HOST:  [✅ git.tapsvc.com / ❌ 未配置 (默认 gitlab.com)]
 
 [如果有未安装的工具]
 安装命令：
@@ -111,7 +111,7 @@ GITLAB_HOST:  [✅ git.gametaptap.com / ❌ 未配置 (默认 gitlab.com)]
 
 Token 获取：
   GitHub: https://github.com/settings/tokens (权限: repo)
-  GitLab: https://git.gametaptap.com/-/user_settings/personal_access_tokens (权限: api)
+  GitLab: https://git.tapsvc.com/-/user_settings/personal_access_tokens (权限: api)
 ```
 
 **带参数调用（配置 Token）：**
@@ -121,7 +121,7 @@ Token 获取：
 
 配置结果：
   GH_TOKEN:     [✅ 已写入并生效 / ⏭️ 未提供]
-  GITLAB_HOST:  [✅ git.gametaptap.com / ⏭️ 未提供]
+  GITLAB_HOST:  [✅ git.tapsvc.com / ⏭️ 未提供]
   GITLAB_TOKEN: [✅ 已写入并生效 / ⏭️ 未提供]
 
 已自动执行 source 和 glab auth login，当前 Claude Code 会话已生效。
@@ -157,7 +157,7 @@ Token 获取：
 
 **推荐**: 直接勾选 `api`
 
-**获取地址**: https://git.gametaptap.com/-/user_settings/personal_access_tokens
+**获取地址**: https://git.tapsvc.com/-/user_settings/personal_access_tokens
 
 ---
 

@@ -1,12 +1,12 @@
 ---
 name: codex-statusline-config
-description: 配置 Codex statusline（tmux + iTerm2）
+description: 配置 Codex statusline（tmux + iTerm2 + 官方 TUI status_line）
 model: haiku
 tools: Read, Bash
 permissionMode: acceptEdits
 ---
 
-你负责安装和配置 Codex statusline（tmux status-left + iTerm2 Status Bar）。
+你负责安装和配置 Codex statusline（tmux status-left + iTerm2 Status Bar + Codex 官方 TUI `status_line`）。
 
 ## 输入参数
 
@@ -27,12 +27,14 @@ bash "{SCRIPTS_DIR}/ensure-codex-statusline.sh"
 1. 安装 `codex-status` 到 `~/.local/bin/`
 2. 追加 zsh hooks 到 `~/.zshrc.local`
 3. 配置 iTerm2 Status Bar（仅 macOS）
+4. 同步 `~/.codex/config.toml` 中 `[tui].status_line`
 
 ### 检查结果
 
 ```bash
 test -f ~/.local/bin/codex-status && echo "SCRIPT=OK" || echo "SCRIPT=MISSING"
 grep -q "codex-statusline BEGIN" ~/.zshrc.local 2>/dev/null && echo "HOOKS=OK" || echo "HOOKS=MISSING"
+grep -q '^status_line = \[\"model-with-reasoning\", \"fast-mode\", \"current-dir\", \"context-used\", \"codex-version\"\]$' ~/.codex/config.toml 2>/dev/null && echo "TUI=OK" || echo "TUI=MISSING"
 ```
 
 ## 输出格式（严格遵循）
@@ -44,4 +46,5 @@ grep -q "codex-statusline BEGIN" ~/.zshrc.local 2>/dev/null && echo "HOOKS=OK" |
   - Shell hooks: [~/.zshrc.local 已配置/已更新]
   - iTerm2: [Status Bar 已配置/跳过（非 macOS）]
   - tmux: [status-left 已配置（新终端生效）]
+  - Codex TUI: [~/.codex/config.toml status_line 已同步/跳过（无 python3）]
 - 错误: [如有]

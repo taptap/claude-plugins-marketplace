@@ -2,7 +2,7 @@
 
 使用 `glab` 进行 GitLab 操作的命令参考。
 
-> **自托管 GitLab 实例说明**：glab 在 git 仓库内执行时，会自动从 `git remote` URL 检测 GitLab 实例地址（如 `git.gametaptap.com`），无需手动指定主机。如果在仓库外操作或需要指定其他仓库，可使用 `-R/--repo` 参数：
+> **自托管 GitLab 实例说明**：glab 在 git 仓库内执行时，会自动从 `git remote` URL 检测 GitLab 实例地址（如 `git.tapsvc.com`），无需手动指定主机。如果在仓库外操作或需要指定其他仓库，可使用 `-R/--repo` 参数：
 >
 > ```bash
 > # 在仓库内：glab 自动检测主机，直接使用即可
@@ -23,10 +23,10 @@ glab auth status
 glab auth login
 
 # 登录自托管实例
-glab auth login --host git.gametaptap.com
+glab auth login --host git.tapsvc.com
 
 # 使用 token 登录
-glab auth login --host git.gametaptap.com --token YOUR_TOKEN
+glab auth login --host git.tapsvc.com --token YOUR_TOKEN
 ```
 
 ## Merge Request 操作
@@ -194,7 +194,7 @@ glab pipeline cancel 789
 
 ```bash
 glab repo clone group/project
-glab repo clone group/project --host git.gametaptap.com
+glab repo clone group/project --host git.tapsvc.com
 ```
 
 ### 查看
