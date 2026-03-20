@@ -20,10 +20,10 @@ has_command() {
 SETTINGS_FILE="$HOME/.claude/settings.json"
 
 # 期望的插件列表
-REQUIRED_PLUGINS=("spec@taptap-plugins" "sync@taptap-plugins" "git@taptap-plugins" "quality@taptap-plugins")
+REQUIRED_PLUGINS=("spec@taptap-plugins" "sync@taptap-plugins" "git@taptap-plugins" "context7@claude-plugins-official" "skill-creator@claude-plugins-official")
 
 # 需要清理的废弃插件
-DEPRECATED_PLUGINS=("ralph@taptap-plugins")
+DEPRECATED_PLUGINS=("ralph@taptap-plugins" "quality@taptap-plugins")
 
 # 检查是否已有全部插件且无废弃插件
 check_plugins_ok() {
@@ -82,8 +82,9 @@ if has_command jq; then
       "spec@taptap-plugins": true,
       "sync@taptap-plugins": true,
       "git@taptap-plugins": true,
-      "quality@taptap-plugins": true
-    } | del(.["ralph@taptap-plugins"])) |
+      "context7@claude-plugins-official": true,
+      "skill-creator@claude-plugins-official": true
+    } | del(.["ralph@taptap-plugins"]) | del(.["quality@taptap-plugins"])) |
     .extraKnownMarketplaces = ((.extraKnownMarketplaces // {}) + {
       "taptap-plugins": {
         "source": {
@@ -133,8 +134,10 @@ def main():
     plugins["spec@taptap-plugins"] = True
     plugins["sync@taptap-plugins"] = True
     plugins["git@taptap-plugins"] = True
-    plugins["quality@taptap-plugins"] = True
-    plugins.pop("ralph@taptap-plugins", None)  # 清理已废弃的插件
+    plugins["context7@claude-plugins-official"] = True
+    plugins["skill-creator@claude-plugins-official"] = True
+    plugins.pop("ralph@taptap-plugins", None)   # 清理已废弃的插件
+    plugins.pop("quality@taptap-plugins", None)  # 已废弃，由 code-reviewing skill 替代
     data["enabledPlugins"] = plugins
 
     # 确保 extraKnownMarketplaces 包含 taptap-plugins

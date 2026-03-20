@@ -1,5 +1,5 @@
 #!/bin/bash
-# ensure-codex-statusline.sh - 自动安装 Codex statusline (tmux + iTerm2)
+# ensure-codex-statusline.sh - 自动安装 Codex statusline（tmux + iTerm2 + Codex TUI）
 # SessionStart hook: 后台执行，不阻塞 session 启动
 # 幂等：每步都检查是否已配置
 
@@ -133,6 +133,124 @@ if [ "$(uname)" = "Darwin" ]; then
   fi
 else
   echo "⏭️  非 macOS，跳过 iTerm2 配置"
+fi
+
+# ========== 第五步：同步 Codex 官方 status_line ==========
+
+CODEX_CONFIG="$HOME/.codex/config.toml"
+
+if command -v python3 >/dev/null 2>&1; then
+  if codex_sync_result="$(CODEX_CONFIG="$CODEX_CONFIG" python3 <<'PY'
+from pathlib import Path
+import os
+import sys
+
+CONFIG_PATH = Path(os.path.expanduser(os.environ["CODEX_CONFIG"]))
+MANAGED_LINE = 'status_line = ["model-with-reasoning", "fast-mode", "current-dir", "context-used", "codex-version"]\n'
+
+
+def consume_value_block(lines, start):
+    raw = lines[start].split("#", 1)[0]
+    if "[" not in raw:
+        return start + 1
+    balance = raw.count("[") - raw.count("]")
+    idx = start + 1
+    while balance > 0 and idx < len(lines):
+        raw = lines[idx].split("#", 1)[0]
+        balance += raw.count("[") - raw.count("]")
+        idx += 1
+    return idx
+
+
+def ensure_trailing_newline(text: str) -> str:
+    return text if text.endswith("\n") else text + "\n"
+
+
+def update_tui_status_line(text: str) -> str:
+    lines = text.splitlines(keepends=True)
+    start = None
+    end = len(lines)
+    for idx, line in enumerate(lines):
+        if line.strip() == "[tui]":
+            start = idx
+            break
+
+    if start is None:
+        base = ensure_trailing_newline(text) if text else ""
+        if base and base.strip():
+            if not base.endswith("\n\n"):
+                base += "\n"
+        return base + "[tui]\n" + MANAGED_LINE
+
+    for idx in range(start + 1, len(lines)):
+        stripped = lines[idx].strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            end = idx
+            break
+
+    section = lines[start + 1:end]
+    new_section = []
+    found = False
+    idx = 0
+    while idx < len(section):
+        raw = section[idx].split("#", 1)[0]
+        stripped = raw.lstrip()
+        if stripped.startswith("status_line") and "=" in stripped:
+            if not found:
+                indent = section[idx][: len(section[idx]) - len(section[idx].lstrip())]
+                new_section.append(f"{indent}{MANAGED_LINE}")
+                found = True
+            idx = consume_value_block(section, idx)
+            continue
+        new_section.append(section[idx])
+        idx += 1
+
+    if not found:
+        insert_at = 0
+        while insert_at < len(new_section):
+            stripped = new_section[insert_at].strip()
+            if stripped and not stripped.startswith("#"):
+                break
+            insert_at += 1
+        new_section.insert(insert_at, MANAGED_LINE)
+
+    updated = lines[: start + 1] + new_section + lines[end:]
+    return ensure_trailing_newline("".join(updated))
+
+
+if CONFIG_PATH.exists():
+    original = CONFIG_PATH.read_text(encoding="utf-8")
+    updated = update_tui_status_line(original)
+    if updated == ensure_trailing_newline(original):
+        print("UNCHANGED")
+        sys.exit(0)
+    CONFIG_PATH.write_text(updated, encoding="utf-8")
+    print("UPDATED")
+else:
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    CONFIG_PATH.write_text("[tui]\n" + MANAGED_LINE, encoding="utf-8")
+    print("CREATED")
+PY
+)"; then
+    case "$codex_sync_result" in
+      CREATED)
+        echo "✅ 已创建 ~/.codex/config.toml 并配置官方 status_line"
+        ;;
+      UPDATED)
+        echo "✅ 已同步 ~/.codex/config.toml 中的官方 status_line"
+        ;;
+      UNCHANGED)
+        echo "✅ ~/.codex/config.toml 中的官方 status_line 已是最新"
+        ;;
+      *)
+        echo "⚠️  Codex status_line 同步结果未知：$codex_sync_result"
+        ;;
+    esac
+  else
+    echo "⚠️  同步 ~/.codex/config.toml 的官方 status_line 失败"
+  fi
+else
+  echo "⚠️  未检测到 python3，跳过 ~/.codex/config.toml 官方 status_line 同步"
 fi
 
 echo "===== 完成 ====="
