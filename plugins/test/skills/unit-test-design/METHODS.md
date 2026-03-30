@@ -605,6 +605,66 @@ struct URLValidatorTests {
 
 **共存规则**：同一 test target 可同时包含 XCTest 和 Swift Testing 文件，Xcode 会自动识别并运行两种框架的测试。
 
+**批次一致性规则**：unit-test-design skill 在同一次执行中生成的所有测试文件**必须使用同一个框架**。init 阶段的选择逻辑：
+
+1. 项目已有测试**全部**使用 XCTest → 新测试使用 XCTest
+2. 项目已有测试**全部**使用 Swift Testing → 新测试使用 Swift Testing
+3. 项目中两种框架共存 → 优先使用 Swift Testing（除非待测模块的已有测试全部使用 XCTest）
+4. 项目无已有测试 → 使用 Swift Testing（Xcode 16+ 项目的默认选择）
+
+选择结果记录在 `test_plan.md` 的「项目测试约定」章节中，Phase 4 生成代码时严格遵循。
+
+## iOS/Swift 项目 Fixture 加载最佳实践
+
+Fixture（JSON / Protobuf / plist 等真实 API 响应文件）放在 test target 的 `Fixtures/` 子目录中。以下方式适用于 XCTest 和 Swift Testing，按优先级选用：
+
+**方式 1：`#filePath` 相对路径（推荐，XCTest 和 Swift Testing 通用）**
+
+```swift
+import Foundation
+
+enum FixtureLoader {
+    static func load(_ filename: String, relativeTo filePath: String = #filePath) throws -> Data {
+        let fixtureURL = URL(fileURLWithPath: filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("Fixtures")
+            .appendingPathComponent(filename)
+        return try Data(contentsOf: fixtureURL)
+    }
+
+    static func loadJSON<T: Decodable>(_ filename: String, as type: T.Type, relativeTo filePath: String = #filePath) throws -> T {
+        let data = try load(filename, relativeTo: filePath)
+        return try JSONDecoder().decode(type, from: data)
+    }
+}
+```
+
+使用示例：
+
+```swift
+@Test("解析游戏详情 fixture")
+func parseGameDetail() throws {
+    let data = try FixtureLoader.load("game_detail_response.json")
+    let detail = try JSONDecoder().decode(GameDetail.self, from: data)
+    #expect(detail.id == 12345)
+}
+```
+
+**方式 2：Bundle.module（仅限 SwiftPM test target）**
+
+```swift
+let url = try #require(Bundle.module.url(forResource: "game_detail_response", withExtension: "json"))
+let data = try Data(contentsOf: url)
+```
+
+**不推荐的做法**：
+
+- ❌ 在 `loadFixture()` 中用多个 `if-else` 回退不同路径（如 test Bundle → `#filePath` → 绝对路径），增加环境敏感性
+- ❌ 在测试方法中硬编码绝对路径
+- ❌ 依赖 `Bundle(for: type(of: self))` 而不验证资源是否存在
+
+**CI 兼容性**：`#filePath` 方式不依赖 Bundle 资源拷贝，在本地 Xcode、`xcodebuild` CLI、CI 环境下行为一致，是最可靠的选择。
+
 ## Property-Based Testing（属性测试）
 
 对纯函数、转换器、校验器等无副作用的代码，property-based testing 比固定样例更有效——它用随机输入验证不变量，而非只检查几个 AI 选定的值。
