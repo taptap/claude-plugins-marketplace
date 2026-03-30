@@ -17,10 +17,10 @@
 ### 1.1 验证 Bug 信息
 
 1. 验证预取的 Bug 信息：名称、状态、描述、优先级、严重程度（本地文件路径时从文件内容中提取）
-2. 确认关联代码变更列表非空（可从 `code_changes` 参数或预取数据获取）
+2. 确认代码变更来源（优先级：`code_diff`/`code_diff_text` > `code_changes` > 预取数据 > 搜索脚本）
 3. 记录 `project_key` 和 `work_item_id`（如可用）
-4. **provider 判断**：从代码变更列表的 `provider` 字段判断代码托管平台
-5. **回退**：代码变更为空时用 `search_mrs.py` / `search_prs.py` 搜索。仍为 0 → 停止
+4. **provider 判断**：MR/PR 模式下从代码变更列表的 `provider` 字段判断代码托管平台（本地 diff 模式跳过）
+5. **回退**：所有代码变更来源均为空时用 `search_mrs.py` / `search_prs.py` 搜索。仍为 0 → 停止
 
 ## 阶段 2: fetch
 
@@ -49,7 +49,10 @@
 
 对清单中每个代码变更执行：
 
-**diff 获取**：使用 GitLab/GitHub 辅助脚本获取 MR/PR 的 diff 和详情，具体命令见 [shared-tools/SKILL.md](../shared-tools/SKILL.md)。
+**diff 获取**：
+- 若有 `code_diff` 文件或 `code_diff_text` → 直接使用本地 diff（多个 diff 文件时逐个 Read）
+- 若有 `code_changes`（MR/PR 链接）→ 使用 GitLab/GitHub 辅助脚本获取 diff 和详情，具体命令见 [shared-tools/SKILL.md](../shared-tools/SKILL.md)
+- 本地 diff 和 MR/PR 可同时存在，全部纳入分析范围
 
 **变更分析**：
 1. 分类变更文件，识别变更类型
@@ -68,7 +71,7 @@
 - **副作用评估**：修复变更是否可能影响其他功能
 - **回归测试建议**：需要重点验证的场景
 
-### 3.3 生成 fix_analysis.json
+### 3.3 生成 bug_fix_analysis.json
 
 将分析结果结构化为 JSON，格式见 SKILL.md 输出格式定义。
 
@@ -76,7 +79,7 @@
 
 ### 4.1 生成 risk_assessment.json
 
-**前提**：回读 `fix_analysis.json`。
+**前提**：回读 `bug_fix_analysis.json`。
 
 综合评估残余风险：
 - 修复不完整 → 高风险

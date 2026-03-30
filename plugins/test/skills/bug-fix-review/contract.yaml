@@ -2,7 +2,7 @@ name: bug-fix-review
 version: "1.1"
 description: >
   分析 Bug 修复代码变更的完整性和残余风险。输入 Bug 链接或本地 Bug 描述文件，
-  输出 fix_analysis.json + risk_assessment.json。
+  输出 bug_fix_analysis.json + risk_assessment.json。
 
 input:
   one_of:
@@ -12,14 +12,29 @@ input:
     bug_doc:
       type: file
       description: 本地 Bug 描述文件（AI 对话生成或手动提供的 .md / .json 文件）
-  optional:
+  any_of:
     code_changes:
       type: string[]
       description: 关联的 MR/PR 链接列表（如未提供则通过 search 脚本自动搜索）
+    code_diff:
+      type: file[]
+      description: 本地 diff 文件列表（git diff 输出、patch 文件等，适用于修复代码尚未推送到 MR 的场景）
+    code_diff_text:
+      type: string
+      description: 直接提供的代码变更文本（粘贴的 diff 内容）
+  optional:
+    clarified_requirements:
+      type: file
+      description: 上游需求澄清结果（辅助理解修复背景）
+      from_upstream: requirement-clarification
+    requirement_points:
+      type: file
+      description: 上游功能点清单（辅助副作用评估）
+      from_upstream: requirement-clarification
 
 output:
   files:
-    - name: fix_analysis.json
+    - name: bug_fix_analysis.json
       description: 根因分析和修复完整性评估
       format: json
     - name: risk_assessment.json

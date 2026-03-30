@@ -2,7 +2,7 @@
 name: bug-fix-review
 description: >
   分析 Bug 修复代码变更的完整性和残余风险。输入 Bug 链接或本地 Bug 描述文件，
-  输出 fix_analysis.json + risk_assessment.json。
+  输出 bug_fix_analysis.json + risk_assessment.json。
 ---
 
 # Bug 修复分析
@@ -10,16 +10,16 @@ description: >
 ## Quick Start
 
 - Skill 类型：独立 skill
-- 适用场景：Bug 修复的 MR/PR 合并后，分析修复的完整性、副作用和残余风险
-- 必要输入：Bug 链接或本地 Bug 描述文件（至少一个）；关联代码变更（MR/PR）必须非空
-- 输出产物：`fix_analysis.json`、`risk_assessment.json`、`code_analysis.md`
-- 失败门控：关联代码变更为空时停止
+- 适用场景：Bug 修复的代码变更（MR/PR 或本地 diff）分析修复的完整性、副作用和残余风险
+- 必要输入：Bug 链接或本地 Bug 描述文件（至少一个）；代码变更（MR/PR 链接、本地 diff 文件、diff 文本任意来源）必须非空
+- 输出产物：`bug_fix_analysis.json`（根因+完整性）、`risk_assessment.json`（残余风险）、`code_analysis.md`（分析过程）
+- 失败门控：所有代码变更来源均为空时停止
 - 执行步骤：`init → fetch → analyze → output`
 
 ## 核心能力
 
 - Bug 信息提取 — 解析 Bug 描述、优先级、严重程度
-- 代码变更分析 — 获取 MR/PR diff，分类变更文件
+- 代码变更分析 — 获取 MR/PR diff 或读取本地 diff，分类变更文件
 - 根因分析 — 基于代码变更推断缺陷根因
 - 修复完整性评估 — 判断修复是否完整，是否有副作用
 - 残余风险评估 — 评估修复后的残余风险和回归建议
@@ -59,12 +59,12 @@ description: >
 | --- | --- | --- |
 | 1. init | 验证 Bug 信息和代码变更列表 | — |
 | 2. fetch | 获取 Bug 详情和代码 diff | `bug_description.md`、`analysis_checklist.md` |
-| 3. analyze | 根因分析 + 修复完整性评估 | `code_analysis.md`、`fix_analysis.json` |
+| 3. analyze | 根因分析 + 修复完整性评估 | `code_analysis.md`、`bug_fix_analysis.json` |
 | 4. output | 风险评估和最终产出 | `risk_assessment.json` |
 
 ## 输出格式
 
-### fix_analysis.json
+### bug_fix_analysis.json
 
 ```json
 {
@@ -105,8 +105,12 @@ description: >
 }
 ```
 
+## 与其他 skill 的关系
+
+- **change-analysis**：提供 Story/Bug 双场景的完整变更分析。本 skill 专注 Bug 修复的深度根因分析和修复完整性评估，可被 change-analysis 的 Bug 场景调用以获取更深度的分析
+
 ## 注意事项
 
 - 回读中间文件、中断恢复等通用约定见 [CONVENTIONS](../../CONVENTIONS.md)
-- 关联代码变更（MR/PR）必须非空
+- 代码变更（MR/PR 链接、本地 diff 文件、diff 文本）必须至少有一个来源非空
 - Bug 描述中如含飞书链接，用 `fetch_feishu_doc.py` 获取补充信息

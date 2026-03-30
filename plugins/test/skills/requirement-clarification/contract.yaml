@@ -25,7 +25,14 @@ input:
   optional:
     design_link:
       type: string
-      description: Figma 设计稿链接
+      description: >
+        Figma 设计稿链接。单独提供（无 one_of 字段）时触发设计稿澄清模式，
+        与 story_link / requirement_doc 组合提供时触发文档+设计稿联合澄清。
+    platform_scope:
+      type: string[]
+      description: >
+        需求涉及的目标平台列表（如 ["iOS", "Android", "Web", "Server"]）。
+        如未提供，skill 会在首轮澄清中主动询问。
     module_relations:
       type: file
       description: 模块关系索引文件（module-relations.json），由 spec 插件的 module-discovery 生成维护
@@ -41,10 +48,13 @@ output:
     - name: requirement_points.json
       description: 编号功能点清单，供下游 skill 消费
       format: json
+    - name: implementation_brief.json
+      description: 面向 coding agent 的实现任务清单，按平台拆分任务并附带 API 契约和依赖图
+      format: json
   structured:
     mode:
       type: string
-      description: 执行模式（document | exploratory）
+      description: 执行模式（document | design | document+design | exploratory）
     confidence_level:
       type: string
       description: 整体置信度（high | medium | low），探索模式下通常偏低
@@ -60,6 +70,12 @@ output:
     open_question_count:
       type: number
       description: 未解决问题数（对应 JSON 文件中 open_questions 数组的长度）
+    platform_scope:
+      type: string[]
+      description: 需求涉及的目标平台列表（如 ["iOS", "Server"]）
+    coordination_needed:
+      type: boolean
+      description: 是否需要多端/前后端协调
     analysis_mode:
       type: string
       description: 分析模式（single-agent | multi-perspective）
@@ -72,6 +88,12 @@ output:
     affected_modules_count:
       type: number
       description: 受影响模块总数（直接 + 间接）
+    total_tasks:
+      type: number
+      description: implementation_brief 中的实现任务总数
+    api_contracts_count:
+      type: number
+      description: 提取的 API 契约总数
 
 dependencies:
   scripts:

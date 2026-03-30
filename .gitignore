@@ -3,6 +3,9 @@
 .vscode/
 *.iml
 
+# Claude Code local settings
+.claude/settings.json
+
 # OS
 .DS_Store
 Thumbs.db

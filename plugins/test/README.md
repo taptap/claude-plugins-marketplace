@@ -1,10 +1,10 @@
 # test Plugin
 
-> QA 工作流插件，覆盖需求澄清 → 测试用例生成（含冗余对评审）→ 需求回溯 → Bug 修复分析的完整 QA 流程
+> QA 工作流插件，覆盖需求澄清 → 测试用例生成 / 评审 → 变更分析 → 需求回溯 → Bug 修复分析的完整 QA 流程
 
 ## 简介
 
-`test` 插件为 Claude Code 提供一套完整的 QA 工作流 Skill，支持功能测试、单元测试、集成测试的设计与生成。
+`test` 插件为 Claude Code 提供一套完整的 QA 工作流 Skill，支持功能测试、单元测试、集成测试的设计与生成。支持手工测试（单独调用各 skill）和 AI coding（工作流编排）两种场景。
 
 ### 核心 Skills
 
@@ -12,11 +12,14 @@
 |-------|------|------|
 | **requirement-clarification** | 核心工作流 | 多维度结构化问答（含影响范围分析），拉齐需求理解 |
 | **test-case-generation** | 核心工作流 | 基于需求拆解功能模块、生成测试用例、冗余对评审（4 维度）、用户确认 |
-| **requirement-traceability** | 核心工作流 | 双通道追溯（正向用例验证 + 反向代码追溯 + UI 还原度） |
-| **verification-test-gen** | 需求回溯辅助 | 从需求点生成结构化验证用例，AI 逐条对照代码推理 |
-| **test-failure-analyzer** | 测试门禁辅助 | 分析测试失败原因，分类处理，支持自循环 |
-| **ui-fidelity-check** | 需求回溯辅助 | 对比 Figma 设计稿与浏览器实现的 UI 还原度 |
-| **bug-fix-review** | 独立 skill | 分析 Bug 修复代码变更的完整性和残余风险 |
+| **test-case-review** | 独立 skill | 评审已有测试用例的覆盖度和质量，生成补充用例 |
+| **change-analysis** | 核心工作流 | 分析代码变更影响面和测试覆盖（Story/Bug 双场景） |
+| **requirement-traceability** | 仅 CLI/手工调用 | 双通道追溯（正向用例验证 + 反向代码追溯 + UI 还原度） |
+| **verification-test-gen** | 仅 CLI/手工调用 | 从需求点生成结构化验证用例，AI 逐条对照代码推理 |
+| **test-failure-analyzer** | 仅 CLI/手工调用 | 分析测试失败原因，分类处理，支持自循环 |
+| **ui-fidelity-check** | 仅 CLI/手工调用 | 对比 Figma 设计稿与浏览器实现的 UI 还原度 |
+| **bug-fix-review** | 仅 CLI/手工调用 | 分析 Bug 修复代码变更的完整性和残余风险 |
+| **api-contract-validation** | 独立校验工具 | 深度校验前后端 API 契约一致性（路径/参数/响应/Breaking Change） |
 | **unit-test-design** | 代码级生成 | 分析源代码，生成可执行的单元测试代码 |
 | **integration-test-design** | 代码级生成 | 分析 API/服务，生成可执行的集成测试代码 |
 
@@ -26,9 +29,46 @@
 |-------|------|
 | **shared-tools** | 共享脚本集合（飞书文档获取、GitLab/GitHub MR/PR 分析） |
 
+## 使用场景
+
+### 场景一：手工测试（单独调用）
+
+每个 skill 独立可用，输入灵活（story 链接 / 本地文档 / 纯文本 / 上游 JSON 均可）。
+
+| 需求 | 调用 skill | 输入 | 输出 |
+|------|-----------|------|------|
+| 需求澄清 | requirement-clarification | 需求链接/文档 | clarified_requirements.json |
+| 用例生成 | test-case-generation | 需求链接/文档 | final_cases.json |
+| 用例评审 | test-case-review | 已有测试用例 + 需求文档 | review_result.json + 补充用例 |
+| 变更分析 | change-analysis | Story/Bug + MR/PR/diff | change_analysis.json + coverage_report.json |
+| 需求回溯 | requirement-traceability | 需求 + MR/PR/diff | traceability_matrix.json |
+| Bug 修复分析 | bug-fix-review | Bug 信息 + MR/PR/diff | bug_fix_analysis.json + risk_assessment.json |
+| API 契约校验 | api-contract-validation | 前端 diff + 后端 diff/OpenAPI spec | api_contract_report.json |
+
+### 场景二：AI coding 工作流编排
+
+配合 AI coding 工具链使用，由编排层串联各 skill：
+
+```
+需求（Story/文档+设计稿）
+    ↓
+requirement-clarification（需求澄清）
+    ↓ clarified_requirements.json + requirement_points.json
+AI Coding 生成代码变更
+    ↓ code_changes
+change-analysis（变更影响分析）
+    ↓ coverage_report.json
+test-case-generation（用例生成）
+    ↓ final_cases.json
+test-case-review（用例评审）
+    ↓ review_result.json + supplementary_cases.json
+requirement-traceability（需求回溯验证）
+    ↓ traceability_matrix.json
+```
+
 ## 快速开始
 
-本插件支持 5 条独立工作链路，可独立执行也可组合使用：
+本插件支持 8 条独立工作链路，可独立执行也可组合使用：
 
 ### 链路 A — 功能测试全流程（串行）
 
@@ -60,7 +100,7 @@ API 定义   ──→ integration-test-design ──→ 集成测试代码
 ### 链路 C — Bug 修复分析（独立触发）
 
 ```
-Bug 信息 + MR/PR ──→ bug-fix-review ──→ fix_analysis.json + risk_assessment.json
+Bug 信息 + MR/PR/本地 diff ──→ bug-fix-review ──→ bug_fix_analysis.json + risk_assessment.json
 ```
 
 ### 链路 D — 需求回溯增强（配合链路 A）
@@ -91,6 +131,39 @@ test-failure-analyzer（失败分类 + 方案生成）
 ```
 
 > 注意：链路 E 的输入 `test_execution_report.json` 仅在环境支持执行测试时生成。若仅做代码级测试生成（链路 B）而未实际执行测试，则无法触发链路 E。
+
+### 链路 F — 变更分析（Story/Bug 双场景）
+
+分析代码变更的影响面、测试覆盖缺口，生成补充用例。
+
+```
+Story/Bug + MR/PR 或本地 diff
+    ↓
+change-analysis（变更影响分析 + 覆盖评估）
+    ↓ change_analysis.json + coverage_report.json + supplementary_cases.json
+```
+
+### 链路 G — 用例评审（独立触发）
+
+对已有测试用例做深度评审，识别缺口并补充。
+
+```
+已有测试用例 + 需求文档
+    ↓
+test-case-review（4 维度评审 + 补充用例）
+    ↓ review_result.json + supplementary_cases.json
+```
+
+### 链路 H — API 契约校验（独立触发）
+
+校验前后端 API 接口定义的一致性，识别 Breaking Change。
+
+```
+前端代码变更 + 后端代码变更（或 OpenAPI spec）
+    ↓
+api-contract-validation（接口签名提取 + 交叉比对）
+    ↓ api_contract_report.json
+```
 
 ## 支持的语言
 
@@ -154,13 +227,16 @@ plugins/test/
 │   ├── shared-tools/           # 共享脚本
 │   ├── requirement-clarification/  # 需求澄清（含影响范围分析）
 │   ├── test-case-generation/   # 测试用例生成（含冗余对评审）
+│   ├── test-case-review/       # [NEW] 用例评审（独立深度评审）
+│   ├── change-analysis/        # [NEW] 变更分析（Story/Bug 双场景）
 │   ├── requirement-traceability/   # 需求回溯（双通道 + UI 还原度）
 │   ├── verification-test-gen/  # 验证用例生成（AI 推理验证）
 │   ├── test-failure-analyzer/  # 测试失败分析（自循环）
 │   ├── ui-fidelity-check/      # UI 还原度检查
-│   ├── bug-fix-review/
+│   ├── bug-fix-review/         # Bug 修复分析
 │   ├── unit-test-design/       # 单元测试代码生成
-│   └── integration-test-design/ # 集成测试代码生成
+│   ├── integration-test-design/ # 集成测试代码生成
+│   └── api-contract-validation/ # API 契约校验
 └── README.md
 ```
 
@@ -177,6 +253,31 @@ shared-tools 脚本依赖以下环境变量（按需配置）：
 | `GITHUB_TOKEN` | GitHub Token | github_helper.py, search_prs.py |
 
 ## 版本历史
+
+### v0.0.18
+
+- New skill: `change-analysis` — analyze code change impact and test coverage for Story/Bug scenarios (dual-scenario: Story 7-phase impact analysis + coverage assessment + supplementary case generation; Bug 5-phase root cause + fix completeness + risk assessment)
+- New skill: `test-case-review` — independent 4-dimension review of existing test cases (coverage, completeness, correctness, quality) with supplementary case generation
+- New skill: `api-contract-validation` — deep validation of frontend-backend API contract consistency (path/param/response/breaking change detection)
+- Add cross-references between related skills (test-case-generation ↔ test-case-review, requirement-traceability ↔ change-analysis, bug-fix-review ↔ change-analysis)
+- Add "使用场景" section to README with manual testing and AI coding workflow mapping
+- Add Link F (change-analysis), Link G (test-case-review), and Link H (api-contract-validation) to quick start guide
+- Update core skills table to include new skills
+- Extend CONTRACT_SPEC.md with `any_of` input category (at least one, can provide multiple)
+- Add `implementation_brief.json` output to requirement-clarification (platform-split tasks with API contracts and dependency graph)
+- Add `platform_scope` and `coordination_needed` to requirement-clarification output
+- Add design-draft clarification mode and document+design joint mode to requirement-clarification
+- Enhance CHECKLIST.md with API contract dimension and impact scope dimension
+- Rename bug-fix-review output from `fix_analysis.json` to `bug_fix_analysis.json`
+- Add local diff input support (`code_diff` / `code_diff_text`) to bug-fix-review
+- Add `story_link` shortcut input to verification-test-gen
+
+### v0.0.17
+
+- Upgrade `fetch_feishu_doc.py` with wiki children traversal (`--with-children` / `--max-children`), recursive block rendering, and table/sheet/board content extraction
+- Add smoke-test mode to `requirement-traceability` with defect extraction and P0 gate
+- Define `ask_question` structured output format in CONVENTIONS.md for interactive Q&A cards; update requirement-clarification and test-case-generation PHASES.md
+- Fix `.gitignore` excluding `agents/test-case-generation/` review agent definitions
 
 ### v0.0.16
 
