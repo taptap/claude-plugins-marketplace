@@ -160,7 +160,7 @@ def cmd_mr_detail(project_path: str, mr_iid: str):
         "labels": mr.get("labels", []),
         "web_url": mr.get("web_url", ""),
         "diff_stats": {
-            "additions": mr.get("changes_count", ""),
+            "changed_files_count": mr.get("changes_count", ""),
         },
         "changed_files_count": len(changed_files),
         "changed_files": changed_files,
@@ -170,7 +170,7 @@ def cmd_mr_detail(project_path: str, mr_iid: str):
     print(f"MR !{mr_iid}: {len(changed_files)} 个变更文件", file=sys.stderr)
 
 
-def cmd_file_content(project_path: str, file_path: str, ref: str = "master"):
+def cmd_file_content(project_path: str, file_path: str, ref: str = "main"):
     """
     获取仓库中指定文件的完整内容
 
@@ -202,7 +202,7 @@ USAGE = """\
 示例:
     python3 gitlab_helper.py mr-diff server/zeus 4521
     python3 gitlab_helper.py mr-detail server/zeus 4521
-    python3 gitlab_helper.py file-content server/zeus src/main/java/App.java --ref master
+    python3 gitlab_helper.py file-content server/zeus src/main/java/App.java --ref main
 """
 
 
@@ -238,7 +238,7 @@ def main():
             if len(sys.argv) < 4:
                 print("用法: gitlab_helper.py file-content <project_path> <file_path> [--ref branch]", file=sys.stderr)
                 sys.exit(1)
-            ref = "master"
+            ref = "main"
             # 解析 --ref 参数
             for i, arg in enumerate(sys.argv[4:], start=4):
                 if arg == "--ref" and i + 1 < len(sys.argv):

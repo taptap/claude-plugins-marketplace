@@ -51,11 +51,11 @@ FEISHU_BASE_URL = (
 # ==================== 日志 ====================
 
 def log(msg):
-    print(f"[fetch_feishu_doc] {msg}", file=sys.stderr)
+    print(f"[LOG] [fetch_feishu_doc] {msg}", file=sys.stderr)
 
 
 def log_error(msg):
-    print(f"[fetch_feishu_doc] ERROR: {msg}", file=sys.stderr)
+    print(f"[LOG] [fetch_feishu_doc] ERROR: {msg}", file=sys.stderr)
 
 
 # ==================== 飞书 API ====================
@@ -601,6 +601,7 @@ class MarkdownRenderer:
                 if idx < len(merge_info):
                     mi = merge_info[idx]
                     if mi.get("col_span", 1) == 0 or mi.get("row_span", 1) == 0:
+                        row.append("")
                         continue
 
                 if idx < len(cell_ids):

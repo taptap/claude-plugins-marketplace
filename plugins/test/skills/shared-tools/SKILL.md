@@ -17,7 +17,7 @@ description: >
 
 | 脚本 | 功能 | 必填环境变量 | 可选环境变量 |
 | --- | --- | --- | --- |
-| `fetch_feishu_doc.py` | 获取飞书文档完整内容（文字+图片） | `FEISHU_APP_ID`, `FEISHU_APP_SECRET` | `FEISHU_HOST`（默认 `https://open.feishu.cn`） |
+| `fetch_feishu_doc.py` | 获取飞书文档完整内容（文字+图片） | `FEISHU_APP_ID`, `FEISHU_APP_SECRET` | `FEISHU_BASE_URL`（默认 `https://open.feishu.cn`，别名 `FEISHU_HOST`） |
 | `gitlab_helper.py` | GitLab MR diff/详情/文件内容 | `GITLAB_URL`, `GITLAB_TOKEN` | `GITLAB_SSL_VERIFY`（默认开启，设 `false` 关闭） |
 | `github_helper.py` | GitHub PR diff/详情/文件内容 | `GITHUB_TOKEN` | `GITHUB_URL`（默认 `https://api.github.com`） |
 | `search_mrs.py` | 搜索 Story/Bug 关联的 GitLab MR | `GITLAB_URL`, `GITLAB_TOKEN`, `GITLAB_PROJECT_MAPPING` | `GITLAB_SSL_VERIFY` |
@@ -29,10 +29,10 @@ description: >
 FETCH=$SKILLS_ROOT/shared-tools/scripts/fetch_feishu_doc.py
 
 # 从 URL 获取（自动识别 wiki/docx/docs 链接）
-python3 $FETCH --url "https://xxx.feishu.cn/wiki/AbCdEfG" --output-dir . 2>fetch_meta.json
+python3 $FETCH --url "https://xxx.feishu.cn/wiki/AbCdEfG" --output-dir . 2>tmp.log
 
 # 直接指定 document_id
-python3 $FETCH --doc-id "AbCdEfG" --output-dir . 2>fetch_meta.json
+python3 $FETCH --doc-id "AbCdEfG" --output-dir . 2>tmp.log
 
 # 仅获取文字，跳过图片下载
 python3 $FETCH --url "..." --output-dir . --skip-images
@@ -40,7 +40,7 @@ python3 $FETCH --url "..." --output-dir . --skip-images
 
 **输出**：
 - stdout: Markdown 格式文档内容（标题/段落/列表/表格/代码块/图片引用）
-- stderr: JSON 元数据 `{"title": "...", "document_id": "...", "images": [...], "image_count": N}`
+- stderr: 混合输出进度日志（以 `[LOG]` 开头）和 JSON 元数据（最后一行）。消费元数据时取最后一行：`2>tmp.log && tail -1 tmp.log > fetch_meta.json`
 
 **图片处理**：图片自动下载到 `{output-dir}/images/`，AI 可通过 Read 工具查看。`--skip-images` 跳过图片下载。
 
@@ -56,7 +56,7 @@ python3 $GITLAB mr-diff <project_path> <mr_iid>
 python3 $GITLAB mr-detail <project_path> <mr_iid>
 
 # 文件内容
-python3 $GITLAB file-content <project_path> <file_path> [--ref master]
+python3 $GITLAB file-content <project_path> <file_path> [--ref main]
 ```
 
 ## GitHub 辅助脚本
@@ -211,4 +211,4 @@ return JSON.stringify(collectLayout(target, 0));
 - **禁止**使用 WebFetch 获取飞书文档（飞书需认证，WebFetch 无法通过）
 - **禁止**使用 WebFetch 获取 Figma 设计稿（使用 Figma MCP 分级获取协议）
 - 脚本失败重试策略见 [CONVENTIONS.md](../../CONVENTIONS.md#脚本失败重试策略)
-- `fetch_feishu_doc.py` 的 stderr 推荐重定向到 `2>fetch_meta.json`，捕获元数据供后续引用
+- `fetch_feishu_doc.py` 的 stderr 包含进度日志和 JSON 元数据（最后一行），消费元数据时取 stderr 最后一行

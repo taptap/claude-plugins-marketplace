@@ -18,7 +18,7 @@ dependencies:
   env_vars:
     - FEISHU_APP_ID
     - FEISHU_APP_SECRET
-    - FEISHU_HOST              # 默认 https://open.feishu.cn
+    - FEISHU_BASE_URL          # 默认 https://open.feishu.cn（别名 FEISHU_HOST）
     - GITLAB_URL
     - GITLAB_TOKEN
     - GITLAB_SSL_VERIFY        # 可选，默认开启
