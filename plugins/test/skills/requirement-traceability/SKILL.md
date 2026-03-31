@@ -110,6 +110,11 @@ v0.0.10 引入双通道追溯，正向和反向使用不同的验证策略：
 - **P0 门控**：P0 缺陷数 > 0 → `verdict: "fail"`（冒烟不通过）
 - 额外输出：`defect_list.json`（结构化缺陷列表，含名称、优先级、实际结果、预期结果）+ `smoke_test_report.json`（冒烟测试报告含通过/不通过判定）
 - smoke-test 模式下跳过 Phase 5 自循环（不做交互式缺口修复，直接输出最终结果）
+- **评估范围界定**：冒烟测试评估的是 MR/PR diff 中代码变更的实现质量，不评估 CI/CD 流程状态。以下情况**不构成缺陷**：
+  - MR/PR 处于 opened/draft 状态（未合并）
+  - MR/PR 存在合并冲突
+  - MR/PR 的 pipeline 状态（pending/failed/running）
+  - MR/PR 的 review 状态（未审批/变更请求）
 
 ## 阶段流程
 

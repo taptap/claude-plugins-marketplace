@@ -67,6 +67,8 @@
 
 ### 3.0 准备 diff 数据
 
+**重要**：冒烟测试模式下，分析对象是 MR/PR 的 diff 内容（即将合入的代码变更），不是目标分支的当前状态。MR 的 merge_status（opened/merged/closed）不影响 diff 的获取和分析。
+
 MR/PR 模式下，先获取所有代码变更的 diff：
 
 ```bash
@@ -386,6 +388,16 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 - 优先级：统一为 P1（UI 差异通常不构成 P0 阻断）
 - `evidence.source` = `"ui_fidelity"`
 
+**排除规则（MR 流程状态）**：
+
+以下情况不提取为缺陷，仅在 `smoke_test_report.json` 的 `excluded_items` 中记录：
+
+1. MR/PR 处于 opened/draft 状态导致的「代码未合入目标分支」— 这是流程状态而非实现缺陷。冒烟测试基于 MR diff 评估实现质量，不关注合并状态
+2. 多个 MR/PR 拆分交付同一需求时，部分 MR 尚未创建或处于早期阶段 — 仅评估已提供的 MR diff 内容
+3. 需求实现分布在多个 MR 中，且当前仅提供了部分 MR — 基于已有 diff 评估，未覆盖的部分标记为 `out_of_scope` 而非 `implementation_missing`
+
+判断标准：如果需求对应的代码变更**存在于已提供的 MR diff 中**（无论 MR 是否已合并），则该需求视为「已有实现」，应进入正向验证通道评估实现质量，而非直接标记为缺失。
+
 **去重规则**：同一需求点（`requirement_ref` 相同）从多个来源命中时，合并为一个缺陷，取最高优先级，在 `evidence` 中记录所有命中来源。
 
 **confidence 过滤**：来源 1 中 confidence < 70 的 fail 项不提取为缺陷，仅在 `smoke_test_report.json` 的 `low_confidence_items` 中记录供参考。
@@ -407,6 +419,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 冒烟测试结论：{verdict}
 - 验证点：{total_points} 个（通过 {passed}，失败 {failed}，待定 {inconclusive}）
 - 缺陷：{total_defects} 个（P0: {p0}, P1: {p1}, P2: {p2}）
+{如有排除项: "- 排除项：{excluded_count} 个（MR 流程状态相关，不计入缺陷）"}
 {如 verdict == "fail": "P0 缺陷列表：\n" + 逐条列出 P0 缺陷名称}
 ```
 

@@ -397,6 +397,14 @@ UI 还原度检查报告（条件产出）。
       "reason": "confidence < 70，未纳入缺陷列表"
     }
   ],
+  "excluded_items": [
+    {
+      "requirement_ref": "R3",
+      "exclusion_reason": "mr_not_merged",
+      "detail": "MR !3606 处于 opened 状态，但 diff 中包含该需求的实现代码",
+      "mr_ref": "project/path!3606"
+    }
+  ],
   "scope": "基于 3 个 MR 的代码变更和 20 个功能验证点"
 }
 ```
@@ -408,5 +416,12 @@ UI 还原度检查报告（条件产出）。
 `fail_reason`：仅当 `verdict == "fail"` 时填写，列出 P0 缺陷名称摘要。
 
 `low_confidence_items`：forward_verification 中 `result == "fail"` 但 `confidence < 70` 的条目，未纳入 defect_list.json 但需关注。
+
+`excluded_items`：因 MR 流程状态而排除、不计入缺陷的条目。每条记录包含需求引用、排除原因和详情。
+
+`excluded_items[].exclusion_reason` 取值：
+- `mr_not_merged` — MR 未合并，但 diff 中包含该需求的实现代码
+- `out_of_scope` — 需求实现在未提供的 MR 中，不在本次评估范围
+- `partial_mr_set` — 多 MR 拆分交付同一需求，仅提供了部分 MR
 
 `traceability_summary`：从 `coverage_report.json` 中提取关键指标，便于快速了解回溯质量。
