@@ -91,6 +91,11 @@ output:
     total_tasks:
       type: number
       description: implementation_brief 中的实现任务总数
+    api_evidence_level:
+      type: string
+      description: >
+        源材料中 API 相关技术信息的充分程度（sufficient / partial / none）。
+        none 时 api_contracts_count 为 0 且报告中跳过 API 契约章节。
     api_contracts_count:
       type: number
       description: 提取的 API 契约总数

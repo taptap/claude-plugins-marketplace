@@ -87,7 +87,7 @@
 **检查点**：
 - 上下游系统依赖（第三方 API、内部服务）
 - 多端一致性要求（Server/Android/iOS/Web/PC）
-- **前后端 API 契约**（当 `platform_scope.coordination_needed` 为 true 时必查）：
+- **前后端 API 契约**（当 `platform_scope.coordination_needed` 为 true 且源材料包含 API 相关技术信息时执行。`api_evidence_level` 为 `"none"` 时跳过此子维度）：
   - 新增接口的 method、path、request/response 字段定义
   - 现有接口是否需要新增字段或修改行为
   - 错误码定义和异常响应格式

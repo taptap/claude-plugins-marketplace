@@ -230,6 +230,22 @@ python3 $SKILLS_ROOT/shared-tools/scripts/fetch_feishu_doc.py \
 - 功能点涉及实时数据更新（WebSocket、推送）→ 需要通信协议
 - 功能点涉及状态同步（如支付状态回调）→ 需要回调接口
 
+**Step 1.5：数据充分性检查**（参见 [CONVENTIONS.md 数据充分性门控](../../CONVENTIONS.md#条件触发章节的数据充分性门控)）
+
+在提取契约前，扫描所有源材料（需求文档、设计稿、已有代码），查找 API 相关的**具体技术证据**：
+- 显式 API 路径（`/api/xxx`、`POST /xxx`）
+- HTTP 方法 + 路径的技术描述
+- 请求/响应字段定义或 schema
+- 代码中的路由定义或 controller/handler 引用
+- 技术文档中的接口规格说明
+
+根据证据判定 `api_evidence_level`：
+- `"none"`（源材料中无任何上述证据，如仅有产品 PRD、用户故事）→ **跳过 Step 2 和 Step 3**，直接进入 3.3。在内存中记录跳过原因，供 consolidate 阶段使用
+- `"partial"`（有零散线索但不完整，如设计稿表单字段暗示请求字段，但无路径/方法）→ 进入 Step 2/3 但严格限制：每个字段必须有 `source` 标注，无 source 的不得出现
+- `"sufficient"`（路径 + 方法 + 部分字段可从文档或代码中明确提取）→ 正常执行
+
+> **硬规则**：禁止凭推测生成 API 路径或方法。每个契约字段必须标注 source（document/design/code）。无 source 标注的字段不得出现在契约草案中。
+
 **Step 2：提取已知契约信息**
 
 从需求文档、设计稿和已有代码中提取 API 相关信息：
@@ -240,8 +256,9 @@ python3 $SKILLS_ROOT/shared-tools/scripts/fetch_feishu_doc.py \
 **Step 3：生成契约草案和澄清问题**
 
 为每个前后端交互点生成初步契约草案：
-- 如信息充足（method、path、核心字段已知）→ 生成完整契约草案，通过 ask_question 确认
-- 如信息不足 → 生成针对性的澄清问题：「{功能}需要调用后端接口，请确认接口路径和核心字段」
+- 如 `api_evidence_level` 为 `"sufficient"` 且 method、path、核心字段已知 → 生成完整契约草案（每个字段标注 source），通过 ask_question 确认
+- 如 `api_evidence_level` 为 `"partial"` → 仅输出有 source 标注的字段，缺失部分生成针对性的澄清问题：「{功能}需要调用后端接口，请确认接口路径和核心字段」。不填充推测值作为占位
+- 如 `api_evidence_level` 为 `"none"` → 此步骤已在 Step 1.5 跳过，不会到达
 
 契约草案暂存在内存中，待 consolidate 阶段写入 `implementation_brief.json` 的 `api_contracts` 字段。
 
@@ -380,10 +397,14 @@ AskUserQuestion
 
 **Step 2：整合 API 契约**
 
+前置检查：
+- 若 3.2.4 的 `api_evidence_level` 为 `"none"`（已跳过）→ `api_contracts` 设为空数组 `[]`，添加 `api_contracts_note: "API 契约信息不足，待技术方案补充后确认"`，跳过本步骤
+- 若 `api_evidence_level` 为 `"partial"` → 仅写入有 source 标注的片段，每条标记 `"confirmed": false`
+- 纯前端或纯后端需求跳过此步骤
+
 将 3.2.4 阶段已提取并经用户确认的 API 契约草案写入 `api_contracts` 数组：
 - 每条契约标注 `consumers`（依赖该接口的前端 TASK ID）和 `providers`（实现该接口的后端 TASK ID）
 - 将契约中的 API 路径回填到对应前端 TASK 的 `api_dependencies` 和后端 TASK 的 `api_contract`
-- 纯前端或纯后端需求跳过此步骤
 
 **Step 3：构建依赖图**
 
@@ -398,3 +419,16 @@ AskUserQuestion
 - `figma_node`：对应的 Figma 设计节点 ID
 - `key_components`：页面核心 UI 组件列表
 - `interaction_notes`：关键交互行为说明
+
+### 4.5 报告章节输出规则
+
+生成最终报告（report.md）时，条件触发章节根据分析阶段的数据充分性判定决定是否输出：
+
+| 条件触发章节 | 对应分析步骤 | 判定字段 |
+| --- | --- | --- |
+| 核心 API 契约（草稿） | 3.2.4 API 契约提取 | `api_evidence_level` |
+
+**输出规则**：
+- `evidence: "none"` → 报告中**省略该章节**，可选在对应位置输出一行说明："> API 契约信息不足，待技术方案补充后确认"
+- `evidence: "partial"` → 输出章节但加前缀说明："以下 API 契约仅包含源材料中明确提及的信息，未覆盖的交互点待技术方案补充"
+- `evidence: "sufficient"` → 正常输出

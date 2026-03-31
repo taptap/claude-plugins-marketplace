@@ -310,11 +310,12 @@ description: >
 | `api_contracts[]` | 全局 API 契约汇总，标注提供方和消费方 task |
 | `dependency_graph` | 任务间依赖关系，key 为 task id，value 为其依赖的 task id 列表 |
 
-当需求仅涉及单平台（如纯后端）时，`tasks` 数组只包含该平台的任务，`api_contracts` 和 `dependency_graph` 可为空。
+当需求仅涉及单平台（如纯后端）、或源材料不包含 API 技术信息（`api_evidence_level: "none"`）时，`tasks` 数组只包含该平台的任务，`api_contracts` 为空数组，`dependency_graph` 可为空。
 
 ## 注意事项
 
 - 回读中间文件、中断恢复等通用约定见 [CONVENTIONS](../../CONVENTIONS.md)
+- 条件触发的分析章节（如 API 契约提取）在源材料信息不足时跳过，不生成推测性内容。详见 [CONVENTIONS.md 数据充分性门控](../../CONVENTIONS.md#条件触发章节的数据充分性门控)
 - 澄清过程中，从需求文档能直接获得答案的问题标记 `source: "document"`，不需要向人提问
 - 只在文档无法回答的问题上使用 ask_question，避免过度打扰
 - 每个功能点的 `clarification_status` 反映当前澄清程度，`unconfirmed` 的项目会传递给下游 skill 作为风险标记
