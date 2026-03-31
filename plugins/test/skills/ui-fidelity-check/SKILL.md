@@ -140,6 +140,16 @@ description: >
 | `design_context.json` | fetch | Figma 设计上下文数据 |
 | `comparison_result.json` | compare | ui-fidelity-checker Agent 的对比结果 |
 
+## Closing Checklist（CRITICAL）
+
+skill 执行的最终阶段（output）完成后，**必须**逐一验证以下产出文件：
+
+- [ ] `ui_fidelity_report.json` — 非空，包含 overall_fidelity 评级和 differences 差异清单
+
+全部必须项通过后，输出完成总结。如文件缺失，**停止并补生成**，不允许声明完成。
+
+通用阶段执行约定见 [CONVENTIONS.md](../../CONVENTIONS.md#阶段执行保障)。
+
 ## 注意事项
 
 - 回读中间文件、中断恢复等通用约定见 [CONVENTIONS](../../CONVENTIONS.md)

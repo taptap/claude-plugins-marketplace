@@ -136,9 +136,22 @@ description: >
 | --- | --- | --- |
 | `review_data.md` | fetch | 需求摘要 + 用例列表 |
 | `requirement_points.md` | understand | 编号功能点清单 |
-| `tc_review_detail.md` | review | 4 维度评审结果 |
+| `tc_review_detail.md` | review | 4 维度评审结果（中间文件，供 output 阶段消费生成 `review_result.json`） |
 | `review_summary.md` | summary | 统计 + 改进建议 + 补充用例清单 |
 | `supplementary_cases.json` | summary | 补充用例（可选） |
+
+## Closing Checklist（CRITICAL）
+
+skill 执行的最终阶段（output）完成后，**必须**逐一验证以下产出文件：
+
+- [ ] `review_result.json` — 非空，包含 `dimensions` 和 `overall_assessment` 字段
+- [ ] `review_summary.md` — 非空，包含统计数据和改进建议
+- [ ] `requirement_points.md` — 非空，包含编号功能点清单
+- [ ] `supplementary_cases.json` — 可选，仅当存在覆盖缺口时生成
+
+全部必须项通过后，输出完成总结。如任一必须文件缺失，**停止并补生成**，不允许声明完成。
+
+通用阶段执行约定见 [CONVENTIONS.md](../../CONVENTIONS.md#阶段执行保障)。
 
 ## 约束规则
 

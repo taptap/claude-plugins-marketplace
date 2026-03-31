@@ -343,6 +343,18 @@ Mock 方式应从项目已有测试中学习。如果项目中无已有测试可
 | 数据库 | sqlmock / 接口抽象 | pytest fixtures | 内存 DB / mock | @DataJpaTest / H2 | 内存 store |
 | 文件系统 | testing/fstest | tmp_path fixture | memfs | @TempDir | FileManager mock |
 
+## Closing Checklist（CRITICAL）
+
+skill 执行的最终阶段（verify）完成后，**必须**逐一验证以下产出：
+
+- [ ] 测试代码文件 — 已写入项目对应位置，可编译/运行
+- [ ] `test_plan.md` — 非空，包含测试点清单和价值评估
+- [ ] 断言审计通过 — 无 BLOCKED 项，WEAK 项已加强或书面说明理由
+
+全部必须项通过后，输出完成总结。如任一必须项未满足，**停止并修复**，不允许声明完成。
+
+通用阶段执行约定见 [CONVENTIONS.md](../../CONVENTIONS.md#阶段执行保障)。
+
 ## 注意事项
 
 - **项目约定优先**：init 阶段从已有测试中学到的框架、Mock 方式、命名风格是第一优先级，METHODS.md 模板是兜底

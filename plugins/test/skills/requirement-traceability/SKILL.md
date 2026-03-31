@@ -138,6 +138,23 @@ v0.0.10 引入双通道追溯，正向和反向使用不同的验证策略：
 - **test-case-review**：专注已有测试用例的质量评审。本 skill 的覆盖缺口分析可为 test-case-review 提供补充视角
 - **冒烟测试工作流**：本 skill 的 smoke-test 模式作为冒烟测试的分析引擎，复用双通道追溯能力，追加缺陷提取和 P0 门控。工作流层通过 `mode=smoke-test` 参数触发
 
+## Closing Checklist（CRITICAL）
+
+skill 执行的最终阶段（output）完成后，**必须**逐一验证以下产出文件：
+
+**标准模式：**
+- [ ] `traceability_matrix.json` — 非空，包含正向和反向追溯映射
+- [ ] `coverage_report.json` — 非空，包含覆盖率统计和缺口列表
+- [ ] `risk_assessment.json` — 非空，包含风险等级和建议
+
+**smoke-test 模式额外产出：**
+- [ ] `defect_list.json` — 非空，包含缺陷列表和优先级
+- [ ] `smoke_test_report.json` — 非空，包含 verdict 判定
+
+全部必须项通过后，输出完成总结。如任一必须文件缺失，**停止并补生成**，不允许声明完成。
+
+通用阶段执行约定见 [CONVENTIONS.md](../../CONVENTIONS.md#阶段执行保障)。
+
 ## 注意事项
 
 - 回读中间文件、中断恢复等通用约定见 [CONVENTIONS](../../CONVENTIONS.md)

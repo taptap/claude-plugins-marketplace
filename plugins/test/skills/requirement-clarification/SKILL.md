@@ -14,9 +14,14 @@ description: >
 - Skill 类型：核心工作流
 - 适用场景：新需求进入工作流程时，主动识别需求中的模糊地带，通过问答拉齐 AI 与人对需求的理解
 - 必要输入：需求链接、本地需求文档、自由文本需求描述、或历史对话碎片（至少提供一个）
-- 输出产物：`clarification_log.md`、`clarified_requirements.json`、`requirement_points.json`、`implementation_brief.json`
+- 输出产物（全部必须生成，缺一不可）：
+  - `clarification_log.md` — 澄清记录，供人回看
+  - `clarified_requirements.json` — 结构化结果，供下游 skill 消费
+  - `requirement_points.json` — 功能点清单，供 test-case-generation
+  - `implementation_brief.json` — 实现任务清单，供 coding agent
+- 完成标志：4 个文件全部生成且通过验证
 - 失败门控：需求正文不可读且用户无法补充信息时停止；所有未经确认的信息标记为 `unconfirmed`
-- 执行步骤：`init → fetch → clarify → consolidate`
+- 执行步骤：`init → fetch → clarify → consolidate`（阶段不可跳过）
 - 澄清维度检查项：[CHECKLIST.md](CHECKLIST.md)
 
 ## 核心能力
@@ -102,6 +107,17 @@ description: >
 1. `figma_metadata(url)` — 获取页面结构树，识别功能区块
 2. `figma_extract(url, 文本提取脚本)` — 提取 UI 文案和标签文本，用于理解功能点和交互说明
 3. `figma_context(url, nodeId)` — 仅对关键交互节点获取设计详情（如表单、弹窗）
+
+## 执行保障（CRITICAL）
+
+1. **阶段不可跳过**：4 个阶段（init → fetch → clarify → consolidate）必须按序执行，不允许跳过任何阶段。
+2. **consolidate 是最终阶段**：clarify 阶段的退出条件满足后，MUST 立即进入 consolidate 阶段，禁止在 consolidate 完成前执行任何下游操作（如创建实施计划、开始编码、调用其他 skill）。
+3. **输出文件校验**：skill 执行完毕前，必须验证以下 4 个文件均已生成：
+   - [ ] `clarification_log.md`
+   - [ ] `clarified_requirements.json`
+   - [ ] `requirement_points.json`
+   - [ ] `implementation_brief.json`
+4. **完成标志**：所有输出文件生成后，输出一行总结："需求澄清完成，已生成 N 个产物文件。" 这是 skill 的唯一合法终止点。
 
 ## 阶段流程
 

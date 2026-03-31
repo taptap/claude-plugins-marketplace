@@ -208,6 +208,26 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py file-content <owner/r
 
 使用 [CONVENTIONS.md 用例 JSON 格式](../../CONVENTIONS.md#用例-json-格式)。
 
+## Closing Checklist（CRITICAL）
+
+skill 执行的最终阶段完成后，**必须**根据场景逐一验证以下产出文件：
+
+**Story 场景：**
+- [ ] `change_analysis.json` — 非空，包含变更分类和影响面分析
+- [ ] `code_change_analysis.md` — 非空，包含代码变更分析过程
+- [ ] `test_coverage_report.md` — 非空，包含测试覆盖评估
+- [ ] `coverage_report.json` — 非空，包含结构化覆盖数据
+- [ ] `supplementary_cases.json` — 可选，仅当存在测试覆盖缺口时生成
+
+**Bug 场景：**
+- [ ] `change_analysis.json` — 非空，包含变更分类和影响面分析
+- [ ] `code_change_analysis.md` — 非空，包含代码变更分析过程
+- [ ] `change_fix_analysis.json` — 非空，包含修复完整性评估
+
+全部必须项通过后，输出完成总结。如任一必须文件缺失，**停止并补生成**，不允许声明完成。
+
+通用阶段执行约定见 [CONVENTIONS.md](../../CONVENTIONS.md#阶段执行保障)。
+
 ## 约束规则
 
 - **只写分析** — 只产出分析报告和用例 JSON，不修改源代码

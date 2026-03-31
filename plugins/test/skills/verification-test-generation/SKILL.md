@@ -180,6 +180,17 @@ description: >
 
 - **requirement-traceability**：其正向通道内置极简验证点提取（每个需求点 1-2 个基本断言），覆盖有限。推荐在 Chain D 中先运行本 skill 再运行 requirement-traceability，以获得高精度正向追溯
 
+## Closing Checklist（CRITICAL）
+
+skill 执行的最终阶段（report）完成后，**必须**逐一验证以下产出文件：
+
+- [ ] `verification_cases.json` — 非空，包含所有验证用例及 verification 结果
+- [ ] `verification_report.json` — 非空，包含 summary 统计和 per_requirement 明细
+
+全部必须项通过后，输出完成总结。如任一必须文件缺失，**停止并补生成**，不允许声明完成。
+
+通用阶段执行约定见 [CONVENTIONS.md](../../CONVENTIONS.md#阶段执行保障)。
+
 ## 注意事项
 
 - 回读中间文件、中断恢复等通用约定见 [CONVENTIONS](../../CONVENTIONS.md)

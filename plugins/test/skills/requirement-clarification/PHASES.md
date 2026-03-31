@@ -363,6 +363,16 @@ AskUserQuestion
 
 如果人的回答引发新的问题（如确认了某个功能后需要追问细节），进行补充轮次。结合退出条件判断是否继续，避免无限循环。
 
+### 3.6 阶段衔接（CRITICAL）
+
+clarify 阶段结束后，**必须立即进入阶段 4: consolidate**。
+
+> 不要在此处创建实施计划、不要调用 CreatePlan、不要开始编码。
+> consolidate 阶段生成的产物文件是整个 skill 的核心输出，跳过等同于 skill 执行失败。
+
+如果 clarify 退出时用户已表示希望直接开始编码，仍应先完成 consolidate，
+因为产物文件是下游 skill（test-case-generation、change-analysis 等）的输入依赖。
+
 ## 阶段 4: consolidate - 整合输出
 
 ### 4.1 生成 clarified_requirements.json
@@ -438,3 +448,24 @@ AskUserQuestion
 - `evidence: "none"` → 报告中**省略该章节**，可选在对应位置输出一行说明："> API 契约信息不足，待技术方案补充后确认"
 - `evidence: "partial"` → 输出章节但加前缀说明："以下 API 契约仅包含源材料中明确提及的信息，未覆盖的交互点待技术方案补充"
 - `evidence: "sufficient"` → 正常输出
+
+### 4.6 输出验证（MUST）
+
+逐一确认以下文件已写入工作目录：
+
+1. `clarification_log.md` — 检查是否包含所有 FP 的问答记录
+2. `clarified_requirements.json` — 检查 `functional_points` 数组非空
+3. `requirement_points.json` — 检查编号与 clarified_requirements 一致
+4. `implementation_brief.json` — 检查 `tasks` 数组非空
+
+全部通过后，输出完成总结：
+
+```
+需求澄清完成。
+- 执行模式：{mode}
+- 功能点：{total_points} 个（已确认 {confirmed_points}，待确认 {total - confirmed}）
+- 未解决问题：{open_question_count}
+- 产物文件：4/4 已生成
+```
+
+如任一文件缺失，**停止并补生成**，不允许声明完成。

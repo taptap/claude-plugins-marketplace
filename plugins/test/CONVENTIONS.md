@@ -9,6 +9,16 @@
 - 每个 skill 目录下必须包含 `contract.yaml`，定义机器可读的输入输出接口。`contract.yaml` 的编写规范见 [CONTRACT_SPEC.md](CONTRACT_SPEC.md)。
 - `description` 统一写成 `做什么 + 最小输入/输出`，避免泛化触发。
 
+## 阶段执行保障
+
+适用于所有包含多阶段流程的 skill。
+
+1. **阶段必须按序执行**：不允许跳过、合并或重排阶段。
+2. **阶段结束 ≠ skill 结束**：某个中间阶段的退出条件满足后，必须继续执行下一阶段，而非终止 skill。
+3. **产物文件必须生成**：skill 的 `contract.yaml` 中定义的所有 `output.files` 必须在最终阶段生成，缺少任一文件即为执行失败。
+4. **禁止提前进入下游操作**：在所有阶段完成前，不允许执行下游操作（如创建实施计划、开始编码、调用其他 skill）。
+5. **完成验证**：最终阶段结束后，逐一校验产物文件是否存在且内容有效，全部通过后才能声明完成。
+
 ## 断言审计协议
 
 详见 [skills/_shared/ASSERTION_AUDIT.md](skills/_shared/ASSERTION_AUDIT.md)。

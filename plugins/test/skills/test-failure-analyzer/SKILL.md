@@ -201,6 +201,17 @@ description: >
 | `failure_analysis.json` | plan | 分类结果（每轮更新） |
 | `action_plan.md` | plan | 处理方案（每轮更新） |
 
+## Closing Checklist（CRITICAL）
+
+skill 执行的最终阶段完成后，**必须**逐一验证以下产出文件：
+
+- [ ] `failure_analysis.json` — 非空，包含各失败用例的分类（expected_change / regression / flaky）
+- [ ] `action_plan.md` — 非空，包含各分类的处理方案和下一步清单
+
+全部必须项通过后，输出完成总结。如任一必须文件缺失，**停止并补生成**，不允许声明完成。
+
+通用阶段执行约定见 [CONVENTIONS.md](../../CONVENTIONS.md#阶段执行保障)。
+
 ## 注意事项
 
 - 测试执行结果为空时直接停止，不做任何分析
