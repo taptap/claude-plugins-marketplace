@@ -41,7 +41,7 @@
 
 ### 2.4 创建分析清单
 
-写入 `analysis_checklist.md`：Bug 信息摘要 + 代码变更清单。
+写入 `bug_fix_checklist.md`：Bug 信息摘要 + 代码变更清单。
 
 ## 阶段 3: analyze
 

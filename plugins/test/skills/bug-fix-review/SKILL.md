@@ -1,15 +1,20 @@
 ---
 name: bug-fix-review
 description: >
-  分析 Bug 修复代码变更的完整性和残余风险。输入 Bug 链接或本地 Bug 描述文件，
-  输出 bug_fix_analysis.json + risk_assessment.json。
+  [已废弃] 请使用 change-analysis（Bug 场景）。
+  本 skill 的能力已合并到 change-analysis 的 Bug 场景，包含完整的根因分析、
+  修复完整性评估和残余风险评估。
 ---
 
 # Bug 修复分析
 
+> **已废弃**：本 skill 的功能已合并到 [change-analysis](../change-analysis/SKILL.md) 的 Bug 场景。
+> 请使用 `change-analysis` 并提供 `bug_link` 参数，即可获得完整的根因分析、修复完整性评估和 `risk_assessment.json` 输出。
+> 本 skill 将在下个大版本中移除。
+
 ## Quick Start
 
-- Skill 类型：独立 skill
+- Skill 类型：独立 skill（已废弃，请使用 change-analysis Bug 场景）
 - 适用场景：Bug 修复的代码变更（MR/PR 或本地 diff）分析修复的完整性、副作用和残余风险
 - 必要输入：Bug 链接或本地 Bug 描述文件（至少一个）；代码变更（MR/PR 链接、本地 diff 文件、diff 文本任意来源）必须非空
 - 输出产物：`bug_fix_analysis.json`（根因+完整性）、`risk_assessment.json`（残余风险）、`code_analysis.md`（分析过程）
@@ -58,7 +63,7 @@ description: >
 | 阶段 | 目标 | 关键产物 |
 | --- | --- | --- |
 | 1. init | 验证 Bug 信息和代码变更列表 | — |
-| 2. fetch | 获取 Bug 详情和代码 diff | `bug_description.md`、`analysis_checklist.md` |
+| 2. fetch | 获取 Bug 详情和代码 diff | `bug_description.md`、`bug_fix_checklist.md` |
 | 3. analyze | 根因分析 + 修复完整性评估 | `code_analysis.md`、`bug_fix_analysis.json` |
 | 4. output | 风险评估和最终产出 | `risk_assessment.json` |
 

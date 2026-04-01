@@ -57,7 +57,7 @@
 }
 ```
 
-## coverage_report.json
+## traceability_coverage_report.json
 
 ### 完整结构
 
@@ -201,7 +201,7 @@
 }
 ```
 
-## api_contract（coverage_report.json 内嵌字段）
+## api_contract（traceability_coverage_report.json 内嵌字段）
 
 API 契约一致性检查结果（条件产出，仅当代码变更涉及 API 交互时写入）。
 
@@ -424,4 +424,4 @@ UI 还原度检查报告（条件产出）。
 - `out_of_scope` — 需求实现在未提供的 MR 中，不在本次评估范围
 - `partial_mr_set` — 多 MR 拆分交付同一需求，仅提供了部分 MR
 
-`traceability_summary`：从 `coverage_report.json` 中提取关键指标，便于快速了解回溯质量。
+`traceability_summary`：从 `traceability_coverage_report.json` 中提取关键指标，便于快速了解回溯质量。

@@ -59,7 +59,7 @@
 
 ### 2.4 创建分析清单
 
-写入 `analysis_checklist.md`：需求点清单（R1, R2...）、代码变更清单、统计。
+写入 `traceability_checklist.md`：需求点清单（R1, R2...）、代码变更清单、统计。
 
 ## 阶段 3: map - 构建映射矩阵（冗余对并行）
 
@@ -84,27 +84,27 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 
 ### 3.1 检查上游验证用例与 ID 映射
 
-检查工作目录中是否存在 `verification_cases.json`（上游 verification-test-gen 产出）：
+检查工作目录中是否存在 `verification_cases.json`（上游 verification-test-generation 产出）：
 
 1. 如果存在 → Read 该文件，用于正向通道的用例中介验证
 2. 如果不存在 → 在 3.2 中使用内置简化版用例生成
 
 **ID 映射**：上游 verification_cases.json 中 `requirement_id` 使用 `FP-` 前缀（来自 requirement-clarification），采用**编号直接继承**策略：
 
-1. 回读 `analysis_checklist.md` 中的需求点列表
+1. 回读 `traceability_checklist.md` 中的需求点列表
 2. 回读 `verification_cases.json` 中的 requirement_id（FP-1, FP-2...）
 3. **直接使用上游 FP- 编号作为主键关联**，同时记录本地 R- 编号作为别名（如 `FP-1 = R-1 (用户注册)`）
-4. 将映射表追加写入 `analysis_checklist.md` 的末尾
+4. 将映射表追加写入 `traceability_checklist.md` 的末尾
 5. 后续正向通道消费 verification_cases 时，通过 FP- 主键直接关联，无需语义匹配
 
 > 仅当无上游 FP- 编号（独立使用模式）时，才使用 R- 独立编号，无需建立映射。
 
 同时检查 `ui_fidelity_report.json` 是否存在（上游 UI 还原度检查产出）：
-1. 如果存在 → 在 4.4 中直接合并到 coverage_report.json
+1. 如果存在 → 在 4.4 中直接合并到 traceability_coverage_report.json
 2. 如果不存在且有 design_link → 在 3.4 中触发 UI 还原度检查
 
 同时检查 `api_contract_report.json` 是否存在（上游 api-contract-validation 产出）：
-1. 如果存在 → 在 4.4 中直接合并到 coverage_report.json，跳过 3.2.5 的内置检查
+1. 如果存在 → 在 4.4 中直接合并到 traceability_coverage_report.json，跳过 3.2.5 的内置检查
 2. 如果不存在且代码变更涉及 API 相关文件 → 在 3.2.5 中触发内置契约感知检查
 
 ### 3.2 正向通道：用例中介验证
@@ -114,7 +114,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 直接消费上游验证用例，对每条用例执行代码路径追踪：
 
 1. 回读 `verification_cases.json`
-2. **可追踪性评估**（前置）：对每条用例先评估代码路径的静态可追踪性——调用链超过 3 层、包含动态分派、调用目标跨服务 → 直接标记 `inconclusive`；diff-only 模式下 confidence 上限 70。详细规则参照 [verification-test-gen/PHASES.md](../verification-test-gen/PHASES.md) 4.2.0 节
+2. **可追踪性评估**（前置）：对每条用例先评估代码路径的静态可追踪性——调用链超过 3 层、包含动态分派、调用目标跨服务 → 直接标记 `inconclusive`；diff-only 模式下 confidence 上限 70。详细规则参照 [verification-test-generation/PHASES.md](../verification-test-generation/PHASES.md) 4.2.0 节
 3. 对每条通过可追踪性评估的 verification case：
    - 读取用例的 input 和 expected
    - 在代码中找到对应的入口函数/API
@@ -125,10 +125,10 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 
 **无上游 verification_cases.json 时（内置简化版）**：
 
-1. 从 `analysis_checklist.md` 的需求点中提取验收标准
+1. 从 `traceability_checklist.md` 的需求点中提取验收标准
 2. 为每条验收标准生成 1-2 条简化验证用例（输入→预期）
 3. 对每条用例执行上述代码路径追踪
-4. 注意：内置版的用例覆盖面不如上游 verification-test-gen 完整
+4. 注意：内置版的用例覆盖面不如上游 verification-test-generation 完整
 
 **降级**：如果代码不可读或 diff 信息不足 → 降级为传统 forward-tracer 模式。降级时 forward-tracer 输出 `{agent, requirement_to_code}` 格式（`status: covered/partial/missing`），需适配为 `forward_verification.json` 格式后写入：
 
@@ -145,10 +145,10 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 **触发条件**（满足任一即触发）：
 
 1. 代码变更文件中包含 API 相关模式（网络请求路径定义、API 模型/DTO、请求参数构造、路由定义等）
-2. `analysis_checklist.md` 中的需求点涉及接口交互（关键词：接口、API、数据获取、请求、网络等）
+2. `traceability_checklist.md` 中的需求点涉及接口交互（关键词：接口、API、数据获取、请求、网络等）
 3. `code_changes` 或 `backend_changes` 中同时存在前端和后端 MR/PR
 
-以上条件均不满足 → 跳过，在 coverage_report.json 中记录 `api_contract.overall_consistency: "N/A"`。
+以上条件均不满足 → 跳过，在 traceability_coverage_report.json 中记录 `api_contract.overall_consistency: "N/A"`。
 
 **上游优先**：如果工作目录已有 `api_contract_report.json`（上游 api-contract-validation 产出）→ 跳过内置检查，在阶段 4 直接合并。
 
@@ -191,13 +191,13 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 你是反向追溯 Agent。请先 Read agents/requirement-traceability/reverse-tracer.md 获取你的完整角色定义和输出格式要求。
 
 ## 需求点清单
-请 Read ./analysis_checklist.md 获取需求点列表（R1, R2...）。
+请 Read ./traceability_checklist.md 获取需求点列表（R1, R2...）。
 
 ## 代码变更
 {diff 内容直接内联，或指示 "请 Read ./diff.txt 获取代码变更"}
 
 ## 需求文档（如有）
-请 Read ./requirement_doc.md 获取需求文档。如文件不存在则基于 analysis_checklist.md 中的需求描述进行追溯。
+请 Read ./requirement_doc.md 获取需求文档。如文件不存在则基于 traceability_checklist.md 中的需求描述进行追溯。
 
 ## 任务
 按角色定义执行反向追溯，输出 JSON 格式的 code_to_requirement 映射。每条映射必须包含 confidence 评分（0-100）。
@@ -241,7 +241,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 
 ## 阶段 4: output - 交叉验证与风险评估
 
-**前提**：回读 `code_analysis.md` 和 `analysis_checklist.md`，以及两个 Agent 的输出。
+**前提**：回读 `code_analysis.md` 和 `traceability_checklist.md`，以及两个 Agent 的输出。
 
 ### 4.1 交叉验证
 
@@ -271,7 +271,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 
 格式见 [TEMPLATES.md](TEMPLATES.md#traceability_matrixjson)。包含 `requirement_to_code`、`code_to_requirement` 两个视角，每条映射含 `confidence` 和 `trace_direction` 字段。
 
-### 4.4 生成 coverage_report.json
+### 4.4 生成 traceability_coverage_report.json
 
 格式见 [TEMPLATES.md](TEMPLATES.md#coverage_reportjson)。包含需求覆盖率、代码追溯率、缺口清单和双向确认率。
 
@@ -349,7 +349,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 
 仅当 `mode == "smoke-test"` 时执行，否则跳过。
 
-回读 `forward_verification.json`、`coverage_report.json`、`traceability_matrix.json`，从以下来源提取缺陷：
+回读 `forward_verification.json`、`traceability_coverage_report.json`、`traceability_matrix.json`，从以下来源提取缺陷：
 
 **来源 1：正向验证失败**
 
@@ -363,17 +363,17 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 
 **来源 2：需求实现缺失**
 
-从 `coverage_report.json` 的 `gaps[]` 中提取 `type == "requirement_not_implemented"` 的条目：
+从 `traceability_coverage_report.json` 的 `gaps[]` 中提取 `type == "requirement_not_implemented"` 的条目：
 
 - 缺陷名称 = 需求点名称 + "实现缺失"
-- 预期结果 = 需求点描述（从 `analysis_checklist.md` 或 `traceability_matrix.json` 中获取）
+- 预期结果 = 需求点描述（从 `traceability_checklist.md` 或 `traceability_matrix.json` 中获取）
 - 实际结果 = "代码变更中未发现对应实现"
 - 优先级判定：`risk_level == "high"` → P0；`risk_level == "medium"` → P1
 - `evidence.source` = `"coverage_gap"`
 
 **来源 3：API 契约不一致**
 
-从 `coverage_report.json` 的 `api_contract.issues[]` 中提取 severity 为 high 或 medium 的条目：
+从 `traceability_coverage_report.json` 的 `api_contract.issues[]` 中提取 severity 为 high 或 medium 的条目：
 
 - 缺陷名称 = 端点路径 + 不一致类型描述
 - 预期结果 = 前端期望的定义
@@ -383,7 +383,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 
 **来源 4：UI 还原度差异（条件触发）**
 
-当 `coverage_report.json` 中存在 `ui_fidelity` 且有 high severity 差异时：
+当 `traceability_coverage_report.json` 中存在 `ui_fidelity` 且有 high severity 差异时：
 
 - 优先级：统一为 P1（UI 差异通常不构成 P0 阻断）
 - `evidence.source` = `"ui_fidelity"`
@@ -427,11 +427,11 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 
 > **smoke-test 模式行为**：当 `mode == "smoke-test"` 时，跳过 Phase 5 整个自循环阶段。冒烟测试场景不做交互式缺口修复，4.7 产出即为最终结果。
 
-当 coverage_report.json 存在 `missing` 或 `partial` 状态的需求点时，自动进入缺口修复循环。
+当 traceability_coverage_report.json 存在 `missing` 或 `partial` 状态的需求点时，自动进入缺口修复循环。
 
 ### 5.0 触发判定
 
-回读 `coverage_report.json`，检查以下条件：
+回读 `traceability_coverage_report.json`，检查以下条件：
 
 1. `gaps` 数组中是否存在 `status == "missing"` 或 `status == "partial"` 的条目
 2. 如果 gaps 为空 → **跳过 Phase 5**，回溯完成
@@ -448,7 +448,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 | 追溯失败 | 实现可能存在但 AI 未能识别映射 | 用户确认映射关系后标记为 covered |
 | 需求变更 | 需求点已废弃或延期 | 用户确认后标记为 `deferred` |
 
-将分类结果追加到 `coverage_report.json` 的 `gap_classification` 字段。
+将分类结果追加到 `traceability_coverage_report.json` 的 `gap_classification` 字段。
 
 ### 5.2 用户确认
 
@@ -477,7 +477,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 1. 仅对**用户确认需要重新追溯的需求点**执行增量分析（不重跑全量）
 2. 重新获取相关代码变更的最新 diff（代码可能已更新）
 3. 使用与 Phase 3.2 一致的验证方式（有 verification_cases 时用用例中介验证，否则用内置简化版），仅对修复的需求点对应的验证用例增量执行。forward-tracer 仅在与首次全量验证相同的降级条件触发时才使用
-4. 合并增量结果到 `traceability_matrix.json` 和 `coverage_report.json`
+4. 合并增量结果到 `traceability_matrix.json` 和 `traceability_coverage_report.json`
 5. 回到 5.0 重新判定缺口
 
 ### 5.4 收敛与退出
@@ -489,7 +489,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 3. **无进展**：本轮与上轮的缺口列表完全一致（无新覆盖的需求点）→ 强制退出，标注为"需人工介入"
 4. **用户主动终止**：用户在 5.2 步骤选择停止
 
-退出时更新 `coverage_report.json` 的 `loop_metadata` 字段：
+退出时更新 `traceability_coverage_report.json` 的 `loop_metadata` 字段：
 
 ```json
 {

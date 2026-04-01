@@ -105,7 +105,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-diff <owner/repo> 
 
 ### 2.4 创建分析清单
 
-写入 `analysis_checklist.md`：
+写入 `verification_checklist.md`：
 
 ```markdown
 # 验证用例分析清单
@@ -300,7 +300,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-diff <owner/repo> 
 
 ## 阶段 5: report - 报告生成
 
-**前提**：回读 `verification_cases.json` 和 `analysis_checklist.md`。
+**前提**：回读 `verification_cases.json` 和 `verification_checklist.md`。
 
 ### 5.1 按需求点汇总
 

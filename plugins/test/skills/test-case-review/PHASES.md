@@ -109,11 +109,11 @@
 - 预期明确可验证
 - 前置条件完整
 
-输出到 `review_result.md`。
+输出到 `tc_review_detail.md`。
 
 ## 阶段 5: summary
 
-回读 `review_result.md`。
+回读 `tc_review_detail.md`。
 
 ### 5.1 统计汇总
 

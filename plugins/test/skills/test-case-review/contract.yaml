@@ -43,7 +43,7 @@ output:
     - name: requirement_points.md
       description: 从需求中提炼的编号功能点清单
       format: markdown
-    - name: review_result.md
+    - name: tc_review_detail.md
       description: 4 维度逐项评审详细记录
       format: markdown
     - name: supplementary_cases.json

@@ -39,7 +39,7 @@ output:
     - name: context_summary.md
       description: 全局上下文摘要
       format: markdown
-    - name: review_result.md
+    - name: tc_gen_review.md
       description: 4 维度冗余对评审结果
       format: markdown
     - name: review_summary.json

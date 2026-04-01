@@ -77,7 +77,7 @@ description: >
 | 阶段 | 目标 | 关键产物 |
 | --- | --- | --- |
 | 1. init | 确认输入来源，判定需求类型和代码可用性 | — |
-| 2. analyze | 解析功能点和代码实现，识别可验证断言 | `analysis_checklist.md` |
+| 2. analyze | 解析功能点和代码实现，识别可验证断言 | `verification_checklist.md` |
 | 3. generate | 按功能点生成结构化验证用例 | `fp_{N}_cases.json`（中间文件） |
 | 4. verify | AI 逐条追踪代码逻辑，判定 pass/fail/inconclusive | `verification_cases.json` |
 | 5. report | 汇总验证结果，生成覆盖统计和风险报告 | `verification_report.json` |
@@ -180,8 +180,12 @@ description: >
 
 | 文件名 | 阶段 | 内容 |
 | --- | --- | --- |
-| `analysis_checklist.md` | analyze | 功能点清单、代码实现摘要、可验证断言列表 |
+| `verification_checklist.md` | analyze | 功能点清单、代码实现摘要、可验证断言列表 |
 | `fp_{N}_cases.json` | generate | 单个功能点的验证用例（子 Agent 产出或主 Agent 直接生成） |
+
+## 与其他 skill 的关系
+
+- **requirement-traceability**：其正向通道内置极简验证点提取（每个需求点 1-2 个基本断言），覆盖有限。推荐在 Chain D 中先运行本 skill 再运行 requirement-traceability，以获得高精度正向追溯
 
 ## 注意事项
 

@@ -12,7 +12,7 @@ Sonnet
 
 ## 执行时机
 
-**条件性启动**：功能点 >= 3 时由 verification-test-gen 并行调用，每个功能点一个实例；< 3 时在主 Agent 中直接生成。
+**条件性启动**：功能点 >= 3 时由 verification-test-generation 并行调用，每个功能点一个实例；< 3 时在主 Agent 中直接生成。
 
 ## 分析重点
 

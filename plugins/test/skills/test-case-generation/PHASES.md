@@ -248,13 +248,13 @@
 1. **对齐 findings**：相同 `affected_cases` + 相同 `category` → 视为同一发现
 2. **共识加成**：两个 Agent 都发现的问题 → confidence += 20（封顶 100）
 3. **按置信度分层**：
-   - confidence ≥ 80 → **直接确认**（写入 `review_result.md`，自动应用修改建议）
+   - confidence ≥ 80 → **直接确认**（写入 `tc_gen_review.md`，自动应用修改建议）
    - 60 ≤ confidence < 80 → **待用户确认**（标记，进入 phase 6）
    - confidence < 60 → **丢弃**
 4. **维度评分合并**：取两个 Agent 的 `dimension_scores` 平均值
 5. **coverage_gaps 合并**：取并集，重复项取较高 confidence
 
-将合并结果写入 `review_result.md`。
+将合并结果写入 `tc_gen_review.md`。
 
 ### 5.7 为用例标注 review_confidence
 
@@ -324,7 +324,7 @@ AskUserQuestion
 根据用户回复逐项处理：
 
 - **接受修改**：按建议修改 `test_cases.json` 中的对应用例
-- **驳回**：保持原样，在 `review_result.md` 中标记为「用户已驳回」
+- **驳回**：保持原样，在 `tc_gen_review.md` 中标记为「用户已驳回」
 - **补充说明**：根据用户补充信息更新用例或标记
 
 ### 6.4 降级处理

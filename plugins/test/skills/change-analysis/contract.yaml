@@ -2,7 +2,7 @@ name: change-analysis
 version: "1.0"
 description: >
   分析代码变更的影响面和测试覆盖。输入 Story/Bug 链接或需求文档 + 代码变更（MR/PR 或本地 diff），
-  输出 change_analysis.json + coverage_report.json + 可选 supplementary_cases.json。
+  输出 change_analysis.json + change_coverage_report.json + 可选 supplementary_cases.json。
 
 input:
   any_of:
@@ -52,15 +52,19 @@ output:
     - name: code_change_analysis.md
       description: 逐代码变更的详细分析记录
       format: markdown
-    - name: coverage_report.json
+    - name: change_coverage_report.json
       description: 测试覆盖率统计和缺口清单（Story 场景）
       format: json
     - name: test_coverage_report.md
       description: 测试覆盖分析过程记录（Story 场景）
       format: markdown
     - name: change_fix_analysis.json
-      description: 根因分析和修复完整性评估（Bug 场景，区别于 bug-fix-review 的 bug_fix_analysis.json）
+      description: 根因分析和修复完整性评估（Bug 场景）
       format: json
+    - name: risk_assessment.json
+      description: 残余风险评估和行动建议（Bug 场景）
+      format: json
+      optional: true
     - name: supplementary_cases.json
       description: 为覆盖缺口生成的补充用例（Story 场景，可选）
       format: json

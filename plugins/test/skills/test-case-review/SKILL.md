@@ -92,7 +92,7 @@ description: >
 | 1. init | 验证输入，确认用例和需求来源 | — |
 | 2. fetch | 获取需求文档、设计稿、测试用例 | `review_data.md` |
 | 3. understand | 提炼编号功能点清单 | `requirement_points.md` |
-| 4. review | 4 维度逐项评审 | `review_result.md` |
+| 4. review | 4 维度逐项评审 | `tc_review_detail.md` |
 | 5. summary | 统计汇总 + 补充用例生成 | `review_summary.md`、`supplementary_cases.json` |
 | 6. output | 结构化输出 | `review_result.json` |
 
@@ -138,7 +138,7 @@ description: >
 | --- | --- | --- |
 | `review_data.md` | fetch | 需求摘要 + 用例列表 |
 | `requirement_points.md` | understand | 编号功能点清单 |
-| `review_result.md` | review | 4 维度评审结果 |
+| `tc_review_detail.md` | review | 4 维度评审结果 |
 | `review_summary.md` | summary | 统计 + 改进建议 + 补充用例清单 |
 | `supplementary_cases.json` | summary | 补充用例（可选） |
 

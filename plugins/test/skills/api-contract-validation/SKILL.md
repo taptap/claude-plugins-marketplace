@@ -36,7 +36,7 @@ description: >
 
 ```
 api-contract-validation → api_contract_report.json
-  → requirement-traceability (Phase 3.1 检测上游文件 → Phase 4.4 合并到 coverage_report.json)
+  → requirement-traceability (Phase 3.1 检测上游文件 → Phase 4.4 合并到 traceability_coverage_report.json)
 ```
 
 当 requirement-traceability 发现工作目录中存在 `api_contract_report.json` 时，跳过内置的轻量级契约检查（Phase 3.2.5），直接使用本 skill 的深度校验结果。

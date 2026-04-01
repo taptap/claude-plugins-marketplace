@@ -15,10 +15,10 @@
 | **test-case-review** | 独立 skill | 评审已有测试用例的覆盖度和质量，生成补充用例 |
 | **change-analysis** | 核心工作流 | 分析代码变更影响面和测试覆盖（Story/Bug 双场景） |
 | **requirement-traceability** | 仅 CLI/手工调用 | 双通道追溯（正向用例验证 + 反向代码追溯 + UI 还原度） |
-| **verification-test-gen** | 仅 CLI/手工调用 | 从需求点生成结构化验证用例，AI 逐条对照代码推理 |
+| **verification-test-generation** | 仅 CLI/手工调用 | 从需求点生成结构化验证用例，AI 逐条对照代码推理 |
 | **test-failure-analyzer** | 仅 CLI/手工调用 | 分析测试失败原因，分类处理，支持自循环 |
 | **ui-fidelity-check** | 仅 CLI/手工调用 | 对比 Figma 设计稿与浏览器实现的 UI 还原度 |
-| **bug-fix-review** | 仅 CLI/手工调用 | 分析 Bug 修复代码变更的完整性和残余风险 |
+| **bug-fix-review** | 已废弃 | 已合并到 change-analysis Bug 场景 |
 | **api-contract-validation** | 独立校验工具 | 深度校验前后端 API 契约一致性（路径/参数/响应/Breaking Change） |
 | **unit-test-design** | 代码级生成 | 分析源代码，生成可执行的单元测试代码 |
 | **integration-test-design** | 代码级生成 | 分析 API/服务，生成可执行的集成测试代码 |
@@ -28,6 +28,15 @@
 | Skill | 功能 |
 |-------|------|
 | **shared-tools** | 共享脚本集合（飞书文档获取、GitLab/GitHub MR/PR 分析） |
+
+## 需求类 Skill 选用指引
+
+| 场景 | 推荐 Skill | 说明 |
+|---|---|---|
+| 拿到新需求，通过问答拉齐理解 | requirement-clarification | 交互式，产出 JSON 供下游消费 |
+| 需求文档已写好，评审会前质量把关 | requirement-review | 评估式，产出报告供评审会使用 |
+| 已有测试用例，评审覆盖度和质量 | test-case-review | 对照需求 4 维度评审 |
+| 代码变更已提交，分析影响和覆盖 | change-analysis | Story/Bug 双场景 |
 
 ## 使用场景
 
@@ -40,9 +49,9 @@
 | 需求澄清 | requirement-clarification | 需求链接/文档 | clarified_requirements.json |
 | 用例生成 | test-case-generation | 需求链接/文档 | final_cases.json |
 | 用例评审 | test-case-review | 已有测试用例 + 需求文档 | review_result.json + 补充用例 |
-| 变更分析 | change-analysis | Story/Bug + MR/PR/diff | change_analysis.json + coverage_report.json |
+| 变更分析 | change-analysis | Story/Bug + MR/PR/diff | change_analysis.json + change_coverage_report.json |
 | 需求回溯 | requirement-traceability | 需求 + MR/PR/diff | traceability_matrix.json |
-| Bug 修复分析 | bug-fix-review | Bug 信息 + MR/PR/diff | bug_fix_analysis.json + risk_assessment.json |
+| Bug 修复分析 | change-analysis（Bug 场景） | Bug 链接 + MR/PR/diff | change_fix_analysis.json + risk_assessment.json |
 | API 契约校验 | api-contract-validation | 前端 diff + 后端 diff/OpenAPI spec | api_contract_report.json |
 
 ### 场景二：AI coding 工作流编排
@@ -57,7 +66,7 @@ requirement-clarification（需求澄清）
 AI Coding 生成代码变更
     ↓ code_changes
 change-analysis（变更影响分析）
-    ↓ coverage_report.json
+    ↓ change_coverage_report.json
 test-case-generation（用例生成）
     ↓ final_cases.json
 test-case-review（用例评审）
@@ -83,7 +92,7 @@ test-case-generation（测试用例生成 + 冗余对评审 + 用户确认）
     ↓ final_cases.json（本 skill 最终产物，requirement-traceability 不消费此文件）
     + 用户提供 MR/PR 链接或 diff（手动输入，作为 requirement-traceability 的代码变更输入）
 requirement-traceability（需求回溯 — 双通道）
-    ↓ traceability_matrix.json + coverage_report.json + forward_verification.json
+    ↓ traceability_matrix.json + traceability_coverage_report.json + forward_verification.json
 ```
 
 ### 链路 B — 代码级测试生成（可并行）
@@ -97,10 +106,12 @@ API 定义   ──→ integration-test-design ──→ 集成测试代码
 
 > 链路 B 可接收链路 A 的 `requirement_points.json` 作为可选输入，用于指导测试覆盖重点（优先为 P0/P1 功能点对应的代码模块生成测试）。
 
-### 链路 C — Bug 修复分析（独立触发）
+### 链路 C — Bug 修复分析（已合并到链路 F）
+
+> 已合并到链路 F 的 Bug 场景。使用 `change-analysis` 并提供 `bug_link` 参数即可。
 
 ```
-Bug 信息 + MR/PR/本地 diff ──→ bug-fix-review ──→ bug_fix_analysis.json + risk_assessment.json
+Bug 信息 + MR/PR/本地 diff ──→ change-analysis（Bug 场景）──→ change_fix_analysis.json + risk_assessment.json
 ```
 
 ### 链路 D — 需求回溯增强（配合链路 A）
@@ -110,12 +121,12 @@ Bug 信息 + MR/PR/本地 diff ──→ bug-fix-review ──→ bug_fix_analys
 ```
 requirement_points.json + 代码实现
     ↓
-verification-test-gen（验证用例生成 + AI 推理验证）
+verification-test-generation（验证用例生成 + AI 推理验证）
     ↓ verification_cases.json + verification_report.json
 ui-fidelity-check（UI 还原度检查，有设计稿时）
     ↓ ui_fidelity_report.json
 requirement-traceability（合并到双通道回溯）
-    ↓ coverage_report.json（含正向验证率 + UI 还原度）
+    ↓ traceability_coverage_report.json（含正向验证率 + UI 还原度）
 ```
 
 ### 链路 E — 测试失败自循环（配合链路 B）
@@ -134,13 +145,20 @@ test-failure-analyzer（失败分类 + 方案生成）
 
 ### 链路 F — 变更分析（Story/Bug 双场景）
 
-分析代码变更的影响面、测试覆盖缺口，生成补充用例。
+分析代码变更的影响面、测试覆盖缺口，生成补充用例。Bug 场景含完整根因分析和风险评估（原链路 C 已合并至此）。
 
 ```
-Story/Bug + MR/PR 或本地 diff
+Story 场景:
+Story + MR/PR 或本地 diff
     ↓
 change-analysis（变更影响分析 + 覆盖评估）
-    ↓ change_analysis.json + coverage_report.json + supplementary_cases.json
+    ↓ change_analysis.json + change_coverage_report.json + supplementary_cases.json
+
+Bug 场景:
+Bug + MR/PR 或本地 diff
+    ↓
+change-analysis（根因分析 + 修复完整性评估 + 风险评估）
+    ↓ change_analysis.json + change_fix_analysis.json + risk_assessment.json
 ```
 
 ### 链路 G — 用例评审（独立触发）
@@ -175,6 +193,15 @@ api-contract-validation（接口签名提取 + 交叉比对）
 | Java | ✅ | ✅ | JUnit 5 + Mockito |
 | Kotlin | ✅ | ✅ | JUnit 5 + MockK |
 | Swift | ✅ | — | XCTest |
+
+## Skill 命名规则
+
+| 后缀 | 含义 | 示例 |
+|---|---|---|
+| `-generation` / `-design` | 产出新 artifact（用例、测试代码） | test-case-generation, unit-test-design |
+| `-review` / `-analysis` | 评估已有 artifact | test-case-review, change-analysis |
+| `-check` / `-validation` | 校验合规性 | ui-fidelity-check, api-contract-validation |
+| `-clarification` / `-traceability` | 建立映射或填补空白 | requirement-clarification, requirement-traceability |
 
 ## 架构特性
 
@@ -230,7 +257,7 @@ plugins/test/
 │   ├── test-case-review/       # [NEW] 用例评审（独立深度评审）
 │   ├── change-analysis/        # [NEW] 变更分析（Story/Bug 双场景）
 │   ├── requirement-traceability/   # 需求回溯（双通道 + UI 还原度）
-│   ├── verification-test-gen/  # 验证用例生成（AI 推理验证）
+│   ├── verification-test-generation/  # 验证用例生成（AI 推理验证）
 │   ├── test-failure-analyzer/  # 测试失败分析（自循环）
 │   ├── ui-fidelity-check/      # UI 还原度检查
 │   ├── bug-fix-review/         # Bug 修复分析
@@ -270,7 +297,7 @@ shared-tools 脚本依赖以下环境变量（按需配置）：
 - Enhance CHECKLIST.md with API contract dimension and impact scope dimension
 - Rename bug-fix-review output from `fix_analysis.json` to `bug_fix_analysis.json`
 - Add local diff input support (`code_diff` / `code_diff_text`) to bug-fix-review
-- Add `story_link` shortcut input to verification-test-gen
+- Add `story_link` shortcut input to verification-test-generation
 
 ### v0.0.17
 
@@ -286,7 +313,7 @@ shared-tools 脚本依赖以下环境变量（按需配置）：
 - R-002/R-023: Delete deprecated skills/test-review/ and skills/test-design/ directories
 - R-003: Unify ui_fidelity_report.json field names (category, UI-DIFF-N, design_url) across SKILL.md, PHASES.md, and TEMPLATES.md
 - R-004: Fix verification-test-writer.md output to flat JSON array (remove {agent, findings} wrapper)
-- R-005: Add traceability assessment (call depth, dynamic dispatch) before code path tracing in verification-test-gen and requirement-traceability
+- R-005: Add traceability assessment (call depth, dynamic dispatch) before code path tracing in verification-test-generation and requirement-traceability
 - R-006: Replace semantic ID matching with direct FP- inheritance in requirement-traceability
 - R-007: Correct reverse-tracer execution timing description
 - R-008: Add ui_fidelity_report as optional input in requirement-traceability contract
@@ -319,7 +346,7 @@ shared-tools 脚本依赖以下环境变量（按需配置）：
 
 ### v0.0.11
 
-- 新增 `verification-test-gen` skill — 从需求功能点生成结构化验证用例（具体输入→预期输出），AI 逐条对照代码推理验证
+- 新增 `verification-test-generation` skill — 从需求功能点生成结构化验证用例（具体输入→预期输出），AI 逐条对照代码推理验证
 - 新增 `test-failure-analyzer` skill — 分析测试失败原因，分类为预期变化/回归/不稳定，支持 分析→修复→重测 自循环（最多 3 轮）
 - 新增 `ui-fidelity-check` skill — 对比 Figma 设计稿与浏览器实现的 UI 还原度（6 维度对比）
 - 新增 3 个 Agent 定义：`verification-test-writer`、`failure-classifier`、`ui-fidelity-checker`

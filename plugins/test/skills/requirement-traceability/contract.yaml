@@ -2,7 +2,7 @@ name: requirement-traceability
 version: "2.1"
 description: >
   双向追溯需求与代码变更的映射关系。输入需求描述 + 代码变更（MR/PR 或本地 diff），
-  输出 traceability_matrix.json + coverage_report.json + risk_assessment.json。
+  输出 traceability_matrix.json + traceability_coverage_report.json + risk_assessment.json。
   支持 smoke-test 模式：在回溯基础上提取缺陷列表并执行 P0 门控判定。
 
 input:
@@ -33,8 +33,8 @@ input:
       from_upstream: requirement-clarification
     verification_cases:
       type: file
-      description: 上游验证用例（verification-test-gen 产出）
-      from_upstream: verification-test-gen
+      description: 上游验证用例（verification-test-generation 产出）
+      from_upstream: verification-test-generation
     design_link:
       type: string
       description: Figma 设计稿链接（UI 还原度检查时使用）
@@ -66,7 +66,7 @@ output:
     - name: traceability_matrix.json
       description: 需求×代码双向映射矩阵
       format: json
-    - name: coverage_report.json
+    - name: traceability_coverage_report.json
       description: 覆盖率统计和缺口清单
       format: json
     - name: risk_assessment.json
