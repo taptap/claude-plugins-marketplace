@@ -37,6 +37,48 @@
 
 **约定**：如工作目录中已存在上游产出文件（如 `clarified_requirements.json`），优先消费该文件，跳过对应的数据获取步骤。各 PHASES.md 在 fetch/understand 阶段开头检查上游文件是否存在。
 
+> 当 `$TEST_WORKSPACE` 已设置时，本节中的「工作目录」指 `$TEST_WORKSPACE` 所指向的目录。
+
+## 输出工作区
+
+通过本地 AI 工作流（非 pipeline 编排）调用多个 skill 时，各 skill 的产物默认散落在各自目录中，无法按需求维度组织。输出工作区解决这一问题。
+
+### `$TEST_WORKSPACE` 环境变量
+
+| 状态 | 行为 |
+| --- | --- |
+| 已设置 | 所有 skill 的输出文件写入 `$TEST_WORKSPACE`，上游文件也从该目录查找 |
+| 未设置 | 行为不变（写入当前工作目录），向后兼容 |
+
+### 命名约定
+
+工作区目录位于 `plugins/test/workspace/` 下，以需求名 kebab-case 命名：
+
+```
+plugins/test/workspace/
+├── add-coupon-feature/          # 需求1：所有 skill 产物汇聚于此
+│   ├── clarification_log.md
+│   ├── clarified_requirements.json
+│   ├── requirement_points.json
+│   ├── final_cases.json
+│   ├── traceability_matrix.json
+│   └── ...
+└── user-registration-refactor/  # 需求2
+    └── ...
+```
+
+`workspace/` 目录已加入 `.gitignore`，不会被提交。
+
+### 本地工作流示例
+
+```bash
+export TEST_WORKSPACE=plugins/test/workspace/add-coupon-feature
+mkdir -p $TEST_WORKSPACE
+# 1. 运行 requirement-clarification → 产出写入 $TEST_WORKSPACE
+# 2. 运行 test-case-generation → 从 $TEST_WORKSPACE 找到上游文件，产出也写入此处
+# 3. 运行 requirement-traceability → 同上
+```
+
 ## 本地文件输入
 
 当需求来源不是在线链接（飞书/Figma），而是本地文件（如 AI 对话后生成的 `.md` 或 `.json`）时：
