@@ -53,3 +53,9 @@ dependencies:
   scripts:
     - shared-tools/scripts/gitlab_helper.py
     - shared-tools/scripts/github_helper.py
+  env_vars:
+    - GITLAB_URL
+    - GITLAB_TOKEN
+    - GITLAB_PROJECT_MAPPING
+    - GITHUB_TOKEN
+    - GITHUB_REPO_MAPPING

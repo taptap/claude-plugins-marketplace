@@ -2,8 +2,8 @@
 """
 搜索 Story/Bug 关联的 GitHub PR。
 
-遍历配置的仓库，搜索标题/描述中包含 work_item_id 的 PR（open + closed），
-输出按仓库分组的 PR 信息（JSON）。
+遍历配置的仓库，搜索标题/描述中包含 work_item_id 的 PR（open + merged），
+输出按仓库分组的 PR 信息（JSON）。排除 closed-unmerged（被拒绝/废弃）的 PR。
 
 用法:
     python3 search_prs.py <work_item_id>
@@ -69,9 +69,9 @@ def _api_get(path: str, params: Optional[dict] = None) -> dict:
         return json.loads(response.read().decode("utf-8"))
 
 
-def _search_repo_prs(repo: str, term: str, state: str) -> List[dict]:
+def _search_repo_prs(repo: str, term: str, qualifier: str) -> List[dict]:
     """在单个 repo 内搜索 PR（支持分页）。"""
-    query = f'repo:{repo} is:pr in:title,body "{term}" state:{state}'
+    query = f'repo:{repo} is:pr in:title,body "{term}" {qualifier}'
     all_items: List[dict] = []
     page = 1
 
@@ -108,7 +108,8 @@ def _extract_repo_from_issue_url(html_url: str) -> str:
 def search_related_prs(work_item_id: str) -> dict:
     seen_urls: Set[str] = set()
     prs_by_repo: Dict[str, List[dict]] = {}
-    states = ["open", "closed"]
+    # 搜索已合并 + 进行中的 PR，排除 closed-unmerged（与 search_mrs.py 一致）
+    search_qualifiers = ["is:open", "is:merged"]
     terms = [work_item_id, f"TAP-{work_item_id}", f"#{work_item_id}"]
 
     repos: List[str] = []
@@ -119,11 +120,11 @@ def search_related_prs(work_item_id: str) -> dict:
     for repo in repos:
         collected: List[dict] = []
         for term in terms:
-            for state in states:
+            for qualifier in search_qualifiers:
                 try:
-                    issues = _search_repo_prs(repo, term, state)
+                    issues = _search_repo_prs(repo, term, qualifier)
                 except Exception as exc:
-                    print(f"[WARN] 搜索 PR 失败: repo={repo}, term={term}, state={state}, error={exc}", file=sys.stderr)
+                    print(f"[WARN] 搜索 PR 失败: repo={repo}, term={term}, qualifier={qualifier}, error={exc}", file=sys.stderr)
                     continue
 
                 for issue in issues:
@@ -144,7 +145,7 @@ def search_related_prs(work_item_id: str) -> dict:
                         "description": " ".join(body.split())[:200],
                         "state": issue.get("state", ""),
                         "author": (issue.get("user") or {}).get("login", ""),
-                        "merged_at": "",
+                        "merged_at": (issue.get("pull_request") or {}).get("merged_at") or "",
                         "repo": current_repo,
                     })
         if collected:
