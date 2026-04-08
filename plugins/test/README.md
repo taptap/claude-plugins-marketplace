@@ -23,11 +23,17 @@
 | **unit-test-design** | 代码级生成 | 分析源代码，生成可执行的单元测试代码 |
 | **integration-test-design** | 代码级生成 | 分析 API/服务，生成可执行的集成测试代码 |
 
+### 集成同步 Skills
+
+| Skill | 类型 | 功能 |
+|-------|------|------|
+| **metersphere-sync** | 集成同步 | 将 AI 生成的测试用例导入 MeterSphere，创建测试计划，可选基于验证置信度自动标记执行结果 |
+
 ### 支持 Skills
 
 | Skill | 功能 |
 |-------|------|
-| **shared-tools** | 共享脚本集合（飞书文档获取、GitLab/GitHub MR/PR 分析） |
+| **shared-tools** | 共享脚本集合（飞书文档获取、GitLab/GitHub MR/PR 分析、MeterSphere 用例同步） |
 
 ## 需求类 Skill 选用指引
 
@@ -265,7 +271,8 @@ plugins/test/
 │   ├── bug-fix-review/             # [已废弃] 已合并到 change-analysis Bug 场景
 │   ├── unit-test-design/           # 单元测试代码生成
 │   ├── integration-test-design/    # 集成测试代码生成
-│   └── api-contract-validation/    # API 契约校验
+│   ├── api-contract-validation/    # API 契约校验
+│   └── metersphere-sync/          # MeterSphere 用例同步与测试计划管理
 ├── PIPELINES.md                    # 链路数据流规格
 └── README.md
 ```
@@ -281,9 +288,14 @@ shared-tools 脚本依赖以下环境变量（按需配置）：
 | `GITLAB_URL` | GitLab 实例地址 | gitlab_helper.py, search_mrs.py |
 | `GITLAB_TOKEN` | GitLab Access Token | gitlab_helper.py, search_mrs.py |
 | `GITHUB_TOKEN` | GitHub Token | github_helper.py, search_prs.py |
+| `MS_BASE_URL` | MeterSphere 地址（有默认值） | metersphere_helper.py |
+| `MS_ACCESS_KEY` | MeterSphere API Key（有默认值） | metersphere_helper.py |
+| `MS_SECRET_KEY` | MeterSphere Secret Key（有默认值） | metersphere_helper.py |
+| `MS_PROJECT_ID` | MeterSphere 项目 ID（有默认值） | metersphere_helper.py |
 
 ## 版本历史
 
+- **v0.0.2** - 新增 `metersphere-sync` skill（MeterSphere 用例同步与测试计划管理）；新增 `metersphere_helper.py` 共享脚本（模块管理、用例导入、测试计划 CRUD、执行结果回写）
 - **v0.0.1** - 首次发布；完整 QA 工作流插件，包含需求澄清、测试用例生成（含冗余对评审）、用例评审、变更分析、需求回溯（含冒烟测试模式）、代码级测试生成（单元/集成）、API 契约校验、UI 还原度检查等全流程 Skill；共享工具集（飞书文档获取、MR/PR 分析脚本）；阶段执行保障和输出验证机制
 
 ### v0.0.18
