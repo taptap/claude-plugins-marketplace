@@ -1,4 +1,4 @@
-# test Plugin
+# Test Plugin
 
 > QA 工作流插件，覆盖需求澄清 → 测试用例生成 / 评审 → 变更分析 → 需求回溯 → Bug 修复分析的完整 QA 流程
 
