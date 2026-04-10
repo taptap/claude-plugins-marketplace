@@ -7,8 +7,10 @@
 - Removed Cursor-specific commands, templates, and snippet mirroring assets from the sync plugin
 - Changed `/sync:basic` and related MCP commands to focus on Claude Code environment setup only
 - Removed the `ensure-codex-skills.sh` SessionStart hook and stopped sync from maintaining `~/.agents/skills` for Codex
+- Removed deprecated `sequential-thinking` MCP cleanup logic from mcp command, agent, and scripts
 - Updated sync documentation, status checks, and helper skills to match the reduced Claude Code scope
 - Cleaned up repo-local optional hook guidance after removing the bundled snippet sync pre-commit flow
+- Added BASE subdirectory variable mapping documentation to `/sync:basic` command
 
 ### Marketplace
 
