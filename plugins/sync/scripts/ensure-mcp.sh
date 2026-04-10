@@ -120,14 +120,6 @@ ensure_mcp_jq() {
     echo "✅ context7 已配置，跳过"
   fi
 
-  # 清理已废弃的 sequential-thinking（如果存在）
-  if jq -e '.mcpServers["sequential-thinking"]' "$file" >/dev/null 2>&1; then
-    jq 'del(.mcpServers["sequential-thinking"])' \
-      "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
-    echo "🗑️ 已移除 sequential-thinking MCP（已废弃）"
-    changed=true
-  fi
-
   if [ "$changed" = "false" ]; then
     echo "✅ MCP 配置已完整，无需更新"
   fi
@@ -162,7 +154,7 @@ MCP_SERVERS = {
     }
 }
 
-DEPRECATED_SERVERS = ["sequential-thinking"]
+DEPRECATED_SERVERS = []
 
 def get_project_path():
     """获取当前项目路径"""

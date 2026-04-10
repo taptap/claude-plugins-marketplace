@@ -32,7 +32,6 @@ permissionMode: acceptEdits
    - `{"mcpServers": {<上面的配置>}}`
 5. 如果文件存在：
    - 只在 `mcpServers.context7` 缺失时添加 `context7`
-   - 如果存在 `mcpServers.sequential-thinking`，删除该条目
    - 保留其他已有配置
 
 ## 输出格式
@@ -41,5 +40,5 @@ permissionMode: acceptEdits
 - 状态: success / failed
 - 详情:
   - ~/.claude.json: [新增 context7/已存在/创建新文件]
-  - sequential-thinking 清理: [已清理/不存在]
+
 - 错误: [如有]

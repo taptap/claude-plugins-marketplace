@@ -43,7 +43,7 @@
 
 ### `/sync:mcp`
 
-同步 `context7` 到 `~/.claude.json` 的 `mcpServers`，不会覆盖已有的其他 MCP 配置，并会清理已退役的 `sequential-thinking`。
+同步 `context7` 到 `~/.claude.json` 的 `mcpServers`，不会覆盖已有的其他 MCP 配置。
 
 ### `/sync:mcp-feishu`
 
