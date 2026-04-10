@@ -380,7 +380,7 @@ requirement-clarification → clarified_requirements.json (functional_point.conf
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `case_id` | string | 是 | 模块前缀 + 序号（如 M1-TC-01），review 阶段去重后允许断号 |
-| `title` | string | 是 | 用例标题，纯业务描述。禁止包含：内部编号、优先级前缀（P0/P1/P2/P3）、测试方法或分类前缀（如「等价类-有效类：」「等价类-无效类：」「场景法：」等）。这些信息已由 `priority` 和 `test_method` 字段承载 |
+| `title` | string | 是 | 用例标题，纯业务描述。禁止包含：内部编号、优先级前缀（P0/P1/P2/P3）、测试方法或分类前缀（如「等价类-有效类：」「等价类-无效类：」「场景法：」等）、来源前缀（如「[补充]」「【补充】」「[新增]」等）。这些信息已由 `priority`、`test_method` 和 `source` 字段承载 |
 | `module` | string | 是 | 模块名称（不带编号前缀） |
 | `priority` | string | 是 | P0 / P1 / P2 / P3 |
 | `test_method` | string | 是 | 等价类划分 / 边界值分析 / 场景法 / 错误推测法 / 判定表法 / 状态迁移法 |
