@@ -257,9 +257,10 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 3. 反向追溯的"未归属代码变更"保持原有逻辑
 
 对每个映射对判定方向：
-   - **双向确认**：正向和反向都确认同一映射 → `trace_direction: "bidirectional"`，confidence = max(两个通道的 confidence) + 20（封顶 100）
+   - **双向确认**：正向和反向都确认同一映射 → `trace_direction: "bidirectional"`，confidence 按 [CONVENTIONS.md 跨 Agent 共识规则](../../CONVENTIONS.md#跨-agent-共识规则) 计算：双方 confidence 均 >= 70 → `min(100, max(两者) + 20)`；任一方 < 60 → 不加成，取两者算术平均值；其余情况（一方 60-69）→ 不加成，取两者中较高值
    - **仅正向确认**：正向找到但反向未找到 → `trace_direction: "forward-only"`，保留正向通道的 confidence
    - **仅反向确认**：反向找到但正向未找到 → `trace_direction: "reverse-only"`，保留 reverse-tracer 的 confidence
+   - **正反矛盾**：正向 pass 但反向 missing（或反向确认但正向 fail）→ 保留对应单通道的 `trace_direction`，confidence 在原值基础上 -15（下限 50），标记 `conflict: true`，建议人工复核
    - **均未找到**：确认为覆盖缺口
 
 ### 4.2 覆盖缺口汇总
@@ -302,6 +303,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 5. `state_coverage_rate` ← `ui_fidelity_report.json` 的 `states_coverage.coverage_rate`
 6. `source` ← `"ui-fidelity-check"`（上游产出）或 `"inline"`（本 skill 内置检查）
 7. 如无 `ui_fidelity_report.json` 且未执行 UI 检查 → `ui_fidelity` 字段不写入
+8. 当 `ui_fidelity.by_severity.high > 0` 时，对相关需求点的 `forward_verification.json` 结果追加 `ui_risk_flag: true` 标记。4.6 缺陷提取时，来源 1 中 `result == "pass"` 但 `ui_risk_flag == true` 的条目，在 `smoke_test_report.json` 的 `notes` 中提示"代码验证通过但存在 UI 还原度高风险差异，建议人工验证"
 
 - `api_contract`: 如果有 `api_contract_report.json`（上游产出）或 3.2.5 内置检查结果，按以下字段映射合并 API 契约数据：
 
@@ -378,7 +380,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 - 缺陷名称 = 端点路径 + 不一致类型描述
 - 预期结果 = 前端期望的定义
 - 实际结果 = 后端实际提供的定义
-- 优先级判定：`severity == "high"` → P0（类型不匹配、路径不匹配、必填参数缺失）；`severity == "medium"` → P1
+- 优先级判定：`severity == "high"` → P0（类型不匹配、路径不匹配、必填参数缺失）；`severity == "medium"` → P1；`severity == "low"`（前端冗余字段、字段顺序差异）→ 不提取为缺陷，仅在 coverage report 中保留记录
 - `evidence.source` = `"api_contract"`
 
 **来源 4：UI 还原度差异（条件触发）**
@@ -398,7 +400,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 
 判断标准：如果需求对应的代码变更**存在于已提供的 MR diff 中**（无论 MR 是否已合并），则该需求视为「已有实现」，应进入正向验证通道评估实现质量，而非直接标记为缺失。
 
-**去重规则**：同一需求点（`requirement_ref` 相同）从多个来源命中时，合并为一个缺陷，取最高优先级，在 `evidence` 中记录所有命中来源。
+**去重规则**：同一需求点（`requirement_ref` 相同）从多个来源命中时，合并为一个缺陷，取最高优先级，confidence 取最高优先级来源的 confidence 值，在 `evidence` 中记录所有命中来源及各自的 confidence。
 
 **confidence 过滤**：来源 1 中 confidence < 70 的 fail 项不提取为缺陷，仅在 `smoke_test_report.json` 的 `low_confidence_items` 中记录供参考。
 
