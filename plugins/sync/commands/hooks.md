@@ -38,9 +38,27 @@ pwd
 test -d .git -o -f .gitignore && echo "OK: project root detected" || (echo "❌ 未检测到 .git 或 .gitignore，请在项目根目录执行 /sync:hooks" && exit 1)
 ```
 
-> 注意：本命令**只会**写入项目内的 `.claude/hooks/`，不会写入 `~/.claude/hooks/`。如果你看到写入了 HOME 目录，说明你运行的是旧版本 sync 插件，请先更新插件版本。
+> 注意：本命令只会写入项目内的 `.claude/hooks/` 和 `.codex/hooks/`，不会写入 `~/.claude/hooks/`。如果你看到写入了 HOME 目录，说明你运行的是旧版本 sync 插件，请先更新插件版本。
 
-### 第一步：定位 plugin 的 scripts 源目录（两级查找）
+### 第一步：定位 plugin 的 scripts 源目录（三级查找，优先 inline）
+
+**步骤 1.0：检查 `${CLAUDE_PLUGIN_ROOT}`**：
+
+优先检查 Claude 提供的 plugin 根目录变量：
+
+```bash
+test -n "${CLAUDE_PLUGIN_ROOT:-}" && test -d "${CLAUDE_PLUGIN_ROOT}/scripts" && echo "PLUGIN_ROOT_FOUND" || echo "PLUGIN_ROOT_NOT_FOUND"
+```
+
+如果 `PLUGIN_ROOT_FOUND`，记录：
+
+- `PLUGIN_SCRIPTS_DIR=${CLAUDE_PLUGIN_ROOT}/scripts`
+- `PLUGIN_ROOT_FOUND`
+
+否则记录：
+
+- `PLUGIN_SCRIPTS_DIR=无`
+- `PLUGIN_ROOT_NOT_FOUND`
 
 **步骤 1.1：查找最新缓存版本**：
 ```bash
@@ -58,9 +76,15 @@ test -d ${LATEST_VERSION}scripts && echo "CACHE_FOUND" || echo "CACHE_NOT_FOUND"
 ```
 
 **步骤 1.3：设置 SOURCE_SCRIPTS_DIR**：
-- 如果 PRIMARY_FOUND：`SOURCE_SCRIPTS_DIR=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/scripts`
+- 如果 PLUGIN_ROOT_FOUND：`SOURCE_SCRIPTS_DIR=${PLUGIN_SCRIPTS_DIR}`
+- 否则如果 PRIMARY_FOUND：`SOURCE_SCRIPTS_DIR=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/scripts`
 - 否则如果 CACHE_FOUND：`SOURCE_SCRIPTS_DIR=${LATEST_VERSION}scripts`
 - 否则：中断并提示用户更新/安装 sync plugin
+
+说明：
+- 当用户通过 marketplace、cache 或 `--plugin-dir` 加载 sync 插件时，`${CLAUDE_PLUGIN_ROOT}` 都是最稳的来源
+- 不要依赖用户个人 shell 配置、别名函数、固定 repo 路径或特定 rc 文件
+- 不要在当前会话已经加载了更高优先级 plugin root 的情况下，继续误用 `~/.claude/plugins/marketplaces/...` 里的旧版本脚本
 
 ### 第二步：同步脚本到项目 `.claude/hooks/scripts/`
 
@@ -80,6 +104,12 @@ cp "${SOURCE_SCRIPTS_DIR}/ensure-tool-search.sh" .claude/hooks/scripts/
 cp "${SOURCE_SCRIPTS_DIR}/statusline.sh" .claude/hooks/scripts/
 ```
 
+**步骤 2.3：复制 Codex 脚本**：
+```bash
+mkdir -p .codex/hooks/scripts
+cp "${SOURCE_SCRIPTS_DIR}/ensure-codex-plugins.sh" .codex/hooks/scripts/
+```
+
 ### 第三步：设置脚本可执行权限（macOS/Linux）
 
 ```bash
@@ -90,6 +120,7 @@ chmod +x .claude/hooks/scripts/ensure-mcp.sh
 chmod +x .claude/hooks/scripts/ensure-plugins.sh
 chmod +x .claude/hooks/scripts/ensure-tool-search.sh
 chmod +x .claude/hooks/scripts/statusline.sh
+chmod +x .codex/hooks/scripts/ensure-codex-plugins.sh
 ```
 
 ### 第四步：检查项目级 hooks 配置
@@ -115,19 +146,19 @@ test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/scripts/set-auto-update-plugins.sh"
+            "command": "if [ -f .claude/hooks/scripts/set-auto-update-plugins.sh ]; then bash .claude/hooks/scripts/set-auto-update-plugins.sh; fi"
           },
           {
             "type": "command",
-            "command": "(bash .claude/hooks/scripts/ensure-cli-tools.sh >/dev/null 2>&1 &)"
+            "command": "if [ -f .claude/hooks/scripts/ensure-cli-tools.sh ]; then bash .claude/hooks/scripts/ensure-cli-tools.sh >/dev/null 2>&1 & fi"
           },
           {
             "type": "command",
-            "command": "(bash .claude/hooks/scripts/ensure-statusline.sh; bash .claude/hooks/scripts/ensure-plugins.sh; bash .claude/hooks/scripts/ensure-tool-search.sh) >/dev/null 2>&1 &"
+            "command": "(S=.claude/hooks/scripts; [ -f \"$S/ensure-statusline.sh\" ] && bash \"$S/ensure-statusline.sh\"; [ -f \"$S/ensure-plugins.sh\" ] && bash \"$S/ensure-plugins.sh\"; [ -f \"$S/ensure-tool-search.sh\" ] && bash \"$S/ensure-tool-search.sh\"; true) >/dev/null 2>&1 &"
           },
           {
             "type": "command",
-            "command": "(bash .claude/hooks/scripts/ensure-mcp.sh >/dev/null 2>&1 &)"
+            "command": "if [ -f .claude/hooks/scripts/ensure-mcp.sh ]; then bash .claude/hooks/scripts/ensure-mcp.sh >/dev/null 2>&1 & fi"
           }
         ]
       }
@@ -150,7 +181,37 @@ test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
    - 合并 hooks 数组，添加新的 SessionStart hook
    - 保留现有的其他 hooks
 
-### 第六步：显示配置报告
+### 第六步：同步 Codex hooks 配置
+
+为 Codex-only 用户提供插件自动拉取能力。创建/更新 `.codex/hooks.json`。
+
+**检查是否存在**：
+```bash
+test -f .codex/hooks.json && echo "存在" || echo "不存在"
+```
+
+**创建或更新** `.codex/hooks.json`（逻辑与第五步相同：不存在则创建，已存在则比较后更新）：
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f .codex/hooks/scripts/ensure-codex-plugins.sh ]; then bash .codex/hooks/scripts/ensure-codex-plugins.sh >/dev/null 2>&1 & fi",
+            "statusMessage": "Setting up taptap-plugins"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### 第七步：显示配置报告
 
 输出格式：
 
@@ -167,7 +228,7 @@ test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
      功能: 自动安装 gh/glab，检测 GH_TOKEN/GITLAB_TOKEN 环境变量
 
   📌 SessionStart Hook 3: settings.json 配置（后台串行）
-     脚本: ensure-statusline.sh → ensure-plugins.sh → ensure-tool-search.sh（串行执行，避免并发写入竞态）
+     脚本: ensure-statusline.sh → ensure-plugins.sh → ensure-tool-search.sh（串行执行，带文件存在性保护，避免并发写入竞态）
      功能: 配置状态栏 + 启用插件（enabledPlugins）+ 配置 ToolSearch（env.ENABLE_TOOL_SEARCH）
 
   📌 SessionStart Hook 4: MCP 配置（后台）
@@ -175,35 +236,32 @@ test -f .claude/hooks/hooks.json && echo "存在" || echo "不存在"
      功能: 配置 context7 MCP 到 ~/.claude.json + 清理废弃 MCP
 
 生效方式：
-  重启 Claude Code 会话后，SessionStart hook 会自动执行
+  重启 Claude Code / Codex 会话后，SessionStart hook 会自动执行
   Hook 2-4 后台执行，不阻塞 session 启动，配置在下次 session 生效
 
 效果：
-  ✅ 开发者：启用 autoUpdate → 后续插件更新自动生效
+  ✅ Claude Code 用户：启用 autoUpdate → 后续插件更新自动生效
+  ✅ Codex-only 用户：自动维护 ~/.agents/plugins/taptap-plugins clone + 合并 ~/.agents/plugins/marketplace.json
   ✅ 团队成员：git pull → 重启会话 → 自动获取最新版本
-  ✅ 新成员：首次启动 → 自动安装 gh/glab → 配置状态栏、MCP、插件启用和 ToolSearch → 提示配置认证
+  ✅ 新成员：clone 仓库后启动会话即可，自动配置一切
 
 💡 提示：
-  - 如需禁用自动更新 hook，删除 .claude/hooks/hooks.json 中的 SessionStart 配置
-  - 如需完全卸载，直接删除 .claude/hooks/hooks.json 文件
-  - 运行 '/sync:cli-tools' 可手动检查 CLI 工具状态和配置指南
-  - 运行 '/sync:statusline' 可手动配置状态栏
-  - 运行 '/sync:mcp' 可手动配置 MCP
+  - 如需禁用自动更新 hook，删除 .claude/hooks/hooks.json 或 .codex/hooks.json 中的 SessionStart 配置
+  - 如需完全卸载，直接删除对应的 hooks.json 文件
 ```
 
-### 第七步：验证配置
+### 第八步：验证配置
 
 显示配置文件内容供用户确认：
 
 ```bash
+echo "=== Claude Code hooks ==="
 cat .claude/hooks/hooks.json
-ls -lh .claude/hooks/scripts/set-auto-update-plugins.sh
-ls -lh .claude/hooks/scripts/ensure-cli-tools.sh
-ls -lh .claude/hooks/scripts/ensure-statusline.sh
-ls -lh .claude/hooks/scripts/ensure-mcp.sh
-ls -lh .claude/hooks/scripts/ensure-plugins.sh
-ls -lh .claude/hooks/scripts/ensure-tool-search.sh
-ls -lh .claude/hooks/scripts/statusline.sh
+ls -lh .claude/hooks/scripts/*.sh
+
+echo "=== Codex hooks ==="
+cat .codex/hooks.json
+ls -lh .codex/hooks/scripts/*.sh
 ```
 
 ---
@@ -213,8 +271,9 @@ ls -lh .claude/hooks/scripts/statusline.sh
 如果遇到以下问题：
 
 1. **无法定位 sync plugin 的 scripts 源目录**
-   - 检查 primary 路径是否存在：`~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/scripts/`
-   - 检查 cache 路径是否存在：`~/.claude/plugins/cache/taptap-plugins/sync/<version>/scripts/`
+   - 先检查 `${CLAUDE_PLUGIN_ROOT}` 是否可用且包含 `scripts/`
+   - 再检查 primary 路径是否存在：`~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/scripts/`
+   - 最后检查 cache 路径是否存在：`~/.claude/plugins/cache/taptap-plugins/sync/<version>/scripts/`
    - 如果都不存在，提示用户更新/安装 sync plugin
 
 2. **无法创建/写入项目级目录**

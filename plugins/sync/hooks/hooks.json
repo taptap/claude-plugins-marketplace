@@ -6,31 +6,31 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'D=~/.claude/hooks/scripts; [ -L \"$D/ensure-agents-skills.sh\" ] && [ -e \"$D/ensure-agents-skills.sh\" ] && exit 0; for loc in $(python3 -c \"import json,os; d=json.load(open(os.path.expanduser(\\\"~/.claude/plugins/known_marketplaces.json\\\"))); [print(v.get(\\\"installLocation\\\",\\\"\\\")) for v in d.values()]\" 2>/dev/null); do s=\"$loc/plugins/sync/scripts\"; [ -d \"$s\" ] && { mkdir -p \"$D\"; for f in \"$s\"/*.sh; do ln -sf \"$f\" \"$D/$(basename \"$f\")\"; done; break; }; done'"
+            "command": "bash -c 'D=~/.claude/hooks/scripts; python3 -c \"import json,os; d=json.load(open(os.path.expanduser(\\\"~/.claude/plugins/known_marketplaces.json\\\"), encoding=\\\"utf-8\\\")); entry=d.get(\\\"taptap-plugins\\\", {}) if isinstance(d, dict) else {}; print(entry.get(\\\"installLocation\\\", \\\"\\\") if isinstance(entry, dict) else \\\"\\\")\" 2>/dev/null | while IFS= read -r loc; do [ -n \"$loc\" ] || continue; s=\"$loc/plugins/sync/scripts\"; [ -d \"$s\" ] || continue; mkdir -p \"$D\"; for f in \"$s\"/*.sh; do [ -e \"$f\" ] || continue; ln -sf \"$f\" \"$D/$(basename \"$f\")\"; done; break; done; exit 0'"
           },
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/scripts/set-auto-update-plugins.sh"
+            "command": "if [ -f ~/.claude/hooks/scripts/set-auto-update-plugins.sh ]; then bash ~/.claude/hooks/scripts/set-auto-update-plugins.sh; fi"
           },
           {
             "type": "command",
-            "command": "(bash ~/.claude/hooks/scripts/ensure-cli-tools.sh >/dev/null 2>&1 &)"
+            "command": "if [ -f ~/.claude/hooks/scripts/ensure-cli-tools.sh ]; then bash ~/.claude/hooks/scripts/ensure-cli-tools.sh >/dev/null 2>&1 & fi"
           },
           {
             "type": "command",
-            "command": "(bash ~/.claude/hooks/scripts/ensure-statusline.sh; bash ~/.claude/hooks/scripts/ensure-plugins.sh; bash ~/.claude/hooks/scripts/ensure-tool-search.sh; bash ~/.claude/hooks/scripts/ensure-lsp-tool.sh; bash ~/.claude/hooks/scripts/ensure-lsp.sh) >/dev/null 2>&1 &"
+            "command": "(S=~/.claude/hooks/scripts; [ -f \"$S/ensure-statusline.sh\" ] && bash \"$S/ensure-statusline.sh\"; [ -f \"$S/ensure-plugins.sh\" ] && bash \"$S/ensure-plugins.sh\"; [ -f \"$S/ensure-tool-search.sh\" ] && bash \"$S/ensure-tool-search.sh\"; [ -f \"$S/ensure-lsp-tool.sh\" ] && bash \"$S/ensure-lsp-tool.sh\"; [ -f \"$S/ensure-lsp.sh\" ] && bash \"$S/ensure-lsp.sh\"; true) >/dev/null 2>&1 &"
           },
           {
             "type": "command",
-            "command": "(bash ~/.claude/hooks/scripts/ensure-mcp.sh >/dev/null 2>&1 &)"
+            "command": "if [ -f ~/.claude/hooks/scripts/ensure-mcp.sh ]; then bash ~/.claude/hooks/scripts/ensure-mcp.sh >/dev/null 2>&1 & fi"
           },
           {
             "type": "command",
-            "command": "(bash ~/.claude/hooks/scripts/ensure-codex-statusline.sh >/dev/null 2>&1 &)"
+            "command": "if [ -f ~/.claude/hooks/scripts/ensure-codex-statusline.sh ]; then bash ~/.claude/hooks/scripts/ensure-codex-statusline.sh >/dev/null 2>&1 & fi"
           },
           {
             "type": "command",
-            "command": "(bash ~/.claude/hooks/scripts/ensure-codex-skills.sh >/dev/null 2>&1 &)"
+            "command": "if [ -f ~/.claude/hooks/scripts/ensure-codex-plugins.sh ]; then bash ~/.claude/hooks/scripts/ensure-codex-plugins.sh >/dev/null 2>&1 & fi"
           }
         ]
       }

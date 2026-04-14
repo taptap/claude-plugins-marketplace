@@ -27,7 +27,87 @@
 ### Marketplace
 
 - Bumped version from 0.1.32 to 0.1.33
-- Added test plugin version 0.0.3
+- Updated test plugin to version 0.0.3
+
+## 0.1.32 — Add Codex plugin support and migrate marketplace repo name
+
+### Sync Plugin (0.1.27)
+
+- Added Codex plugin support with `.codex-plugin/` directory and manifest
+- Added `codex-plugins-config` agent for configuring Codex plugins via standalone clone
+- Added `ensure-codex-plugins.sh` and `update-codex-plugins.sh` scripts for Codex plugin auto-update
+- Updated `/sync:hooks` command to include Codex hooks setup step (`.codex/hooks/` sync)
+- Updated `/sync:basic` command to add Codex plugin standalone clone as Phase 1 step
+- Updated `/sync:basic` and `/sync:lsp` project settings handling to migrate `taptap/claude-plugins-marketplace` to `taptap/agents-plugins` without overwriting custom repos
+- Updated sync commands to prefer `${CLAUDE_PLUGIN_ROOT}` before installed marketplace/cache paths, so inline `--plugin-dir` development sessions resolve the current plugin source correctly
+- Updated `ensure-plugins.sh` to migrate old marketplace repo name with robust jq-based detection
+- Updated `set-auto-update-plugins.sh` to handle old repo name migration and add JSON validity check before parsing
+- Updated `ensure-cli-tools.sh` to add shell-aware token setup hints (zsh/bash/fish)
+- Simplified `hooks-config` agent to non-destructive project hooks check only; removed `permissionMode: acceptEdits`
+
+### Git Plugin (0.1.15)
+
+- Added `.codex-plugin/` manifest for Codex CLI compatibility
+
+### Spec Plugin (0.1.6)
+
+- Added `.codex-plugin/` manifest for Codex CLI compatibility
+
+### Test Plugin (0.0.2)
+
+- Added `.codex-plugin/` manifest for Codex CLI compatibility
+
+### Marketplace
+
+- Bumped version from 0.1.31 to 0.1.32
+- Updated sync plugin to version 0.1.27
+- Updated git plugin to version 0.1.15
+- Updated spec plugin to version 0.1.6
+- Updated test plugin to version 0.0.2
+
+## 0.1.31 — Simplify sync workflow and remove Cursor-side distribution
+
+### Sync Plugin (0.1.26)
+
+- Removed Cursor-specific commands, templates, and snippet mirroring assets from the sync plugin
+- Changed `/sync:basic` and related MCP commands to focus on Claude Code environment setup only
+- Removed the `ensure-codex-skills.sh` SessionStart hook and stopped sync from maintaining `~/.agents/skills` for Codex
+- Removed deprecated `sequential-thinking` MCP cleanup logic from mcp command, agent, and scripts
+- Updated sync documentation, status checks, and helper skills to match the reduced Claude Code scope
+- Cleaned up repo-local optional hook guidance after removing the bundled snippet sync pre-commit flow
+- Added BASE subdirectory variable mapping documentation to `/sync:basic` command
+
+### Marketplace
+
+- Bumped version from 0.1.30 to 0.1.31
+- Updated sync plugin to version 0.1.26
+
+## 0.1.30 — Add QA workflow plugin with multi-agent test skills
+
+### Test Plugin (0.0.1)
+
+- Added QA workflow plugin with full test lifecycle skills
+- Added test-case-generation skill with multi-agent review pipeline (dual reviewer + redundancy audit)
+- Added unit-test-design skill with business-scenario-driven principles and language-specific methods (Go/Java/Kotlin/Python/Swift/TypeScript)
+- Added integration-test-design skill with framework-specific methods
+- Added verification-test-generation skill for code-level test generation with phase execution guarantees
+- Added change-analysis skill with Android third-party interaction impact assessment
+- Added requirement-clarification skill with structured Q&A cards and ask_question output format
+- Added requirement-review skill with 12-dimension evaluation framework
+- Added requirement-traceability skill with smoke-test mode, defect extraction, and P0 gate
+- Added test-case-review skill with 4-dimension review protocol
+- Added api-contract-validation skill with contract enforcement
+- Added bug-fix-review and test-failure-analyzer skills
+- Added ui-fidelity-check skill with Figma MCP tiered data fetching protocol
+- Added shared-tools (fetch_feishu_doc.py, search_prs.py, search_mrs.py, gitlab_helper.py, github_helper.py, validate_contracts.py)
+- Added output workspace convention for requirement-based artifact organization
+- Added phase execution guarantees and output validation for all multi-phase skills
+
+### Marketplace
+
+- Bumped version from 0.1.29 to 0.1.30
+- Added test plugin version 0.0.1
+- Removed orphaned quality plugin entry (directory does not exist)
 
 ## 0.1.29 — Remove quality plugin, refine module-discovery scope, add feishu-bot-card skill
 

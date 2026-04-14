@@ -1,8 +1,8 @@
 [English](./README.en.md) | 中文
 
-# TapTap Claude Code Plugins Marketplace
+# TapTap Agents Plugins
 
-TapTap 团队维护的 Claude Code 插件库，提供开发工作流自动化工具。
+TapTap 团队维护的插件库，面向 AI 开发工具提供工作流自动化能力。
 
 ## 团队配置
 
@@ -18,7 +18,7 @@ mkdir -p .claude && echo '{
     "taptap-plugins": {
       "source": {
         "source": "github",
-        "repo": "taptap/claude-plugins-marketplace"
+        "repo": "taptap/agents-plugins"
       }
     }
   },
@@ -51,20 +51,19 @@ mkdir -p .claude && echo '{
 
 ### 2. 执行 /sync
 
-一键配置 MCP、自动更新和 Cursor 同步：
+一键配置 MCP、自动更新和开发环境模板：
 
 ```bash
 # 在 Claude Code 中执行
 /sync:basic
 
-# 配置完成后，重启 Claude Code 和 Cursor 即可使用
+# 配置完成后，重启 Claude Code 即可使用
 ```
 
 **包含功能：**
 
-- ✅ 配置 context7 和 sequential-thinking MCP（自动获取最新文档）
+- ✅ 配置 context7 MCP（自动获取最新文档）
 - ✅ 启用插件自动重载 + CLI 工具检测（修改后重启会话即可生效）
-- ✅ 同步配置到 Cursor（含 Spec Skills 规则）
 - ✅ 同步 GitLab Merge Request 默认模板
 - ✅ 支持 GitHub Pull Request 模板
 
@@ -85,7 +84,7 @@ mkdir -p .claude && echo '{
 | ------- | ----- | ----------------------------------------------------------------- |
 | spec    | 0.1.6 | Spec-Driven Development 工作流插件                                     |
 | git     | 0.1.15 | Git 工作流自动化插件（提交/推送/MR + 自动代码审查 + 远程平台操作）            |
-| sync    | 0.1.27 | 开发环境配置同步插件（MCP + LSP + Hooks + Cursor + Claude Skills） |
+| sync    | 0.1.27 | 开发环境配置同步插件（MCP + LSP + Hooks + Claude Skills） |
 | test    | 0.0.3 | QA 工作流插件（需求澄清/测试用例生成/变更分析/需求回溯/代码级测试生成） |
 
 
@@ -255,9 +254,8 @@ AI 修改代码时**自动维护**模块文档：
 /sync:basic
 
 # 或单独执行各项配置
-/sync:mcp            # 配置 context7 和 sequential-thinking MCP
+/sync:mcp            # 配置 context7 MCP
 /sync:hooks          # 启用插件自动重载
-/sync:cursor         # 同步配置到 Cursor IDE
 
 # 配置飞书文档 MCP（可选）
 /sync:mcp-feishu https://open.feishu.cn/mcp/stream/mcp_xxxxx
@@ -271,9 +269,8 @@ AI 修改代码时**自动维护**模块文档：
 
 **功能说明：**
 
-- **MCP 服务器**：自动获取 GitHub 库的最新文档（context7）和结构化问题解决（sequential-thinking）
+- **MCP 服务器**：自动获取 GitHub 库的最新文档（context7）
 - **自动重载**：修改插件后重启会话自动生效，无需手动重装
-- **Cursor 同步**：在 Cursor IDE 中使用 Git 命令和 Spec Skills 规则（doc-auto-sync、module-discovery 等）
 
 ## 更新插件
 
@@ -288,4 +285,4 @@ AI 修改代码时**自动维护**模块文档：
 
 ## 问题反馈
 
-请在 [GitHub Issues](https://github.com/taptap/claude-plugins-marketplace/issues) 提交问题。
+请在 [GitHub Issues](https://github.com/taptap/agents-plugins/issues) 提交问题。

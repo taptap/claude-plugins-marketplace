@@ -24,6 +24,8 @@ REQUIRED_PLUGINS=("spec@taptap-plugins" "sync@taptap-plugins" "git@taptap-plugin
 
 # 需要清理的退役插件
 DEPRECATED_PLUGINS=("ralph@taptap-plugins" "quality@taptap-plugins")
+EXPECTED_MARKETPLACE_REPO="taptap/agents-plugins"
+OLD_MARKETPLACE_REPO="taptap/claude-plugins-marketplace"
 
 # ========== Step 1: 确保 enabledPlugins 完整 ==========
 
@@ -45,8 +47,13 @@ check_plugins_ok() {
         return 1
       fi
     done
-    # 检查 extraKnownMarketplaces.taptap-plugins 存在
-    if ! jq -e '.extraKnownMarketplaces["taptap-plugins"]' "$file" >/dev/null 2>&1; then
+    # 检查 extraKnownMarketplaces.taptap-plugins 存在，repo 非空且不是旧仓库名
+    if ! jq -e \
+      --arg old_repo "$OLD_MARKETPLACE_REPO" \
+      '.extraKnownMarketplaces["taptap-plugins"].source as $source
+      | ($source.source // "") == "github"
+      and (($source.repo // "") != "")
+      and (($source.repo // "") != $old_repo)' "$file" >/dev/null 2>&1; then
       return 1
     fi
     return 0
@@ -60,7 +67,9 @@ plugins = d.get('enabledPlugins', {})
 marketplaces = d.get('extraKnownMarketplaces', {})
 required = ['spec@taptap-plugins', 'sync@taptap-plugins', 'git@taptap-plugins', 'skill-creator@claude-plugins-official']
 deprecated = ['ralph@taptap-plugins', 'quality@taptap-plugins']
-has_marketplace = 'taptap-plugins' in marketplaces
+source = marketplaces.get('taptap-plugins', {}).get('source', {})
+repo = source.get('repo')
+has_marketplace = source.get('source') == 'github' and isinstance(repo, str) and bool(repo) and repo != 'taptap/claude-plugins-marketplace'
 sys.exit(0 if all(k in plugins for k in required) and not any(k in plugins for k in deprecated) and has_marketplace else 1)
 " 2>/dev/null
     return $?
@@ -76,29 +85,47 @@ else
   # jq 优先
   if has_command jq; then
     if [ -f "$SETTINGS_FILE" ]; then
-      jq '(.enabledPlugins // {}) as $ep |
-      .enabledPlugins = ($ep + {
-        "spec@taptap-plugins": true,
-        "sync@taptap-plugins": true,
-        "git@taptap-plugins": true,
-        "skill-creator@claude-plugins-official": true
-      } | del(.["ralph@taptap-plugins"]) | del(.["quality@taptap-plugins"])) |
-      .extraKnownMarketplaces = ((.extraKnownMarketplaces // {}) + {
-        "taptap-plugins": {
-          "source": {
-            "source": "github",
-            "repo": "taptap/claude-plugins-marketplace"
-          }
-        }
-      })' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" \
-        && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
+      if jq --arg old_repo "$OLD_MARKETPLACE_REPO" --arg new_repo "$EXPECTED_MARKETPLACE_REPO" '
+        (.enabledPlugins // {}) as $ep |
+        (.extraKnownMarketplaces // {}) as $marketplaces |
+        ($marketplaces["taptap-plugins"] | if type == "object" then . else {} end) as $current_marketplace |
+        ($current_marketplace.source | if type == "object" then . else {} end) as $current_source |
+        .enabledPlugins = ($ep + {
+          "spec@taptap-plugins": true,
+          "sync@taptap-plugins": true,
+          "git@taptap-plugins": true,
+          "skill-creator@claude-plugins-official": true
+        } | del(.["ralph@taptap-plugins"]) | del(.["quality@taptap-plugins"])) |
+        .extraKnownMarketplaces = ($marketplaces + {
+          "taptap-plugins": ($current_marketplace + {
+            "source": ($current_source + {
+              "source": ($current_source.source // "github"),
+              "repo": (
+                if ($current_source.repo // "") == "" or ($current_source.repo // "") == $old_repo
+                then $new_repo
+                else $current_source.repo
+                end
+              )
+            })
+          })
+        })' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp.$$" \
+        && mv "${SETTINGS_FILE}.tmp.$$" "$SETTINGS_FILE"; then
+        echo "✅ 已配置 enabledPlugins (jq)"
+      else
+        rm -f "${SETTINGS_FILE}.tmp.$$"
+        echo "⚠️  settings.json 更新失败，跳过"
+      fi
     else
       mkdir -p "$(dirname "$SETTINGS_FILE")"
-      echo '{"enabledPlugins": {"spec@taptap-plugins": true, "sync@taptap-plugins": true, "git@taptap-plugins": true, "skill-creator@claude-plugins-official": true}, "extraKnownMarketplaces": {"taptap-plugins": {"source": {"source": "github", "repo": "taptap/claude-plugins-marketplace"}}}}' \
-        | jq '.' > "${SETTINGS_FILE}.tmp" \
-        && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
+      if echo '{"enabledPlugins": {"spec@taptap-plugins": true, "sync@taptap-plugins": true, "git@taptap-plugins": true, "skill-creator@claude-plugins-official": true}, "extraKnownMarketplaces": {"taptap-plugins": {"source": {"source": "github", "repo": "taptap/agents-plugins"}}}}' \
+        | jq '.' > "${SETTINGS_FILE}.tmp.$$" \
+        && mv "${SETTINGS_FILE}.tmp.$$" "$SETTINGS_FILE"; then
+        echo "✅ 已配置 enabledPlugins (jq)"
+      else
+        rm -f "${SETTINGS_FILE}.tmp.$$"
+        echo "⚠️  settings.json 更新失败，跳过"
+      fi
     fi
-    echo "✅ 已配置 enabledPlugins (jq)"
 
   # python3 兜底
   elif has_command python3; then
@@ -135,24 +162,30 @@ def main():
     plugins.pop("quality@taptap-plugins", None)  # 已废弃，由 code-reviewing skill 替代
     data["enabledPlugins"] = plugins
 
-    # 确保 extraKnownMarketplaces 包含 taptap-plugins
+    # 确保 extraKnownMarketplaces 包含 taptap-plugins；仅迁移旧官方 repo，不覆盖用户自定义 repo
     marketplaces = data.get("extraKnownMarketplaces", {})
     if not isinstance(marketplaces, dict):
         marketplaces = {}
-    if "taptap-plugins" not in marketplaces:
-        marketplaces["taptap-plugins"] = {
-            "source": {
-                "source": "github",
-                "repo": "taptap/claude-plugins-marketplace"
-            }
-        }
+    marketplace = marketplaces.get("taptap-plugins", {})
+    if not isinstance(marketplace, dict):
+        marketplace = {}
+    source = marketplace.get("source", {})
+    if not isinstance(source, dict):
+        source = {}
+    repo = source.get("repo")
+    if not isinstance(repo, str) or not repo or repo == "taptap/claude-plugins-marketplace":
+        repo = "taptap/agents-plugins"
+    source["source"] = source.get("source") if isinstance(source.get("source"), str) and source.get("source") else "github"
+    source["repo"] = repo
+    marketplace["source"] = source
+    marketplaces["taptap-plugins"] = marketplace
     data["extraKnownMarketplaces"] = marketplaces
 
     dir_path = os.path.dirname(path)
     if dir_path and not os.path.exists(dir_path):
         os.makedirs(dir_path)
 
-    tmp_path = f"{path}.tmp"
+    tmp_path = f"{path}.tmp.{os.getpid()}"
     try:
         with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -210,9 +243,13 @@ if [ -f "$INSTALLED_FILE" ]; then
       for plugin in "${DEPRECATED_PLUGINS[@]}"; do
         jq_filter="$jq_filter | del(.plugins[\"$plugin\"])"
       done
-      jq "$jq_filter" "$INSTALLED_FILE" > "${INSTALLED_FILE}.tmp" \
-        && mv "${INSTALLED_FILE}.tmp" "$INSTALLED_FILE"
-      echo "✅ 已清理 installed_plugins.json 中的退役插件"
+      if jq "$jq_filter" "$INSTALLED_FILE" > "${INSTALLED_FILE}.tmp.$$" \
+        && mv "${INSTALLED_FILE}.tmp.$$" "$INSTALLED_FILE"; then
+        echo "✅ 已清理 installed_plugins.json 中的退役插件"
+      else
+        rm -f "${INSTALLED_FILE}.tmp.$$"
+        echo "⚠️  installed_plugins.json 清理失败，跳过"
+      fi
     elif has_command python3; then
       python3 -c "
 import json, os
@@ -227,7 +264,7 @@ for p in deprecated:
         del plugins[p]
         changed = True
 if changed:
-    tmp = path + '.tmp'
+    tmp = path + '.tmp.' + str(os.getpid())
     with open(tmp, 'w') as f:
         json.dump(d, f, ensure_ascii=False, indent=2)
         f.write('\n')
@@ -266,9 +303,13 @@ for settings_file in ".claude/settings.json" ".claude/settings.local.json"; do
         for plugin in "${DEPRECATED_PLUGINS[@]}"; do
           jq_filter="$jq_filter | del(.[\"$plugin\"])"
         done
-        jq ".enabledPlugins = ($jq_filter)" "$settings_file" > "${settings_file}.tmp" \
-          && mv "${settings_file}.tmp" "$settings_file"
-        echo "✅ 已清理 $settings_file 中的退役插件"
+        if jq ".enabledPlugins = ($jq_filter)" "$settings_file" > "${settings_file}.tmp.$$" \
+          && mv "${settings_file}.tmp.$$" "$settings_file"; then
+          echo "✅ 已清理 $settings_file 中的退役插件"
+        else
+          rm -f "${settings_file}.tmp.$$"
+          echo "⚠️  $settings_file 清理失败，跳过"
+        fi
       elif has_command python3; then
         python3 -c "
 import json, os
@@ -283,7 +324,7 @@ for p in deprecated:
         del plugins[p]
         changed = True
 if changed:
-    tmp = path + '.tmp'
+    tmp = path + '.tmp.' + str(os.getpid())
     with open(tmp, 'w') as f:
         json.dump(d, f, ensure_ascii=False, indent=2)
         f.write('\n')

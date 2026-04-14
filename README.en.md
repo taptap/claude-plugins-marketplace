@@ -1,8 +1,8 @@
 English | [中文](./README.md)
 
-# TapTap Claude Code Plugins Marketplace
+# TapTap Agents Plugins
 
-A Claude Code plugin marketplace maintained by the TapTap team, providing development workflow automation tools.
+A plugin marketplace maintained by the TapTap team, offering workflow automation for AI development tools.
 
 ## Team Configuration
 
@@ -18,7 +18,7 @@ mkdir -p .claude && echo '{
     "taptap-plugins": {
       "source": {
         "source": "github",
-        "repo": "taptap/claude-plugins-marketplace"
+        "repo": "taptap/agents-plugins"
       }
     }
   },
@@ -51,20 +51,19 @@ Example (disable no-ticket, require task ID):
 
 ### 2. Run /sync
 
-One-click configuration for MCP, auto-update, and Cursor synchronization:
+One-click configuration for MCP, auto-update, and development environment templates:
 
 ```bash
 # Run in Claude Code
 /sync:basic
 
-# After configuration, restart Claude Code and Cursor to use
+# After configuration, restart Claude Code to use
 ```
 
 **Included features:**
 
 - ✅ Configure context7 MCP (automatically fetch latest documentation)
 - ✅ Enable plugin auto-reload + CLI tool detection (restart session after modifications to take effect)
-- ✅ Sync configuration to Cursor (including Spec Skills rules)
 - ✅ Sync GitLab Merge Request default template
 - ✅ Support GitHub Pull Request template
 
@@ -85,7 +84,7 @@ One-click configuration for MCP, auto-update, and Cursor synchronization:
 | ------- | ------- | ---------------------------------------------------------------------------------------------------- |
 | spec    | 0.1.6   | Spec-Driven Development workflow plugin                                                              |
 | git     | 0.1.15  | Git workflow automation plugin (commit/push/MR + dual-mode code review + remote platform ops)        |
-| sync    | 0.1.27  | Dev environment config sync plugin (MCP + LSP + Hooks + Cursor + Claude Skills)                      |
+| sync    | 0.1.27  | Dev environment config sync plugin (MCP + LSP + Hooks + Claude Skills)                               |
 | test    | 0.0.3   | QA workflow plugin (requirement clarification/test case generation/change analysis/traceability/code-level test generation) |
 
 
@@ -257,7 +256,6 @@ Use the Git plugin's built-in review flow to inspect local changes or MR/PRs:
 # Or configure each item separately
 /sync:mcp            # Configure context7 MCP
 /sync:hooks          # Enable plugin auto-reload
-/sync:cursor         # Sync configuration to Cursor IDE
 
 # Configure Feishu Docs MCP (optional)
 /sync:mcp-feishu https://open.feishu.cn/mcp/stream/mcp_xxxxx
@@ -273,7 +271,6 @@ Use the Git plugin's built-in review flow to inspect local changes or MR/PRs:
 
 - **MCP Servers**: Automatically fetch latest documentation for GitHub libraries (context7)
 - **Auto-Reload**: Restart session after plugin modifications to take effect, no manual reinstallation needed
-- **Cursor Sync**: Use Git commands and Spec Skills rules (doc-auto-sync, module-discovery, etc.) in Cursor IDE
 
 ## Update Plugins
 
@@ -288,4 +285,4 @@ Use the Git plugin's built-in review flow to inspect local changes or MR/PRs:
 
 ## Feedback
 
-Please submit issues on [GitHub Issues](https://github.com/taptap/claude-plugins-marketplace/issues).
+Please submit issues on [GitHub Issues](https://github.com/taptap/agents-plugins/issues).
