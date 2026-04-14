@@ -300,7 +300,7 @@ shared-tools 脚本依赖以下环境变量（按需配置）：
 
 ## 版本历史
 
-- **v0.0.3** - 新增 `qa-workflow` skill（QA 工作流编排器：端到端自动编排需求澄清→用例生成→MS同步→变更分析→需求还原度→代码审查，支持条件分支、并行执行和三种工作流模板）；`test-case-generation` 新增 `confirm_policy` 参数支持自动化编排
+- **v0.0.3** - 新增 `qa-workflow` 编排器 skill；`metersphere-sync` 支持层级模块结构和冒烟测试报告桥接；统一 .env 配置和 python-dotenv 加载；`ask_question` 迁移至原生 AskUserQuestion 工具调用；`test-case-generation` 新增需求充分性门控和迭代重入；修复用例标题来源前缀和置信度评分矛盾
 - **v0.0.2** - 新增 `metersphere-sync` skill（MeterSphere 用例同步与测试计划管理）；新增 `metersphere_helper.py` 共享脚本（模块管理、用例导入、测试计划 CRUD、执行结果回写）
 - **v0.0.1** - 首次发布；完整 QA 工作流插件，包含需求澄清、测试用例生成（含冗余对评审）、用例评审、变更分析、需求回溯（含冒烟测试模式）、代码级测试生成（单元/集成）、API 契约校验、UI 还原度检查等全流程 Skill；共享工具集（飞书文档获取、MR/PR 分析脚本）；阶段执行保障和输出验证机制
 
