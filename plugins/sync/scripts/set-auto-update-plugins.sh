@@ -3,6 +3,8 @@ set -e
 
 MARKETPLACES_FILE="$HOME/.claude/plugins/known_marketplaces.json"
 MARKETPLACE_NAME="taptap-plugins"
+OLD_MARKETPLACE_REPO="taptap/claude-plugins-marketplace"
+NEW_MARKETPLACE_REPO="taptap/agents-plugins"
 
 has_command() {
   command -v "$1" >/dev/null 2>&1
@@ -15,16 +17,46 @@ if [ ! -f "$MARKETPLACES_FILE" ]; then
 fi
 
 if has_command jq; then
+  if ! jq -e . "$MARKETPLACES_FILE" >/dev/null 2>&1; then
+    echo "⚠️  $MARKETPLACES_FILE 解析失败（非 JSON），跳过"
+    exit 0
+  fi
+
+  # 检查 marketplace 条目是否存在且完整（有 source 字段才是有效条目）
+  has_source=$(jq -r ".[\"$MARKETPLACE_NAME\"].source // empty" "$MARKETPLACES_FILE" 2>/dev/null)
+  if [ -z "$has_source" ]; then
+    echo "⏭️  $MARKETPLACE_NAME 条目不存在或不完整（可能是 directory 类型），跳过"
+    exit 0
+  fi
+
+  current_repo=$(jq -r ".[\"$MARKETPLACE_NAME\"].source.repo // empty" "$MARKETPLACES_FILE")
   # 检查当前 autoUpdate 状态
   current_value=$(jq -r ".[\"$MARKETPLACE_NAME\"].autoUpdate // false" "$MARKETPLACES_FILE")
 
-  if [ "$current_value" = "true" ]; then
-    echo "✅ $MARKETPLACE_NAME autoUpdate 已启用"
+  if [ "$current_repo" = "$OLD_MARKETPLACE_REPO" ] || [ "$current_value" != "true" ]; then
+    if jq --arg marketplace "$MARKETPLACE_NAME" \
+      --arg old_repo "$OLD_MARKETPLACE_REPO" \
+      --arg new_repo "$NEW_MARKETPLACE_REPO" '
+        if .[$marketplace].source.repo == $old_repo
+        then .[$marketplace].source.repo = $new_repo
+        else .
+        end
+        | .[$marketplace].autoUpdate = true
+      ' "$MARKETPLACES_FILE" > "${MARKETPLACES_FILE}.tmp.$$"; then
+      mv "${MARKETPLACES_FILE}.tmp.$$" "$MARKETPLACES_FILE"
+    else
+      rm -f "${MARKETPLACES_FILE}.tmp.$$"
+      echo "⚠️  更新 $MARKETPLACES_FILE 失败，跳过"
+      exit 0
+    fi
+    if [ "$current_repo" = "$OLD_MARKETPLACE_REPO" ]; then
+      echo "✅ 已迁移 $MARKETPLACE_NAME repo: $OLD_MARKETPLACE_REPO -> $NEW_MARKETPLACE_REPO"
+    fi
+    if [ "$current_value" != "true" ]; then
+      echo "✅ 已启用 $MARKETPLACE_NAME autoUpdate"
+    fi
   else
-    # 设置 autoUpdate 为 true
-    jq ".[\"$MARKETPLACE_NAME\"].autoUpdate = true" "$MARKETPLACES_FILE" > "${MARKETPLACES_FILE}.tmp" \
-      && mv "${MARKETPLACES_FILE}.tmp" "$MARKETPLACES_FILE"
-    echo "✅ 已启用 $MARKETPLACE_NAME autoUpdate"
+    echo "✅ $MARKETPLACE_NAME autoUpdate 已启用"
   fi
   exit 0
 fi
@@ -79,17 +111,28 @@ def main() -> int:
         return 0
 
     entry = data.get(name)
-    if not isinstance(entry, dict):
-        entry = {}
-        data[name] = entry
+    if not isinstance(entry, dict) or not entry.get("source"):
+        warn(f"{name} 条目不存在或不完整（可能是 directory 类型），跳过")
+        return 0
 
-    if entry.get("autoUpdate", False) is True:
+    changed = False
+    source = entry.get("source") or {}
+
+    if source.get("repo") == "taptap/claude-plugins-marketplace":
+        source["repo"] = "taptap/agents-plugins"
+        changed = True
+        ok(f"已迁移 {name} repo: taptap/claude-plugins-marketplace -> taptap/agents-plugins")
+
+    if entry.get("autoUpdate", False) is not True:
+        entry["autoUpdate"] = True
+        changed = True
+        ok(f"已启用 {name} autoUpdate")
+
+    if not changed:
         ok(f"{name} autoUpdate 已启用")
         return 0
 
-    entry["autoUpdate"] = True
-
-    tmp_path = f"{path}.tmp"
+    tmp_path = f"{path}.tmp.{os.getpid()}"
     try:
         with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -104,7 +147,6 @@ def main() -> int:
         warn(f"{path} 写入失败，跳过")
         return 0
 
-    ok(f"已启用 {name} autoUpdate")
     return 0
 
 if __name__ == "__main__":

@@ -3,7 +3,6 @@ name: statusline-config
 description: 配置 Claude Code 自定义状态栏
 model: haiku
 tools: Read, Write, Edit, Bash
-permissionMode: acceptEdits
 ---
 
 你负责配置 Claude Code 自定义状态栏。

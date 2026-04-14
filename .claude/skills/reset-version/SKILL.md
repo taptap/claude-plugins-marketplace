@@ -15,20 +15,26 @@ git fetch origin main
 
 ```bash
 git diff --name-only origin/main -- plugins/
+git ls-files --others --exclude-standard -- plugins/
 ```
 
-根据输出判断哪些插件目录有变更，只有变更的插件才需要更新版本。
+将两份输出合并去重后判断哪些插件目录有变更，只有变更的插件才需要更新版本。
+
+**重要**：
+- 未跟踪的插件文件也算插件变更，例如新增 `plugins/<name>/.codex-plugin/plugin.json`
+- 不要只看 `git diff --name-only`；否则会漏掉新加但尚未跟踪的插件文件
 
 ### 步骤 3: 读取生产版本号
 
-获取 origin/main 的 marketplace 版本和有修改的插件版本：
+获取 origin/main 的 marketplace 版本，以及有修改插件在 origin/main 上的版本：
 
 ```bash
 # marketplace 版本
 git show origin/main:.claude-plugin/marketplace.json | jq -r '.metadata.version'
 
-# 指定插件版本
-git show origin/main:.claude-plugin/marketplace.json | jq -r '.plugins[] | select(.name=="<plugin>") | .version'
+# 指定插件版本（优先读 Claude manifest；如果没有，则读 Codex manifest）
+git show origin/main:plugins/<plugin>/.claude-plugin/plugin.json 2>/dev/null | jq -r '.version'
+git show origin/main:plugins/<plugin>/.codex-plugin/plugin.json 2>/dev/null | jq -r '.version'
 ```
 
 ### 步骤 4: 计算新版本号
@@ -44,11 +50,15 @@ git show origin/main:.claude-plugin/marketplace.json | jq -r '.plugins[] | selec
 **只更新有修改的插件**：
 
 1. `.claude-plugin/marketplace.json`
-   - `metadata.version`（总是更新）
-   - 有修改的插件的 `version`
+   - 仅当 marketplace 文件本身或其中已注册插件发生变化时更新 `metadata.version`
+   - 仅更新已注册插件的 `version`
 
 2. `plugins/<name>/.claude-plugin/plugin.json`
-   - 只更新有修改的插件
+   - 如果存在，只更新有修改的插件
+
+3. `plugins/<name>/.codex-plugin/plugin.json`
+   - 如果存在，更新到该插件的新版本
+   - 当 `.claude-plugin/plugin.json` 也存在时，与其保持版本一致
 
 **未修改的插件保持原版本不变。**
 

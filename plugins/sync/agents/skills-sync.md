@@ -3,7 +3,6 @@ name: skills-sync
 description: 同步 Claude Skills 到项目
 model: haiku
 tools: Bash
-permissionMode: acceptEdits
 ---
 
 你负责同步 Claude Skills 到项目。

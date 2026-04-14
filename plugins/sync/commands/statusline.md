@@ -26,7 +26,12 @@ description: 配置 Claude Code 状态栏（显示项目/分支/Context/模型/W
 
 ## Your Task
 
-### 步骤 1：查找脚本文件（两级优先级）
+### 步骤 1：查找脚本文件（三级优先级）
+
+**1.0 检查 `${CLAUDE_PLUGIN_ROOT}`**：
+```bash
+test -f "${CLAUDE_PLUGIN_ROOT}/scripts/statusline.sh" && echo "PLUGIN_ROOT_FOUND" || echo "PLUGIN_ROOT_NOT_FOUND"
+```
 
 **1.1 查找最新缓存版本**：
 ```bash
@@ -44,7 +49,8 @@ test -f ${LATEST_VERSION}scripts/statusline.sh && echo "CACHE_FOUND" || echo "CA
 ```
 
 **1.3 设置 SCRIPT_PATH 变量**：
-- 如果 PRIMARY_FOUND：`SCRIPT_PATH=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/scripts/statusline.sh`
+- 如果 PLUGIN_ROOT_FOUND：`SCRIPT_PATH=${CLAUDE_PLUGIN_ROOT}/scripts/statusline.sh`
+- 否则如果 PRIMARY_FOUND：`SCRIPT_PATH=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync/scripts/statusline.sh`
 - 否则如果 CACHE_FOUND：`SCRIPT_PATH=${LATEST_VERSION}scripts/statusline.sh`
 - 否则：中断并提示用户更新/安装 sync plugin
 

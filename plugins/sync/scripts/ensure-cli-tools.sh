@@ -43,6 +43,35 @@ check_command() {
     command -v "$1" &> /dev/null
 }
 
+detect_shell_name() {
+    basename "${SHELL:-}"
+}
+
+print_token_setup_hint() {
+    case "$(detect_shell_name)" in
+        zsh)
+            echo "  echo 'export GH_TOKEN=\"ghp_xxxx\"' >> ~/.zshrc"
+            echo "  echo 'export GITLAB_TOKEN=\"glpat-xxxx\"' >> ~/.zshrc"
+            echo "  source ~/.zshrc"
+            ;;
+        bash)
+            echo "  echo 'export GH_TOKEN=\"ghp_xxxx\"' >> ~/.bashrc"
+            echo "  echo 'export GITLAB_TOKEN=\"glpat-xxxx\"' >> ~/.bashrc"
+            echo "  source ~/.bashrc"
+            ;;
+        fish)
+            echo "  set -Ux GH_TOKEN ghp_xxxx"
+            echo "  set -Ux GITLAB_TOKEN glpat-xxxx"
+            echo "  exec fish"
+            ;;
+        *)
+            echo "  # 将以下环境变量写入你当前 shell 使用的 rc 文件"
+            echo "  export GH_TOKEN=\"ghp_xxxx\""
+            echo "  export GITLAB_TOKEN=\"glpat-xxxx\""
+            ;;
+    esac
+}
+
 # ========== 包管理器检测 ==========
 
 has_brew() {
@@ -163,9 +192,7 @@ main() {
         done
         echo ""
         echo -e "${CYAN}配置方法:${NC}"
-        echo "  echo 'export GH_TOKEN=\"ghp_xxxx\"' >> ~/.zshrc"
-        echo "  echo 'export GITLAB_TOKEN=\"glpat-xxxx\"' >> ~/.zshrc"
-        echo "  source ~/.zshrc"
+        print_token_setup_hint
         echo ""
         log_info "运行 '/sync:cli-tools' 获取详细指南"
     fi

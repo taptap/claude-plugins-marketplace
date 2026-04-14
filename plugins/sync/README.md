@@ -35,9 +35,8 @@
 
 ## 设计约束
 
-- `sync` 只负责 Claude Code 侧基础环境引导。
-- 旧的 IDE 专用命令和模板已移除，不再写入其他 IDE 的配置目录。
-- Codex 插件分发单独处理；`sync` 不再写入或维护 `~/.agents/skills`。
+- `sync` 主要负责 Claude Code 侧基础环境引导，并补充 Codex 插件 clone / marketplace 维护。
+- Codex 插件分发单独处理：SessionStart 会维护 `~/.agents/plugins/taptap-plugins/` 独立 clone，并合并更新 `~/.agents/plugins/marketplace.json`；`sync` 不再写入或维护 `~/.agents/skills`。
 
 ## MCP 相关
 

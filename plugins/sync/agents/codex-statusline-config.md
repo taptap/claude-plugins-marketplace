@@ -3,7 +3,6 @@ name: codex-statusline-config
 description: 配置 Codex statusline（tmux + iTerm2 + 官方 TUI status_line）
 model: haiku
 tools: Read, Bash
-permissionMode: acceptEdits
 ---
 
 你负责安装和配置 Codex statusline（tmux status-left + iTerm2 Status Bar + Codex 官方 TUI `status_line`）。
