@@ -24,7 +24,6 @@ from pathlib import Path
 import ssl
 import sys
 import urllib.request
-from typing import Dict, List, Optional, Union
 from urllib.parse import urlencode
 
 # ==================== .env 自动加载 ====================
@@ -40,7 +39,7 @@ GITLAB_URL = os.environ.get("GITLAB_URL", "")
 GITLAB_TOKEN = os.environ.get("GITLAB_TOKEN", "")
 
 
-def _load_project_mapping() -> Dict[str, List[int]]:
+def _load_project_mapping() -> dict[str, list[int]]:
     """
     从环境变量加载项目映射，未设置则返回空映射。
     支持两种 value 格式：int ID 或 int ID 列表。
@@ -55,7 +54,7 @@ def _load_project_mapping() -> Dict[str, List[int]]:
         print(f"  [WARN] GITLAB_PROJECT_MAPPING 解析失败: {e}", file=sys.stderr)
         return {}
 
-    normalized: Dict[str, List[int]] = {}
+    normalized: dict[str, list[int]] = {}
     for platform, ids in raw.items():
         if isinstance(ids, int):
             normalized[str(platform)] = [ids]
@@ -75,11 +74,11 @@ def _load_project_mapping() -> Dict[str, List[int]]:
     return normalized
 
 
-PROJECT_ID_MAPPING: Dict[str, List[int]] = _load_project_mapping()
+PROJECT_ID_MAPPING: dict[str, list[int]] = _load_project_mapping()
 
 # 项目 ID -> 项目路径映射（用于构造 MR URL）
 # 如果缓存未命中，会通过 API 查询
-_project_path_cache: Dict[int, str] = {}
+_project_path_cache: dict[int, str] = {}
 
 # SSL 上下文（复用）
 # 设置 GITLAB_SSL_VERIFY=false 可禁用证书验证（内网自签名证书场景）
@@ -94,7 +93,7 @@ DESC_MAX_LEN = 200
 
 # ==================== GitLab API 调用 ====================
 
-def _api_get(path: str, params: Optional[dict] = None) -> Union[list, dict]:
+def _api_get(path: str, params: dict | None = None) -> list | dict:
     """调用 GitLab REST API（GET 请求），使用 stdlib urllib"""
     url = f"{GITLAB_URL}/api/v4{path}"
     if params:
@@ -124,9 +123,9 @@ def _search_mrs_in_project(
         project_id: int,
         search_term: str,
         state: str = "merged",
-) -> List[dict]:
+) -> list[dict]:
     """在指定项目中搜索指定状态的 MR（支持自动分页）"""
-    all_mrs: List[dict] = []
+    all_mrs: list[dict] = []
     page = 1
 
     while True:
@@ -206,10 +205,10 @@ def search_story_mrs(story_id: str) -> dict:
     search_states = ["merged", "opened"]
 
     seen_urls: set = set()
-    mrs_by_platform: Dict[str, List[dict]] = {}
+    mrs_by_platform: dict[str, list[dict]] = {}
 
     for platform, project_ids in PROJECT_ID_MAPPING.items():
-        platform_mrs: List[dict] = []
+        platform_mrs: list[dict] = []
 
         for project_id in project_ids:
             print(f"  搜索 {platform} (project_id={project_id}) ...", file=sys.stderr)

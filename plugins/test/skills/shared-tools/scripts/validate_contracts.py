@@ -97,7 +97,7 @@ def check_upstream_refs(contracts):
     """检查 from_upstream 引用是否有效。"""
     issues = []
     for skill_name, contract in contracts.items():
-        for param_name, upstream_skill in get_upstream_refs(contract):
+        for _param_name, upstream_skill in get_upstream_refs(contract):
             if upstream_skill not in contracts:
                 issues.append(
                     f"  [MISSING] {skill_name}: from_upstream='{upstream_skill}' 不存在"

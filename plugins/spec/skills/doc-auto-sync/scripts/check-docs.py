@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 文档完整性检查脚本
 检查业务模块目录下哪些模块缺少文档
@@ -12,7 +11,6 @@
     python check-docs.py
 """
 
-import os
 import argparse
 from pathlib import Path
 
@@ -79,27 +77,27 @@ def get_modules(modules_dir):
     if not modules_dir.exists():
         print(f"❌ 业务模块目录不存在: {modules_dir}")
         return []
-    
+
     modules = []
     for item in modules_dir.iterdir():
         # 跳过隐藏文件/目录
         if item.name.startswith('.'):
             continue
-        
+
         # 跳过忽略的目录
         if item.name in IGNORE_DIRS:
             continue
-        
+
         # 跳过文件（只关注目录）
         if not item.is_dir():
             continue
-        
+
         # 跳过文件扩展名在忽略列表中的
         if item.suffix in IGNORE_EXTENSIONS:
             continue
-        
+
         modules.append(item.name)
-    
+
     return sorted(modules)
 
 
@@ -107,14 +105,14 @@ def check_module_docs(modules, docs_dir):
     """检查模块文档是否存在"""
     missing_docs = []
     existing_docs = []
-    
+
     for module in modules:
         doc_file = docs_dir / f"{module}.md"
         if doc_file.exists():
             existing_docs.append(module)
         else:
             missing_docs.append(module)
-    
+
     return existing_docs, missing_docs
 
 
@@ -124,8 +122,8 @@ def print_results(modules, existing_docs, missing_docs, modules_dir_name, docs_d
     print("模块文档完整性检查")
     print("=" * 60)
     print()
-    
-    print(f"📊 统计信息：")
+
+    print("📊 统计信息：")
     print(f"   业务模块目录：{modules_dir_name}/")
     print(f"   文档目录：{docs_dir_path}/")
     print(f"   总模块数：{len(modules)}")
@@ -134,13 +132,13 @@ def print_results(modules, existing_docs, missing_docs, modules_dir_name, docs_d
     if modules:
         print(f"   完成度：{len(existing_docs) / len(modules) * 100:.1f}%")
     print()
-    
+
     if existing_docs:
         print("✅ 已有文档的模块：")
         for module in existing_docs:
             print(f"   - {module}")
         print()
-    
+
     if missing_docs:
         print("⚠️  缺少文档的模块：")
         for module in missing_docs:
@@ -152,7 +150,7 @@ def print_results(modules, existing_docs, missing_docs, modules_dir_name, docs_d
         print("   3. AI会在修改这些模块时自动创建文档")
     else:
         print("🎉 所有模块都有文档！")
-    
+
     print()
     print("=" * 60)
 
@@ -180,27 +178,27 @@ def main():
                        help=f'业务模块目录（相对于项目根目录，默认：{DEFAULT_MODULES_DIR}）')
     parser.add_argument('--docs-dir', type=str, default=None,
                        help=f'模块文档目录（相对于项目根目录，默认：{DEFAULT_DOCS_DIR}）')
-    
+
     args = parser.parse_args()
-    
+
     # 确定路径
     root_dir = Path(args.root) if args.root else DEFAULT_ROOT_DIR
     modules_dir_name = args.modules_dir if args.modules_dir else DEFAULT_MODULES_DIR
     docs_dir_path = args.docs_dir if args.docs_dir else DEFAULT_DOCS_DIR
-    
+
     modules_dir = root_dir / modules_dir_name
     docs_dir = root_dir / docs_dir_path
-    
+
     print(f"正在扫描 {modules_dir_name}/ 目录...")
     modules = get_modules(modules_dir)
-    
+
     if not modules:
         print("❌ 未找到任何模块")
         return
-    
+
     print(f"找到 {len(modules)} 个模块，正在检查文档...")
     existing_docs, missing_docs = check_module_docs(modules, docs_dir)
-    
+
     print_results(modules, existing_docs, missing_docs, modules_dir_name, docs_dir_path)
 
 

@@ -22,7 +22,6 @@ import os
 from pathlib import Path
 import sys
 import urllib.request
-from typing import Dict, List, Optional, Set
 from urllib.parse import urlencode
 
 # ==================== .env 自动加载 ====================
@@ -34,10 +33,10 @@ except ImportError:
 
 GITHUB_URL = os.environ.get("GITHUB_URL", "https://api.github.com").rstrip("/")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
-DEFAULT_REPO_MAPPING: Dict[str, List[str]] = {}
+DEFAULT_REPO_MAPPING: dict[str, list[str]] = {}
 
 
-def _load_repo_mapping() -> Dict[str, List[str]]:
+def _load_repo_mapping() -> dict[str, list[str]]:
     """读取仓库映射并标准化为 list。"""
     raw = os.environ.get("GITHUB_REPO_MAPPING", "")
     if not raw:
@@ -48,7 +47,7 @@ def _load_repo_mapping() -> Dict[str, List[str]]:
         print(f"[WARN] GITHUB_REPO_MAPPING 解析失败，已忽略: {exc}", file=sys.stderr)
         return dict(DEFAULT_REPO_MAPPING)
 
-    normalized: Dict[str, List[str]] = {}
+    normalized: dict[str, list[str]] = {}
     for platform, repos in parsed.items():
         if isinstance(repos, str) and repos:
             normalized[str(platform)] = [repos]
@@ -60,7 +59,7 @@ def _load_repo_mapping() -> Dict[str, List[str]]:
 REPO_MAPPING = _load_repo_mapping()
 
 
-def _api_get(path: str, params: Optional[dict] = None) -> dict:
+def _api_get(path: str, params: dict | None = None) -> dict:
     """调用 GitHub API。"""
     url = f"{GITHUB_URL}{path}"
     if params:
@@ -77,10 +76,10 @@ def _api_get(path: str, params: Optional[dict] = None) -> dict:
         return json.loads(response.read().decode("utf-8"))
 
 
-def _search_repo_prs(repo: str, term: str, qualifier: str) -> List[dict]:
+def _search_repo_prs(repo: str, term: str, qualifier: str) -> list[dict]:
     """在单个 repo 内搜索 PR（支持分页）。"""
     query = f'repo:{repo} is:pr in:title,body "{term}" {qualifier}'
-    all_items: List[dict] = []
+    all_items: list[dict] = []
     page = 1
 
     while True:
@@ -114,19 +113,19 @@ def _extract_repo_from_issue_url(html_url: str) -> str:
 
 
 def search_related_prs(work_item_id: str) -> dict:
-    seen_urls: Set[str] = set()
-    prs_by_repo: Dict[str, List[dict]] = {}
+    seen_urls: set[str] = set()
+    prs_by_repo: dict[str, list[dict]] = {}
     # 搜索已合并 + 进行中的 PR，排除 closed-unmerged（与 search_mrs.py 一致）
     search_qualifiers = ["is:open", "is:merged"]
     terms = [work_item_id, f"TAP-{work_item_id}", f"#{work_item_id}"]
 
-    repos: List[str] = []
+    repos: list[str] = []
     for repo_list in REPO_MAPPING.values():
         repos.extend(repo_list)
     repos = sorted(set(repos))
 
     for repo in repos:
-        collected: List[dict] = []
+        collected: list[dict] = []
         for term in terms:
             for qualifier in search_qualifiers:
                 try:

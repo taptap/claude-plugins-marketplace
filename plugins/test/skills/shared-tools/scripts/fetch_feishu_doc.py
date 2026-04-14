@@ -27,6 +27,7 @@
 """
 
 import argparse
+import contextlib
 import json
 import os
 from pathlib import Path
@@ -38,11 +39,9 @@ import urllib.parse
 import urllib.request
 
 # ==================== .env 自动加载 ====================
-try:
+with contextlib.suppress(ImportError):
     from dotenv import load_dotenv
     load_dotenv(Path(__file__).with_name('.env'))
-except ImportError:
-    pass  # python-dotenv not installed; rely on shell env
 
 # ==================== 配置 ====================
 
@@ -97,10 +96,8 @@ def get_access_token():
             result = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         body = ""
-        try:
+        with contextlib.suppress(Exception):
             body = e.read().decode("utf-8", errors="replace")[:500]
-        except Exception:
-            pass
         raise RuntimeError(
             f"获取 tenant_access_token 失败: HTTP {e.code} {e.reason}, "
             f"请检查 FEISHU_APP_ID/FEISHU_APP_SECRET 配置, response={body}"
@@ -134,10 +131,8 @@ def feishu_api_get(endpoint, params=None):
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         body = ""
-        try:
+        with contextlib.suppress(Exception):
             body = e.read().decode("utf-8", errors="replace")[:500]
-        except Exception:
-            pass
         raise RuntimeError(
             f"飞书 API 请求失败: {e.code} {e.reason}, "
             f"endpoint={endpoint}, response={body}"
@@ -153,13 +148,12 @@ def download_media(media_token, output_path):
         method="GET",
     )
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            with open(output_path, "wb") as f:
-                while True:
-                    chunk = resp.read(16384)
-                    if not chunk:
-                        break
-                    f.write(chunk)
+        with urllib.request.urlopen(req, timeout=120) as resp, open(output_path, "wb") as f:
+            while True:
+                chunk = resp.read(16384)
+                if not chunk:
+                    break
+                f.write(chunk)
         return True
     except Exception as e:
         log_error(f"下载图片失败 {media_token}: {e}")
@@ -202,13 +196,12 @@ def download_board_thumbnail(board_id, output_path):
         method="GET",
     )
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            with open(output_path, "wb") as f:
-                while True:
-                    chunk = resp.read(16384)
-                    if not chunk:
-                        break
-                    f.write(chunk)
+        with urllib.request.urlopen(req, timeout=120) as resp, open(output_path, "wb") as f:
+            while True:
+                chunk = resp.read(16384)
+                if not chunk:
+                    break
+                f.write(chunk)
         return True
     except Exception as e:
         log_error(f"下载画板缩略图失败 {board_id}: {e}")
@@ -393,7 +386,7 @@ TEXT_FIELD_PATTERNS = [
 def get_block_text(block):
     """从 block 中提取纯文本内容"""
     text_obj = None
-    for key in block.keys():
+    for key in block:
         if any(p.match(key) for p in TEXT_FIELD_PATTERNS):
             text_obj = block[key]
             break

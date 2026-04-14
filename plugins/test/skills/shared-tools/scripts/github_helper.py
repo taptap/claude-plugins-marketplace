@@ -20,13 +20,13 @@ GitHub 辅助工具 — 供 AI Agent 在变更分析流程中使用。
 from __future__ import annotations
 
 import base64
+import contextlib
 import json
 import os
 from pathlib import Path
 import sys
 import urllib.request
-from typing import Optional, Union
-from urllib.parse import urlencode, quote
+from urllib.parse import quote, urlencode
 
 # ==================== .env 自动加载 ====================
 try:
@@ -39,7 +39,7 @@ GITHUB_URL = os.environ.get("GITHUB_URL", "https://api.github.com").rstrip("/")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 
 
-def _api_get(path: str, params: Optional[dict] = None) -> Union[dict, list]:
+def _api_get(path: str, params: dict | None = None) -> dict | list:
     url = f"{GITHUB_URL}{path}"
     if params:
         url = f"{url}?{urlencode(params)}"
@@ -176,10 +176,8 @@ def main():
             sys.exit(1)
     except urllib.error.HTTPError as e:
         body = ""
-        try:
+        with contextlib.suppress(Exception):
             body = e.read().decode("utf-8", errors="replace")[:500]
-        except Exception:
-            pass
         print(f"[ERROR] GitHub API 返回 {e.code}: {e.reason}", file=sys.stderr)
         if body:
             print(f"  响应: {body}", file=sys.stderr)
