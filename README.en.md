@@ -1,8 +1,8 @@
 English | [中文](./README.md)
 
-# TapTap Claude Code Plugins Marketplace
+# TapTap Agents Plugins
 
-A Claude Code plugin marketplace maintained by the TapTap team, providing development workflow automation tools.
+A plugin marketplace maintained by the TapTap team, offering workflow automation for AI development tools.
 
 ## Team Configuration
 
@@ -18,7 +18,7 @@ mkdir -p .claude && echo '{
     "taptap-plugins": {
       "source": {
         "source": "github",
-        "repo": "taptap/claude-plugins-marketplace"
+        "repo": "taptap/agents-plugins"
       }
     }
   },
@@ -82,10 +82,10 @@ One-click configuration for MCP, auto-update, and development environment templa
 
 | Plugin  | Version | Description                                                                                          |
 | ------- | ------- | ---------------------------------------------------------------------------------------------------- |
-| spec    | 0.1.5   | Spec-Driven Development workflow plugin                                                              |
-| git     | 0.1.14  | Git workflow automation plugin (commit/push/MR + dual-mode code review + remote platform ops)        |
-| sync    | 0.1.26  | Dev environment config sync plugin (MCP + LSP + Hooks + Claude Skills)                               |
-| test    | 0.0.1   | QA workflow plugin (requirement clarification/test case generation/change analysis/traceability/code-level test generation) |
+| spec    | 0.1.6   | Spec-Driven Development workflow plugin                                                              |
+| git     | 0.1.15  | Git workflow automation plugin (commit/push/MR + dual-mode code review + remote platform ops)        |
+| sync    | 0.1.27  | Dev environment config sync plugin (MCP + LSP + Hooks + Claude Skills)                               |
+| test    | 0.0.2   | QA workflow plugin (requirement clarification/test case generation/change analysis/traceability/code-level test generation) |
 
 
 See the README.md in each plugin directory for detailed documentation.
@@ -285,4 +285,4 @@ Use the Git plugin's built-in review flow to inspect local changes or MR/PRs:
 
 ## Feedback
 
-Please submit issues on [GitHub Issues](https://github.com/taptap/claude-plugins-marketplace/issues).
+Please submit issues on [GitHub Issues](https://github.com/taptap/agents-plugins/issues).

@@ -3,7 +3,6 @@ name: mcp-config
 description: 配置 MCP 服务器（context7）到 Claude Code
 model: haiku
 tools: Read, Write, Edit
-permissionMode: acceptEdits
 ---
 
 你负责配置 Claude Code 的 `context7` MCP。

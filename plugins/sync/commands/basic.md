@@ -5,14 +5,15 @@ description: 一键配置开发环境（MCP + Hooks + MR 模板 + Claude Skills 
 
 ## Context
 
-此命令会完成 Claude Code 侧的基础环境配置：
+此命令会完成 Claude Code 侧的基础环境配置，并补充 Codex 插件独立 clone：
 
 1. 配置 `context7` MCP
 2. 配置 SessionStart hooks
 3. 同步 GitLab Merge Request 默认模板
 4. 同步项目级 Claude Skills 模板
 5. 配置 Status Line
-6. 检测语言并启用 LSP 插件
+6. 配置 Codex 插件独立 clone
+7. 检测语言并启用 LSP 插件
 
 ## Your Task
 
@@ -29,6 +30,7 @@ description: 一键配置开发环境（MCP + Hooks + MR 模板 + Claude Skills 
 
 - `PROJECT_ROOT`
 - `GIT_CHECK`
+- `BASE_SOURCE`
 - `LATEST_VERSION`
 - `SCRIPTS_DIR`
 - `MCP_TEMPLATES_DIR`
@@ -37,9 +39,18 @@ description: 一键配置开发环境（MCP + Hooks + MR 模板 + Claude Skills 
 
 查找规则：
 
-- marketplace 路径：`~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync`
-- cache 路径：`~/.claude/plugins/cache/taptap-plugins/sync/<latest>/`
-- 默认模式优先 marketplace，`--dev` 模式优先 cache
+1. **先检查 `${CLAUDE_PLUGIN_ROOT}`**
+   - 如果 `${CLAUDE_PLUGIN_ROOT}` 已设置，且 `${CLAUDE_PLUGIN_ROOT}/scripts` 存在：
+     - 设置 `BASE=${CLAUDE_PLUGIN_ROOT}`
+     - 记为 `BASE_SOURCE=plugin_root`
+   - 这是 Claude 官方提供的 plugin 根目录变量，适用于 marketplace、cache 和 `--plugin-dir` 加载的 inline 插件
+   - 不要依赖用户个人 shell 配置、别名函数、固定 repo 路径或特定 rc 文件
+2. marketplace 路径：`~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync`
+3. cache 路径：`~/.claude/plugins/cache/taptap-plugins/sync/<latest>/`
+
+优先级规则：
+- 默认模式：`plugin_root > marketplace > cache`
+- `--dev` 模式：`plugin_root > cache > marketplace`
 
 确定 `BASE` 后，各变量的子目录映射：
 
@@ -49,6 +60,8 @@ description: 一键配置开发环境（MCP + Hooks + MR 模板 + Claude Skills 
 - `SKILLS_DIR` = `{BASE}/skills`
 
 如果 `GIT_CHECK=FAIL`，立即停止并提示用户在项目根目录执行。
+
+如果 `BASE_SOURCE=plugin_root`，请在后续汇总里明确说明本次使用的是当前会话的 sync plugin 源目录，而不是额外猜测用户机器上的安装路径。
 
 **步骤 0.3：检测项目语言**
 
@@ -60,9 +73,9 @@ bash {SCRIPTS_DIR}/detect-lsp.sh "$(pwd)"
 
 提取 `DETECTED_LSP` 的值，供 Phase 2 使用。
 
-### Phase 1：并行执行 5 个命名 Subagent
+### Phase 1：并行执行 6 个命名 Subagent
 
-将 `none` 替换为 `无`，并在单条消息中同时发出以下 5 个 Task 调用：
+将 `none` 替换为 `无`，并在单条消息中同时发出以下 6 个 Task 调用：
 
 | # | subagent_type | model | prompt 内容 |
 |---|--------------|-------|------------|
@@ -71,14 +84,17 @@ bash {SCRIPTS_DIR}/detect-lsp.sh "$(pwd)"
 | 3 | `sync:mr-template` | haiku | `PROJECT_ROOT={值}`<br>`MR_TEMPLATE_DIR={值}` |
 | 4 | `sync:skills-sync` | haiku | `PROJECT_ROOT={值}`<br>`SKILLS_DIR={值}` |
 | 5 | `sync:statusline-config` | haiku | `SCRIPTS_DIR={值}` |
+| 6 | `sync:codex-plugins-config` | haiku | `PROJECT_ROOT={值}`<br>`SCRIPTS_DIR={值}` |
 
 ### Phase 2：汇总结果并处理 LSP
 
-等待所有 5 个 Task 返回结果后：
+等待所有 6 个 Task 返回结果后：
 
 1. 汇总每个步骤的成功/失败状态
 2. 如果 `DETECTED_LSP != none`：
    - 读取项目 `.claude/settings.json`
+   - 如果 `extraKnownMarketplaces.taptap-plugins.source.repo` 存在且值为旧官方仓库 `taptap/claude-plugins-marketplace`，迁移为 `taptap/agents-plugins`
+   - 如果该 `repo` 已是其他非空值（例如用户 fork），保留不动
    - 将检测到的 LSP 插件加入 `enabledPlugins`
    - 立即安装缺失 binary
 3. 输出最终报告
@@ -109,6 +125,7 @@ bash {SCRIPTS_DIR}/detect-lsp.sh "$(pwd)"
   ✅ GitLab MR 模板
   ✅ Claude Skills 同步
   ✅ Status Line 配置
+  ✅ Codex 插件配置
   [✅/⏭️] LSP 代码智能
 
 下一步：
@@ -127,6 +144,7 @@ bash {SCRIPTS_DIR}/detect-lsp.sh "$(pwd)"
   [✅/❌/⏭️] GitLab MR 模板
   [✅/❌/⏭️] Claude Skills 同步
   [✅/❌/⏭️] Status Line 配置
+  [✅/❌/⏭️] Codex 插件配置
   [✅/❌/⏭️] LSP 代码智能
 
 建议：

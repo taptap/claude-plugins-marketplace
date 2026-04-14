@@ -3,7 +3,6 @@ name: mr-template
 description: 同步 GitLab MR 默认模板到项目
 model: haiku
 tools: Read, Bash
-permissionMode: acceptEdits
 ---
 
 你负责同步 GitLab MR 默认模板。

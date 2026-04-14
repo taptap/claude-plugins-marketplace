@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.1.32 — Add Codex plugin support and migrate marketplace repo name
+
+### Sync Plugin (0.1.27)
+
+- Added Codex plugin support with `.codex-plugin/` directory and manifest
+- Added `codex-plugins-config` agent for configuring Codex plugins via standalone clone
+- Added `ensure-codex-plugins.sh` and `update-codex-plugins.sh` scripts for Codex plugin auto-update
+- Updated `/sync:hooks` command to include Codex hooks setup step (`.codex/hooks/` sync)
+- Updated `/sync:basic` command to add Codex plugin standalone clone as Phase 1 step
+- Updated `/sync:basic` and `/sync:lsp` project settings handling to migrate `taptap/claude-plugins-marketplace` to `taptap/agents-plugins` without overwriting custom repos
+- Updated sync commands to prefer `${CLAUDE_PLUGIN_ROOT}` before installed marketplace/cache paths, so inline `--plugin-dir` development sessions resolve the current plugin source correctly
+- Updated `ensure-plugins.sh` to migrate old marketplace repo name with robust jq-based detection
+- Updated `set-auto-update-plugins.sh` to handle old repo name migration and add JSON validity check before parsing
+- Updated `ensure-cli-tools.sh` to add shell-aware token setup hints (zsh/bash/fish)
+- Simplified `hooks-config` agent to non-destructive project hooks check only; removed `permissionMode: acceptEdits`
+
+### Git Plugin (0.1.15)
+
+- Added `.codex-plugin/` manifest for Codex CLI compatibility
+
+### Spec Plugin (0.1.6)
+
+- Added `.codex-plugin/` manifest for Codex CLI compatibility
+
+### Test Plugin (0.0.2)
+
+- Added `.codex-plugin/` manifest for Codex CLI compatibility
+
+### Marketplace
+
+- Bumped version from 0.1.31 to 0.1.32
+- Updated sync plugin to version 0.1.27
+- Updated git plugin to version 0.1.15
+- Updated spec plugin to version 0.1.6
+- Updated test plugin to version 0.0.2
+
 ## 0.1.31 — Simplify sync workflow and remove Cursor-side distribution
 
 ### Sync Plugin (0.1.26)

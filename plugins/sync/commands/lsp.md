@@ -107,9 +107,10 @@ test -f .claude/hooks/scripts/ensure-lsp.sh && echo "PROJECT_SCRIPT=OK" || echo 
 如果项目级脚本存在，使用项目级脚本。否则查找插件目录：
 
 ```bash
+PR="${CLAUDE_PLUGIN_ROOT:-}" && \
 MP=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync && \
 LATEST=$(ls -d ~/.claude/plugins/cache/taptap-plugins/sync/*/ 2>/dev/null | sort -V | tail -1) && \
-(test -f "${MP}/scripts/ensure-lsp.sh" && echo "SCRIPTS_DIR=${MP}/scripts" || (test -n "${LATEST}" && test -f "${LATEST}scripts/ensure-lsp.sh" && echo "SCRIPTS_DIR=${LATEST}scripts" || echo "SCRIPTS_DIR=none"))
+(test -n "${PR}" && test -f "${PR}/scripts/ensure-lsp.sh" && echo "SCRIPTS_DIR=${PR}/scripts" || (test -f "${MP}/scripts/ensure-lsp.sh" && echo "SCRIPTS_DIR=${MP}/scripts" || (test -n "${LATEST}" && test -f "${LATEST}scripts/ensure-lsp.sh" && echo "SCRIPTS_DIR=${LATEST}scripts" || echo "SCRIPTS_DIR=none")))
 ```
 
 **步骤 3：执行安装**
@@ -151,9 +152,10 @@ bash <ensure-lsp.sh路径>
 **步骤 1：定位 detect-lsp.sh**
 
 ```bash
+PR="${CLAUDE_PLUGIN_ROOT:-}" && \
 MP=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync && \
 LATEST=$(ls -d ~/.claude/plugins/cache/taptap-plugins/sync/*/ 2>/dev/null | sort -V | tail -1) && \
-(test -f "${MP}/scripts/detect-lsp.sh" && echo "SCRIPTS_DIR=${MP}/scripts" || (test -n "${LATEST}" && test -f "${LATEST}scripts/detect-lsp.sh" && echo "SCRIPTS_DIR=${LATEST}scripts" || echo "SCRIPTS_DIR=none"))
+(test -n "${PR}" && test -f "${PR}/scripts/detect-lsp.sh" && echo "SCRIPTS_DIR=${PR}/scripts" || (test -f "${MP}/scripts/detect-lsp.sh" && echo "SCRIPTS_DIR=${MP}/scripts" || (test -n "${LATEST}" && test -f "${LATEST}scripts/detect-lsp.sh" && echo "SCRIPTS_DIR=${LATEST}scripts" || echo "SCRIPTS_DIR=none")))
 ```
 
 如果 SCRIPTS_DIR=none，提示用户更新 sync 插件。
@@ -183,6 +185,10 @@ bash {SCRIPTS_DIR}/detect-lsp.sh "$(pwd)"
 
 读取 `.claude/settings.json`（项目级），将检测到的 LSP 插件加入 `enabledPlugins`（不覆盖已有值）。
 
+如果文件中存在 `extraKnownMarketplaces.taptap-plugins.source.repo`，且值为旧官方仓库 `taptap/claude-plugins-marketplace`，则迁移为 `taptap/agents-plugins`。
+
+如果 `extraKnownMarketplaces.taptap-plugins.source.repo` 已是其他非空值（例如用户 fork），保留不动，不要覆盖。
+
 如果文件不存在，创建：
 ```json
 {
@@ -192,7 +198,7 @@ bash {SCRIPTS_DIR}/detect-lsp.sh "$(pwd)"
 }
 ```
 
-如果文件存在，使用 Edit 工具合并 `enabledPlugins`（保留所有已有字段）。
+如果文件存在，使用 Edit 工具合并 `enabledPlugins`（保留所有已有字段），并按上面的规则仅迁移旧官方 repo 名。
 
 **步骤 4：安装 LSP binary**
 

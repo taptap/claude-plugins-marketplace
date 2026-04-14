@@ -11,9 +11,10 @@ user_invocable: true
 ## 步骤 1：定位脚本目录
 
 ```bash
+PR="${CLAUDE_PLUGIN_ROOT:-}" && \
 MP=~/.claude/plugins/marketplaces/taptap-plugins/plugins/sync && \
 LATEST=$(ls -d ~/.claude/plugins/cache/taptap-plugins/sync/*/ 2>/dev/null | sort -V | tail -1) && \
-(test -d "${MP}/scripts" && echo "SCRIPTS_DIR=${MP}/scripts" || (test -n "${LATEST}" && test -d "${LATEST}scripts" && echo "SCRIPTS_DIR=${LATEST}scripts" || echo "SCRIPTS_DIR=none"))
+(test -n "${PR}" && test -d "${PR}/scripts" && echo "SCRIPTS_DIR=${PR}/scripts" || (test -d "${MP}/scripts" && echo "SCRIPTS_DIR=${MP}/scripts" || (test -n "${LATEST}" && test -d "${LATEST}scripts" && echo "SCRIPTS_DIR=${LATEST}scripts" || echo "SCRIPTS_DIR=none")))
 ```
 
 如果 `SCRIPTS_DIR=none`，提示插件未安装并停止。
