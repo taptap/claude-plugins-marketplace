@@ -1,4 +1,4 @@
-# test Plugin
+# Test Plugin
 
 > QA 工作流插件，覆盖需求澄清 → 测试用例生成 / 评审 → 变更分析 → 需求回溯 → Bug 修复分析的完整 QA 流程
 
@@ -18,16 +18,27 @@
 | **verification-test-generation** | 仅 CLI/手工调用 | 从需求点生成结构化验证用例，AI 逐条对照代码推理 |
 | **test-failure-analyzer** | 仅 CLI/手工调用 | 分析测试失败原因，分类处理，支持自循环 |
 | **ui-fidelity-check** | 仅 CLI/手工调用 | 对比 Figma 设计稿与浏览器实现的 UI 还原度 |
-| **bug-fix-review** | 已废弃 | 已合并到 change-analysis Bug 场景 |
 | **api-contract-validation** | 独立校验工具 | 深度校验前后端 API 契约一致性（路径/参数/响应/Breaking Change） |
 | **unit-test-design** | 代码级生成 | 分析源代码，生成可执行的单元测试代码 |
 | **integration-test-design** | 代码级生成 | 分析 API/服务，生成可执行的集成测试代码 |
+
+### 编排 Skills
+
+| Skill | 类型 | 功能 |
+|-------|------|------|
+| **qa-workflow** | 工作流编排 | 端到端 QA 编排器：自动串联需求澄清→用例生成→MS同步→变更分析→需求还原度→代码审查，支持条件分支和并行执行 |
+
+### 集成同步 Skills
+
+| Skill | 类型 | 功能 |
+|-------|------|------|
+| **metersphere-sync** | 集成同步 | 将 AI 生成的测试用例导入 MeterSphere，创建测试计划，可选基于验证置信度自动标记执行结果 |
 
 ### 支持 Skills
 
 | Skill | 功能 |
 |-------|------|
-| **shared-tools** | 共享脚本集合（飞书文档获取、GitLab/GitHub MR/PR 分析） |
+| **shared-tools** | 共享脚本集合（飞书文档获取、GitLab/GitHub MR/PR 分析、MeterSphere 用例同步） |
 
 ## 需求类 Skill 选用指引
 
@@ -262,10 +273,11 @@ plugins/test/
 │   ├── verification-test-generation/  # 验证用例生成（AI 推理验证）
 │   ├── test-failure-analyzer/      # 测试失败分析（自循环）
 │   ├── ui-fidelity-check/          # UI 还原度检查
-│   ├── bug-fix-review/             # [已废弃] 已合并到 change-analysis Bug 场景
 │   ├── unit-test-design/           # 单元测试代码生成
 │   ├── integration-test-design/    # 集成测试代码生成
-│   └── api-contract-validation/    # API 契约校验
+│   ├── api-contract-validation/    # API 契约校验
+│   ├── metersphere-sync/          # MeterSphere 用例同步与测试计划管理
+│   └── qa-workflow/               # QA 工作流编排器
 ├── PIPELINES.md                    # 链路数据流规格
 └── README.md
 ```
@@ -281,12 +293,21 @@ shared-tools 脚本依赖以下环境变量（按需配置）：
 | `GITLAB_URL` | GitLab 实例地址 | gitlab_helper.py, search_mrs.py |
 | `GITLAB_TOKEN` | GitLab Access Token | gitlab_helper.py, search_mrs.py |
 | `GITHUB_TOKEN` | GitHub Token | github_helper.py, search_prs.py |
+| `MS_BASE_URL` | MeterSphere 地址（有默认值） | metersphere_helper.py |
+| `MS_ACCESS_KEY` | MeterSphere API Key（有默认值） | metersphere_helper.py |
+| `MS_SECRET_KEY` | MeterSphere Secret Key（有默认值） | metersphere_helper.py |
+| `MS_PROJECT_ID` | MeterSphere 项目 ID（有默认值） | metersphere_helper.py |
 
 ## 版本历史
 
-- **v0.0.3** - 新增 feedback skill（Slack 用户反馈分析 + 飞书 Bug 创建）及完整知识库（10 个参考文档）和 feishu_api.py 脚本；change-analysis 新增 Urhox 二进制 diff 范围过滤与影响分析
+- **v0.0.3** - 新增 `qa-workflow` 编排器和 `metersphere-sync` skill；新增 feedback skill（Slack 反馈分析 + 飞书 Bug 创建）；change-analysis 新增 Urhox 二进制影响分析；统一 .env 配置；`ask_question` 迁移至原生 AskUserQuestion 工具调用
 - **v0.0.2** - 新增 `.codex-plugin/` manifest，支持 Codex CLI 兼容
 - **v0.0.1** - 首次发布；完整 QA 工作流插件，包含需求澄清、测试用例生成（含冗余对评审）、用例评审、变更分析、需求回溯（含冒烟测试模式）、代码级测试生成（单元/集成）、API 契约校验、UI 还原度检查等全流程 Skill；共享工具集（飞书文档获取、MR/PR 分析脚本）；阶段执行保障和输出验证机制
+
+### v0.0.19
+
+- Migrate `ask_question` text-based output format to native AskUserQuestion tool calls; align constraints with tool schema (1-4 questions, 2-4 options, required description, header <=12 chars)
+- Update all skill references: requirement-clarification, requirement-review, test-case-generation, and shared TRACEABILITY_PROTOCOL
 
 ### v0.0.18
 

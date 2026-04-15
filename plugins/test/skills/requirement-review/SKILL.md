@@ -13,6 +13,7 @@ description: >
 
 ## Quick Start
 
+- Skill 类型：独立 skill
 - 适用场景：对需求文档做质量评审，识别逻辑缺口、边界风险、协作前置条件与跨职能待确认问题
 - 必要输入：飞书 Story 链接或需求文档链接；如有设计稿、关联文档、相关代码信息可一并读取
 - 输出产物：`requirement_understanding.md`、`review_checklist.md`、`report.md`
@@ -114,13 +115,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/gitlab_helper.py file-content <project
 
 ### 3. Figma MCP（条件触发）
 
-当用户提供设计稿链接或 Story 中包含设计稿链接时，按 [shared-tools Figma 分级协议](../shared-tools/SKILL.md#figma-设计稿获取) 获取设计稿数据：
-
-1. `figma_metadata(url)` — 获取页面结构树，识别功能区块
-2. `figma_extract(url, 文本提取脚本)` — 提取 UI 文案和标签文本
-3. `figma_context(url, nodeId)` — 仅对关键交互节点获取设计详情
-
-不要用 WebFetch 获取 Figma 设计稿。
+当用户提供设计稿链接或 Story 中包含设计稿链接时，按分级协议获取，详见 [shared-tools/SKILL.md](../shared-tools/SKILL.md#figma-设计稿获取)。
 
 ## 各阶段详细操作
 
@@ -160,7 +155,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/gitlab_helper.py file-content <project
 - 飞书工具选择和禁用项见 [shared-tools/SKILL.md](../shared-tools/SKILL.md) 的「工具选择快速参考」和「禁用工具」
 - **每个阶段结束时必须输出进度统计**
 - 回读中间文件等通用约定见 [CONVENTIONS](../../CONVENTIONS.md)
-- 阻断项确认使用结构化 ask_question 格式，见 [CONVENTIONS.md](../../CONVENTIONS.md#ask_question-输出格式) 和 [PHASES.md](PHASES.md) 阶段 4.4
+- 阻断项确认通过调用 AskUserQuestion 工具完成，见 [CONVENTIONS.md](../../CONVENTIONS.md#askuserquestion-交互式提问) 和 [PHASES.md](PHASES.md) 阶段 4.4
 
 ## 约束规则
 

@@ -1,15 +1,20 @@
 # Changelog
 
-## 0.1.33 — Migrate feedback skill and add Urhox binary analysis to test plugin
+## 0.1.33 — Add metersphere-sync, feedback skill, and Urhox binary analysis to test plugin
 
 ### Test Plugin (0.0.3)
 
+- Added metersphere-sync skill for test plan management and case import with hierarchical module support
+- Added qa-workflow orchestrator skill for end-to-end QA pipeline execution
 - Added feedback skill: analyze Slack #taptap-feedback channel user feedback, classify issues, and create Feishu Bug tickets
 - Added feedback skill knowledge base (10 reference docs: TapSDK, 实名, 下载安装, 评分, 配置, 内容发布, 注册登录, 青少年, 缺陷提交规范, 商店线产品分工)
 - Added feedback skill Feishu API script for creating and updating Bug work items
-- Added Urhox binary diff scope filtering to change-analysis phase 2.3: filters PR changes to binary-relevant directories (engine/Source/*, 3rd, game/src/*)
-- Added Urhox binary impact analysis in change-analysis phase 3A: directory influence mapping, representative code sampling, and test matrix output
-- Applied Urhox filtering logic to Bug scenario (phases 2 and 3)
+- Added Urhox binary diff scope filtering to change-analysis phase 2.3
+- Added Urhox binary impact analysis in change-analysis phase 3A
+- Added test-case-generation sufficiency gate and iterative re-entry
+- Added unified .env-based config for all Python scripts via python-dotenv
+- Added requirement-clarification native AskUserQuestion tool calls
+- Added phase execution guarantees and output validation for all multi-phase skills
 
 ### Marketplace
 

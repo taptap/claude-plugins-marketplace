@@ -1,5 +1,13 @@
 # 测试用例生成各阶段详细操作指南
 
+## 大文件写入规则（全阶段适用）
+
+Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JSON 会在中途截断，导致 `JSON Parse error: Expected '}'` 工具调用失败。遵循以下规则：
+
+- **JSON 文件（用例集）**：超过 50 条用例时，用 Bash 执行 Python 脚本完成文件合并/写入，不要通过 Write 工具直接输出大 JSON
+- **Markdown 文件（评审报告）**：控制在 200 行以内，只记录结论摘要，不要复制 Agent 原始输出的完整内容
+- **通用判断**：如果预估 Write content 超过 4000 字符，改用 Bash + Python 脚本写入
+
 ## 关于系统预取
 
 通用预取机制见 [CONVENTIONS.md](../../CONVENTIONS.md#系统预取)。本 skill 额外预取：测试用例链接、需求文档内容（预下载到 `requirement_doc.md`）。
@@ -11,6 +19,28 @@
 1. 检查预取数据：Story 名称、需求文档链接、设计稿链接
 2. 记录 `work_item_id` 和 `project_key`
 3. 回退：预取数据缺失时基于已有信息继续
+
+### 1.5 重入检查
+
+检查 `re_entry_phase` 参数：
+
+1. **未提供** → 正常从 init 开始执行
+2. **已提供** → 执行前置文件校验：
+   - 确认工作目录中存在该阶段之前所有阶段的必要产物文件
+   - 校验依据：
+     - `understand` → 需要 `requirement_doc.md` 或上游 `clarified_requirements.json`
+     - `decompose` → 需要 `requirement_doc.md` + `sufficiency_assessment.json`
+     - `generate` → 需要 `decomposition.md`
+     - `review` → 需要 `module_*_cases.json`（至少 1 个）
+   - 前置文件缺失 → 停止并报错「重入失败：缺少 {file}，请从更早的阶段开始」
+   - 前置文件存在 → 跳到指定阶段开始执行
+
+3. **如同时提供了 `requirement_change_summary`**：
+   - 将变更摘要追加到 `requirement_change_log.md`（追加模式，带时间戳，格式 `## YYYY-MM-DD HH:MM 变更`）
+   - 重入 `understand` 时：重新执行需求理解（含充分性门控），变更摘要作为额外上下文注入分析
+   - 重入 `decompose` 时：回读已有 `decomposition.md`，仅更新受变更影响的模块拆解，保留未变更模块
+   - 重入 `generate` 时：回读 `decomposition.md` 获取模块清单及各模块功能描述，将 `requirement_change_summary` 与每个模块的功能描述比对，判断变更是否影响该模块。仅重新生成受影响模块的 `module_{N}_cases.json`，保留未受影响模块的已有文件
+   - 重入 `review` 时：全量重新评审（变更可能影响跨模块覆盖度），从 5.1 合并开始
 
 ## 阶段 2: understand - 需求理解
 
@@ -47,6 +77,88 @@
 
 如预取数据包含技术文档链接，使用 `fetch_feishu_doc.py` 获取。重点提取：接口字段定义、状态枚举值、业务规则约束。
 
+### 2.5 需求充分性门控
+
+在进入多视角分析或功能拆解之前，对已收集的全部输入材料（需求文档、设计稿、技术文档、上游澄清结果）进行最低充分性评估。复用 [CONVENTIONS.md](../../CONVENTIONS.md#条件触发章节的数据充分性门控) 的三级判定模式。
+
+#### 评估维度
+
+| 维度 | `sufficient` | `partial` | `none` |
+| --- | --- | --- | --- |
+| 功能范围 | 3+ 个可区分的功能行为，边界清晰 | 1-2 个功能行为，或行为描述但边界模糊 | 无法识别任何具体功能行为（如「优化登录体验」） |
+| 验收标准 | 有明确的业务规则或可验证条件 | 有隐含规则但未明确表述（如设计稿暗示但无文字说明） | 无规则、无条件、无可验证的预期 |
+| 输入输出 | 描述了字段、数据结构、UI 元素或接口参数 | 部分字段定义或仅有 UI 草图无逻辑说明 | 无数据模型、无字段描述、无接口信息 |
+| 状态/流程 | 描述了状态流转、业务流程或用户操作路径 | 部分流程或仅单步描述，缺少完整路径 | 无流程信息、无状态定义 |
+
+#### 消费上游信号
+
+当工作目录中存在 `clarified_requirements.json`（上游 requirement-clarification 产出）时，额外检查：
+
+- `confidence_level == "low"` → 等同于存在 none 维度，触发暂停
+- `open_question_count > 3` → 触发暂停，提示用户先解决未澄清问题
+- 存在 `clarification_status == "unconfirmed"` 的功能点 → 在充分性报告中标注，不单独触发暂停
+
+#### 决策逻辑
+
+1. **全部 sufficient** → 正常继续，设 `confidence_ceiling = 100`
+2. **全部至少 partial（无 none）** → 继续执行但设 `confidence_ceiling = 70`，后续生成的所有用例 confidence 封顶于此值
+3. **任一维度 none 且无上游 clarified_requirements** → 暂停，向用户呈现充分性报告并请求决策：
+
+调用 AskUserQuestion 工具：
+
+```json
+{
+  "questions": [
+    {
+      "question": "需求文档在以下维度信息不足，可能导致生成的用例包含推测性内容：\n{逐维度列出 none/partial 的具体缺失说明}\n\n您希望如何处理？",
+      "header": "充分性检查",
+      "options": [
+        {"label": "补充需求信息", "description": "请在回复中补充缺失的内容，将重新评估"},
+        {"label": "继续生成（标注风险）", "description": "用例将标记为低置信度（上限 50），需人工逐条确认"},
+        {"label": "终止生成", "description": "建议先完善需求或执行 requirement-clarification 后重试"}
+      ],
+      "multiSelect": false
+    }
+  ]
+}
+```
+
+#### 补充循环
+
+- 用户选择「补充需求信息」→ 将补充内容合并到 `requirement_doc.md`（追加到末尾，标注「用户补充」），重新执行 2.5 评估
+- 最多循环 **2 次**，第 3 次仍不足 → 仅提供「继续生成（标注风险）」和「终止生成」两个选项
+- 用户选择「继续生成（标注风险）」→ 设 `confidence_ceiling = 50`
+- 用户选择「终止生成」→ 停止 skill，写入 `sufficiency_assessment.json` 后输出错误信息
+
+#### 产物
+
+写入 `sufficiency_assessment.json`：
+
+```json
+{
+  "overall": "sufficient | partial | insufficient",
+  "dimensions": {
+    "functional_scope": {"level": "sufficient", "evidence": "识别到 5 个独立功能：..."},
+    "acceptance_criteria": {"level": "partial", "evidence": "仅有隐含规则..."},
+    "input_output": {"level": "sufficient", "evidence": "文档描述了 3 个表单字段..."},
+    "state_flow": {"level": "none", "evidence": "未提及任何状态流转或操作流程"}
+  },
+  "upstream_signals": {
+    "has_clarified_requirements": false,
+    "confidence_level": null,
+    "open_question_count": 0,
+    "unconfirmed_points": []
+  },
+  "user_decision": "proceed_with_risk | supplemented | aborted | null",
+  "confidence_ceiling": 100,
+  "supplement_rounds": 0
+}
+```
+
+#### 阶段 2.5 完成检查（强制）
+
+使用 Glob 工具确认 `sufficiency_assessment.json` 存在且非空。`user_decision == "aborted"` 时停止 skill。
+
 ### 2.4 多视角并行分析（条件启动）
 
 > 仅当无上游 `clarified_requirements.json` 且需求复杂（>= 3 个功能点 + 文本 > 2000 字）时启动。
@@ -77,7 +189,8 @@
 3. 合并后的 findings 作为 decompose 阶段的补充输入，交叉验证的发现（2+ Agent 确认，confidence ≥ 80）在拆解时优先考虑
 
 **降级回退**：
-- 需求简单（< 3 功能点或文本 ≤ 2000 字）→ 跳过多视角分析，直接进入 decompose
+- 需求简单（< 3 功能点**且**文本 ≤ 2000 字**且** `sufficiency_assessment.overall == "sufficient"`）→ 跳过多视角 Agent 调用，但主 Agent 仍执行单视角快速分析（功能 + 异常两个维度，各 3-5 条 findings），作为 decompose 阶段的补充输入
+- 需求简单但 `sufficiency_assessment.overall != "sufficient"` → 不跳过，执行完整多视角分析（信息不足的需求需要更多交叉验证）
 - Task 工具不可用 → 在主 Agent 中顺序执行三个视角的分析（功能→异常→用户），不跳过
 
 ## 阶段 3: decompose - 功能拆解
@@ -85,9 +198,9 @@
 ### 3.0 简单需求快速路径
 
 如需求功能点 < 3 个（从上游 `requirement_points.json` 或文档分析判断）：
-- 跳过功能拆解，视为单模块
-- 跳过 `context_summary.md` 生成
-- 直接进入阶段 4 的直接生成模式（4.2）
+
+- **充分 + 简单**（`sufficiency_assessment.overall == "sufficient"`）→ 仍走快速路径，但**必须生成 `decomposition.md`**（即使单模块也要列出功能描述、验收标准、适用测试方法、需覆盖场景），跳过 `context_summary.md`，进入阶段 4 的直接生成模式（4.2）
+- **不充分 + 简单**（`sufficiency_assessment.overall != "sufficient"`）→ **不走快速路径**，执行完整的 3.1-3.2 流程。信息不足的需求需要更多结构化分析而非更少
 
 ### 3.1 拆解功能模块
 
@@ -133,6 +246,14 @@
 - 模块 < 3 个：不拆分子 Agent，跳过 `context_summary.md`
 - 模块 >= 3 个：使用子 Agent 并行生成，必须生成 `context_summary.md`
 
+### 阶段 3 完成检查（强制）
+
+使用 Glob 工具确认以下文件存在：
+
+1. `decomposition.md` — 必须存在且非空；缺失则补生成
+2. `context_summary.md` — 模块 >= 3 时必须存在；缺失则补生成
+3. **停止条件**：`decomposition.md` 补生成后仍为空 → **停止整个 skill**，输出错误「功能拆解失败，无法继续」
+
 ## 阶段 4: generate - 并行生成
 
 ### 4.1 使用子 Agent 生成（模块 >= 3 个）
@@ -145,6 +266,7 @@
 2. 只需提供：模块名称、模块需求（从 `decomposition.md` 中提取）、适用测试方法、模块索引
 3. 指定 `model="sonnet"`（按模型分层策略，用例生成使用 Sonnet）
 4. 每条用例必须包含 `confidence` 字段（0-100），评分标准见 Agent 定义文件
+5. Task prompt 中告知 `confidence_ceiling` 值（从 `sufficiency_assessment.json` 读取）：生成的用例 `confidence` 不得超过此值
 
 **并行策略**：在单条消息中同时发起所有模块的 Task 调用，实现真正并行。
 
@@ -159,6 +281,19 @@
 ### 4.2 直接生成（模块 < 3 个，或简单需求快速路径）
 
 在主 Agent 中按模块顺序生成所有用例，写入对应的 `module_{N}_cases.json`（N 从 1 开始，如 `module_1_cases.json`）。简单需求快速路径（阶段 3.0）视为单模块，写入 `module_1_cases.json`。
+
+生成前回读 `sufficiency_assessment.json` 获取 `confidence_ceiling`，所有用例的 `confidence` 不得超过此值。
+
+### 阶段 4 完成检查（强制）
+
+使用 Glob 工具搜索 `module_*_cases.json`，将结果与 `decomposition.md` 中的模块清单逐一比对：
+
+1. **逐模块校验**：对每个模块 N，检查 `module_{N}_cases.json` 是否在 Glob 结果中存在
+2. **缺失处理**：文件不存在 → 重试子 Agent 1 次；重试仍失败 → 在主 Agent 中直接生成该模块用例（fallback）
+3. **非空校验**：文件存在但 Read 后内容为空或非合法 JSON 数组 → 删除后按缺失处理
+4. **停止条件**：fallback 生成后文件仍为空 → **停止整个 skill**，输出错误「模块 {N} 用例生成失败，无法继续」
+
+全部模块文件校验通过后，方可进入阶段 5。
 
 ## 阶段 5: review - 自审 + 冗余对评审
 
@@ -226,9 +361,11 @@
 2. 请 Read ./test_cases.json 获取待评审的测试用例
 3. 请 Read $SKILLS_ROOT/test-case-generation/CHECKLIST.md 获取 4 维度评审检查项
 4. 如存在 ./context_summary.md 或 ./decomposition.md，请 Read 获取补充上下文
+5. 如存在 ./sufficiency_assessment.json，请 Read 获取需求充分性评估结果
 
 ## 任务
-按角色定义独立执行 4 维度评审，输出 JSON 格式的 dimension_scores + findings + coverage_gaps。
+按角色定义独立执行评审，输出 JSON 格式的 dimension_scores + findings + coverage_gaps。
+如 sufficiency_assessment.overall 不为 "sufficient"，在评审过程中启动推测性内容审查（角色定义中的第 3 节），将推测性细节纳入 findings 输出。
 ```
 
 - **review-agent-1**：Agent 定义见 [review-agent-1.md](../../agents/test-case-generation/review-agent-1.md)，指定 `model="opus"`
@@ -256,6 +393,8 @@
 
 将合并结果写入 `tc_gen_review.md`。
 
+> **防截断规则**：`tc_gen_review.md` 只记录评审结论摘要，不要复制 Agent 的完整原始输出。格式要求：维度评分表（4 行）+ 确认的问题列表（每项一行：affected_cases、category、suggestion）+ coverage_gaps 列表。总长度控制在 200 行以内。如果 findings 超过 20 条，只保留 confidence 最高的 20 条。
+
 ### 5.7 为用例标注 review_confidence
 
 对每条用例根据评审结果标注 `review_confidence`（0-100）：
@@ -267,18 +406,23 @@
 
 本阶段将 review 阶段标记为「待用户确认」的问题抛给用户。
 
+### 6.0 确认策略判定
+
+检查 `confirm_policy` 参数：
+
+- `confirm_policy = "accept_all"` → 自动接受所有评审建议（将所有 60 ≤ confidence < 80 的 findings 视为已确认），跳过用户交互，直接进入 phase 7
+- `confirm_policy = "interactive"` 或未提供（默认）→ 执行 6.1 及后续的用户确认流程
+
 ### 6.1 收集待确认问题
 
 从 phase 5.6 的合并结果中提取 60 ≤ confidence < 80 的 findings。如果没有待确认问题，跳过本阶段直接进入 phase 7。
 
 ### 6.2 向用户呈现
 
-使用 CONVENTIONS.md「ask_question 输出格式」提供结构化选项，降低用户认知负担。
+调用 AskUserQuestion 工具提供结构化选项（格式见 CONVENTIONS.md「[AskUserQuestion 交互式提问](../../CONVENTIONS.md#askuserquestion-交互式提问)」），降低用户认知负担。
 
 **首先**提供批量处理选项：
 
-````
-AskUserQuestion
 ```json
 {
   "questions": [
@@ -286,7 +430,7 @@ AskUserQuestion
       "question": "评审发现 {N} 个待确认问题，您希望如何处理？",
       "header": "批量处理",
       "options": [
-        {"label": "接受全部建议修改"},
+        {"label": "接受全部建议修改", "description": "一次性采纳所有评审建议"},
         {"label": "逐条确认", "description": "逐个展示每个问题"},
         {"label": "驳回全部", "description": "保持原样"}
       ],
@@ -295,12 +439,9 @@ AskUserQuestion
   ]
 }
 ```
-````
 
 如用户选择**逐条确认**，则逐个展示，每个问题包含 Agent 判断摘要和操作选项：
 
-````
-AskUserQuestion
 ```json
 {
   "questions": [
@@ -309,7 +450,7 @@ AskUserQuestion
       "header": "问题 1",
       "options": [
         {"label": "接受建议修改", "description": "{suggestion}"},
-        {"label": "驳回（保持原样）"},
+        {"label": "驳回（保持原样）", "description": "不做修改，保留当前用例"},
         {"label": "补充说明", "description": "请在回复中补充"}
       ],
       "multiSelect": false
@@ -317,7 +458,6 @@ AskUserQuestion
   ]
 }
 ```
-````
 
 ### 6.3 应用用户决策
 
@@ -332,6 +472,14 @@ AskUserQuestion
 如果用户在对话中未明确回复每个问题（如只说"都接受"或"继续"）：
 - "都接受" / 类似肯定回复 → 全部按建议修改
 - "继续" / 未回复具体问题 → 保持原样，在报告中标注为「未确认」
+
+### 阶段 6 完成检查（强制）
+
+使用 Glob 工具确认以下文件存在：
+
+1. `test_cases.json` — 必须存在且非空；缺失则回退到阶段 5.1 重新合并
+2. `tc_gen_review.md` — 必须存在且非空；缺失则在主 Agent 中按 CHECKLIST.md 单 Agent 补评审
+3. **停止条件**：`test_cases.json` 补生成后仍为空 → **停止整个 skill**，输出错误「用例合并失败，无法继续」
 
 ## 阶段 7: output - 最终输出
 
@@ -365,6 +513,8 @@ AskUserQuestion
 2. 追加 `supplementary_cases.json` 中的补充用例（如有）
 3. 为每条用例标记 `source` 字段（`generated` 或 `supplementary`）
 4. 写入 `final_cases.json`
+
+> **防截断规则**：当用例总数超过 50 条时，禁止用 Write 工具一次性写入 `final_cases.json`。改用 Bash 执行 Python 脚本合并：读取 `test_cases.json` + `supplementary_cases.json`（如有），添加 `source` 字段后写入 `final_cases.json`。这样避免 LLM 输出 token 限制导致 JSON 截断。
 
 ### 7.3 生成评审摘要
 

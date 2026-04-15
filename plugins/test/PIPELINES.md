@@ -33,6 +33,28 @@
     └─→ risk_assessment.json
 ```
 
+### 可选扩展：MeterSphere 同步
+
+```
+[test-case-generation]
+    └─→ final_cases.json
+        ▼
+[metersphere-sync]    (mode=sync)
+    │  消费: final_cases.json
+    └─→ ms_sync_report.json, ms_case_mapping.json, ms_plan_info.json
+```
+
+[requirement-traceability] 完成后可追加 execute 模式回写验证结果：
+
+```
+[requirement-traceability / verification-test-generation]
+    └─→ verification_cases.json
+        ▼
+[metersphere-sync]    (mode=execute)
+    │  消费: final_cases.json, verification_cases.json, ms_case_mapping.json
+    └─→ ms_sync_report.json (含执行回写统计)
+```
+
 ### 数据流映射
 
 | 上游 Skill | 输出文件 | 下游 Skill | 输入参数 |
@@ -41,6 +63,9 @@
 | requirement-clarification | `requirement_points.json` | test-case-generation | `requirement_points` |
 | requirement-clarification | `clarified_requirements.json` | requirement-traceability | `clarified_requirements` |
 | requirement-clarification | `requirement_points.json` | requirement-traceability | `requirement_points` |
+| test-case-generation | `final_cases.json` | metersphere-sync | `final_cases` |
+| verification-test-generation | `verification_cases.json` | metersphere-sync | `verification_cases` |
+| requirement-clarification | `requirement_points.json` | metersphere-sync | `requirement_points` |
 
 ---
 
@@ -180,6 +205,32 @@ Bug 场景:
 
 ---
 
+## 编排链路 — qa-workflow 端到端编排
+
+`qa-workflow` skill 将链路 A/D/F/H 串联为自动化工作流，支持条件分支和并行执行。
+
+```
+Phase 1: 需求分析
+[requirement-clarification] → [test-case-generation] → [metersphere-sync mode=sync]
+    → 暂停等编码
+
+Phase 2: 代码验证（用户回来后）
+[change-analysis] ─────────────┐
+[verification-test-generation] ┤ 并行
+[ui-fidelity-check]  ──────────┘ 条件：有设计稿
+[api-contract-validation]         条件：前后端协调
+    ↓
+[requirement-traceability] → [metersphere-sync mode=execute]
+    → 暂停等人工验证
+
+Phase 3: 收尾
+[git:code-reviewing] → [git:commit-push-pr]（可选）
+```
+
+详见 `skills/qa-workflow/SKILL.md` 和 `skills/qa-workflow/WORKFLOW_DEFS.md`。
+
+---
+
 ## 工作目录布局约定
 
 Pipeline 中所有 skill 共享同一工作目录。各 skill 的输出文件直接写入工作目录根（非子目录），下游 skill 在 init/fetch 阶段检查上游文件是否存在。
@@ -209,7 +260,10 @@ work_dir/
 ├── api_contract_report.json       (api-contract-validation)
 ├── ui_fidelity_report.json        (ui-fidelity-check)
 ├── failure_analysis.json          (test-failure-analyzer)
-└── action_plan.md                 (test-failure-analyzer)
+├── action_plan.md                 (test-failure-analyzer)
+├── ms_case_mapping.json           (metersphere-sync)
+├── ms_plan_info.json              (metersphere-sync)
+└── ms_sync_report.json            (metersphere-sync)
 ```
 
 ## 上游文件检测约定

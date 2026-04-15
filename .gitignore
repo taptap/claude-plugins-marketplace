@@ -10,6 +10,10 @@
 .DS_Store
 Thumbs.db
 
+# Python
+__pycache__/
+*.pyc
+
 # 临时文件
 *.swp
 *.swo
@@ -23,6 +27,10 @@ test-*/
 # test 插件运行时产出
 plugins/test/workspace/
 plugins/test/skills/*/output/
+
+# Secrets
+.env
+!.env.example
 
 # 开发中的插件
 plugins/migrator
