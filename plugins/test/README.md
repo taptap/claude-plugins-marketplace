@@ -284,6 +284,7 @@ shared-tools 脚本依赖以下环境变量（按需配置）：
 
 ## 版本历史
 
+- **v0.0.3** - 新增 feedback skill（Slack 用户反馈分析 + 飞书 Bug 创建）及完整知识库（10 个参考文档）和 feishu_api.py 脚本；change-analysis 新增 Urhox 二进制 diff 范围过滤与影响分析
 - **v0.0.2** - 新增 `.codex-plugin/` manifest，支持 Codex CLI 兼容
 - **v0.0.1** - 首次发布；完整 QA 工作流插件，包含需求澄清、测试用例生成（含冗余对评审）、用例评审、变更分析、需求回溯（含冒烟测试模式）、代码级测试生成（单元/集成）、API 契约校验、UI 还原度检查等全流程 Skill；共享工具集（飞书文档获取、MR/PR 分析脚本）；阶段执行保障和输出验证机制
 
