@@ -1,5 +1,13 @@
 # 测试用例生成各阶段详细操作指南
 
+## 大文件写入规则（全阶段适用）
+
+Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JSON 会在中途截断，导致 `JSON Parse error: Expected '}'` 工具调用失败。遵循以下规则：
+
+- **JSON 文件（用例集）**：超过 50 条用例时，用 Bash 执行 Python 脚本完成文件合并/写入，不要通过 Write 工具直接输出大 JSON
+- **Markdown 文件（评审报告）**：控制在 200 行以内，只记录结论摘要，不要复制 Agent 原始输出的完整内容
+- **通用判断**：如果预估 Write content 超过 4000 字符，改用 Bash + Python 脚本写入
+
 ## 关于系统预取
 
 通用预取机制见 [CONVENTIONS.md](../../CONVENTIONS.md#系统预取)。本 skill 额外预取：测试用例链接、需求文档内容（预下载到 `requirement_doc.md`）。
@@ -385,6 +393,8 @@
 
 将合并结果写入 `tc_gen_review.md`。
 
+> **防截断规则**：`tc_gen_review.md` 只记录评审结论摘要，不要复制 Agent 的完整原始输出。格式要求：维度评分表（4 行）+ 确认的问题列表（每项一行：affected_cases、category、suggestion）+ coverage_gaps 列表。总长度控制在 200 行以内。如果 findings 超过 20 条，只保留 confidence 最高的 20 条。
+
 ### 5.7 为用例标注 review_confidence
 
 对每条用例根据评审结果标注 `review_confidence`（0-100）：
@@ -503,6 +513,8 @@
 2. 追加 `supplementary_cases.json` 中的补充用例（如有）
 3. 为每条用例标记 `source` 字段（`generated` 或 `supplementary`）
 4. 写入 `final_cases.json`
+
+> **防截断规则**：当用例总数超过 50 条时，禁止用 Write 工具一次性写入 `final_cases.json`。改用 Bash 执行 Python 脚本合并：读取 `test_cases.json` + `supplementary_cases.json`（如有），添加 `source` 字段后写入 `final_cases.json`。这样避免 LLM 输出 token 限制导致 JSON 截断。
 
 ### 7.3 生成评审摘要
 
