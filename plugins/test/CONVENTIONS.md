@@ -326,6 +326,21 @@ requirement-clarification → clarified_requirements.json (functional_point.conf
 
 各 Agent 定义文件中 `## 模型` 节标注推荐模型。PHASES.md 中的 Task 调用通过 `model` 参数指定。
 
+### 模型选择判断树
+
+为新 Agent 或任务选择模型时，按以下顺序判断：
+
+1. 如果做错了下游损失有多大？（高 → Opus，中/低 → Sonnet）
+2. 创造性理解 vs 模板化生成？（理解 → Opus，生成 → Sonnet）
+3. 输出有明确结构约束可机械校验？（是 → Sonnet，否 → Opus）
+
+以下任务在大多数场景下适合 Sonnet：
+
+- 简单分类（Bug 端分类、业务线归类）
+- 模板填充和报告格式化
+- 数据格式转换和合并
+- 已有明确规则的校验（字段格式、枚举值）
+
 ## 多 Agent 并行执行
 
 详见 [skills/_shared/AGENT_PROTOCOL.md](skills/_shared/AGENT_PROTOCOL.md)。
@@ -379,7 +394,7 @@ requirement-clarification → clarified_requirements.json (functional_point.conf
 | `title` | string | 是 | 用例标题，纯业务描述。禁止包含：内部编号、优先级前缀（P0/P1/P2/P3）、测试方法或分类前缀（如「等价类-有效类：」「等价类-无效类：」「场景法：」等）、来源前缀（如「[补充]」「【补充】」「[新增]」等）。这些信息已由 `priority`、`test_method` 和 `source` 字段承载 |
 | `module` | string | 是 | 模块名称（不带编号前缀） |
 | `priority` | string | 是 | P0 / P1 / P2 / P3 |
-| `test_method` | string | 是 | 等价类划分 / 边界值分析 / 场景法 / 错误推测法 / 判定表法 / 状态迁移法 |
+| `test_method` | string | 是 | 等价类划分 / 边界值分析 / 场景法 / 错误推测法 / 判定表法 / 状态迁移法 / 探索性测试法 |
 | `confidence` | number | 否 | 用例置信度（0-100），评分标准见「量化置信度评分」。test-case-generation 阶段生成 |
 | `review_confidence` | number | 否 | 评审置信度（0-100），test-case-generation review 阶段冗余对评审后生成 |
 | `source` | string | 否 | 用例来源：`generated`（生成阶段产出）/ `supplementary`（评审补充）。test-case-generation output 阶段标记 |
@@ -392,6 +407,7 @@ requirement-clarification → clarified_requirements.json (functional_point.conf
 - `priority` 只允许 P0 / P1 / P2 / P3
 - 所有文本使用中文
 - 用例文本中禁止出现 ASCII 双引号，使用中文引号「」
+- `test_method` 为「探索性测试法」时，`steps[].action` 填探索要点/操作方向（非精确步骤），`steps[].expected` 填判定标准/Oracle（非精确预期），`preconditions` 须包含章程（Charter）描述
 
 ## 双通道追溯模式
 
