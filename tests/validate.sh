@@ -529,6 +529,28 @@ do
 done
 
 # ============================================================
+# N. Contract bridge check（producer 端 contract.yaml 自检 + 与消费方对账）
+# ============================================================
+echo "=== Check N: Contract bridge ==="
+
+BRIDGE_SCRIPT="${REPO_ROOT}/scripts/contract-bridge-check.py"
+if [[ ! -f "$BRIDGE_SCRIPT" ]]; then
+  fail "contract-bridge-check.py not found at ${BRIDGE_SCRIPT}"
+elif ! command -v python3 >/dev/null 2>&1; then
+  echo "  SKIP: python3 not installed"
+elif ! python3 -c 'import yaml' >/dev/null 2>&1; then
+  echo "  SKIP: PyYAML not installed (pip install pyyaml)"
+else
+  # marketplace 单仓 CI 用 lenient：找不到 ai-case consumer 就只校验 contract.yaml 自身合规
+  if python3 "$BRIDGE_SCRIPT" --lenient >/tmp/bridge-check.log 2>&1; then
+    pass "contract bridge check"
+  else
+    fail "contract bridge check"
+    sed 's/^/    /' /tmp/bridge-check.log
+  fi
+fi
+
+# ============================================================
 # Summary
 # ============================================================
 echo ""

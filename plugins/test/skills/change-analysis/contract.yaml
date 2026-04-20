@@ -1,5 +1,5 @@
 name: change-analysis
-version: "1.0"
+version: "1.1"
 description: >
   分析代码变更的影响面和测试覆盖。输入 Story/Bug 链接或需求文档 + 代码变更（MR/PR 或本地 diff），
   输出 change_analysis.json + change_coverage_report.json + 可选 supplementary_cases.json。
@@ -46,6 +46,13 @@ input:
 
 output:
   files:
+    - name: change_checklist.md
+      description: fetch 阶段写入的清单（需求点 / 代码变更 / 已有用例统计），后续阶段逐项处理并追加节
+      format: markdown
+    - name: bug_description.md
+      description: Bug 场景下 fetch 阶段写入的 Bug 描述（来自本地文件或 URL）
+      format: markdown
+      optional: true
     - name: change_analysis.json
       description: 变更分析总结（场景、风险等级、关键发现、行动项）
       format: json
