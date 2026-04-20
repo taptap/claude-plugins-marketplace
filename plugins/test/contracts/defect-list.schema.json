@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DefectList",
-  "description": "缺陷列表文件 schema (defect_list.json)。requirement-traceability 在 smoke-test 模式下产出，被 ai-case smoke_test workflow 消费。源真实样本：session 239。新字段允许（additionalProperties: true）但已知字段命名固定，避免拼错。",
+  "description": "缺陷列表文件 schema (defect_list.json)。requirement-traceability 在 smoke-test 模式下产出，被 ai-case smoke_test workflow 消费。源真实样本：session 239。设计取舍：additionalProperties=true 允许 skill 演进加新字段；not.anyOf.required 是显式 ban 已知拼错（actual / expected / desc / title）的黑名单，不是穷举——发现新拼错模式时追加。",
   "type": "object",
   "required": ["defects"],
   "properties": {

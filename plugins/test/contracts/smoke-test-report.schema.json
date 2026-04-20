@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SmokeTestReport",
-  "description": "冒烟测试报告 (smoke_test_report.json)。requirement-traceability 在 smoke-test 模式产出，被 ai-case smoke_test workflow post_complete 直接读取写入 session.output_data。源真实样本：session 239。新字段允许（additionalProperties: true）但已知字段名固定，避免拼错让 ai-case 拿不到 verdict / 统计信息。",
+  "description": "冒烟测试报告 (smoke_test_report.json)。requirement-traceability 在 smoke-test 模式产出，被 ai-case smoke_test workflow post_complete 直接读取写入 session.output_data。源真实样本：session 239。设计取舍：additionalProperties=true 允许 skill 演进加新字段；not.anyOf.required 是显式 ban 已知拼错（result / verdicts / defects_summary / verify_summary 等）的黑名单，不是穷举——发现新拼错模式时追加。",
   "type": "object",
   "required": ["verdict", "verification_summary", "defect_summary"],
   "additionalProperties": true,

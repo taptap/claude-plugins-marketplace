@@ -154,5 +154,5 @@
   "type": "array",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TestCaseList",
-  "description": "测试用例文件顶层 schema（list[TestCase]）。从 ai-case backend/apps/code_analysis/services/case_schema.py 自动生成，请通过 scripts/export-testcase-schema.py 重新生成，不要手动编辑。"
+  "description": "测试用例文件顶层 schema（list[TestCase]）— 派生产物，源真相在 ai-case backend/apps/code_analysis/services/case_schema.py (Pydantic)。请通过 ai-case backend/scripts/export-testcase-schema.py 重新生成，不要手动编辑。已知不对称：JSON Schema 是 Pydantic 模型的子集，schema 通过的数据不一定通过 Pydantic 严格校验（Pydantic 还有 model_validator 拒绝特殊字段）。"
 }

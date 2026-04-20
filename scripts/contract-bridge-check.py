@@ -23,6 +23,26 @@ import yaml
 # 形如 "xxx.json" 或 'xxx.md'，但排除路径分隔符（路径形式由其他工具校验）
 FILENAME_LITERAL_RE = re.compile(r"""['"]([\w][\w.-]*\.(?:json|md))['"]""")
 
+# 误报 deny list：明显不是工作目录产物的文件名（项目配置 / 文档 / 框架）
+# 命中即跳过，避免桥接器误把这些字面量当成消费侧引用
+FILENAME_DENY_LIST: set[str] = {
+    # 项目配置 / 文档（任意仓库都可能有的字面量）
+    'pyproject.toml',
+    'CLAUDE.md',
+    'AGENTS.md',
+    'CHANGELOG.md',
+    'CONTRIBUTING.md',
+    '.eslintrc.json',
+    'tsconfig.json',
+    'package.json',
+    'package-lock.json',
+}
+
+# 后缀级 deny：以这些后缀结尾的文件都不是工作目录产物
+DENY_SUFFIXES: tuple[str, ...] = (
+    '.schema.json',  # contracts/ 下的 schema 文件
+)
+
 # 消费侧扫描根（相对脚本位置，可被 CLI 覆盖）
 DEFAULT_CONSUMER_ROOTS = [
     '../../../apps/code_analysis/services',
@@ -94,6 +114,10 @@ def collect_consumed(roots: list[Path]) -> dict[str, list[str]]:
         for lineno, line in enumerate(text.splitlines(), start=1):
             for m in FILENAME_LITERAL_RE.finditer(line):
                 fname = m.group(1)
+                if fname in FILENAME_DENY_LIST:
+                    continue
+                if fname.endswith(DENY_SUFFIXES):
+                    continue
                 consumed[fname].append(f'{pf}:{lineno}')
     return dict(consumed)
 
@@ -202,16 +226,17 @@ def main() -> int:
 
     if missing:
         print(f'❌ 缺失声明（消费侧读取但无 skill 声明产出）: {len(missing)}')
+        # 用 cwd 作为相对路径基准，避免硬编码 script_dir 多层 parent
+        cwd = Path.cwd()
         for f in missing:
             sources = consumed[f][:3]
             extra = '' if len(consumed[f]) <= 3 else f'  …{len(consumed[f]) - 3} more'
             print(f'   {f}')
             for s in sources:
-                # 转成相对仓库根的短路径
+                file_part, _, line_part = s.rpartition(':')
                 try:
-                    short = Path(s.split(':')[0]).relative_to(script_dir.parent.parent.parent.parent)
-                    line = s.split(':')[1]
-                    print(f'      {short}:{line}')
+                    short = Path(file_part).resolve().relative_to(cwd)
+                    print(f'      {short}:{line_part}')
                 except ValueError:
                     print(f'      {s}')
             if extra:
