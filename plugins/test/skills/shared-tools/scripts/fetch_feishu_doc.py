@@ -889,7 +889,22 @@ def main():
         help="子文档获取上限（默认 10），达到后停止递归",
     )
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
+
+    # 兜底提示：AI 经常按 `fetch_xxx.py URL` 的常识先验调用（同目录其他脚本多为位置参数风格）
+    # 此时 stderr 给出明确指引，避免它再 try 一次浪费 turn
+    if unknown and not args.url and not args.doc_id:
+        first = unknown[0]
+        if first.startswith(("http://", "https://")):
+            sys.stderr.write(
+                f"错误: 本脚本不接受位置参数: {first}\n"
+                f"提示: 请使用 --url 传入 URL，正确写法:\n"
+                f"  python3 {sys.argv[0]} --url \"{first}\" --output-dir .\n"
+            )
+            sys.exit(2)
+        parser.error(f"unrecognized arguments: {' '.join(unknown)}")
+    elif unknown:
+        parser.error(f"unrecognized arguments: {' '.join(unknown)}")
 
     if not args.url and not args.doc_id:
         parser.error("必须指定 --url 或 --doc-id")
