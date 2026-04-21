@@ -76,6 +76,9 @@ output:
       description: 为覆盖缺口生成的补充用例（Story 场景，可选）
       format: json
       optional: true
+    - name: ca_summary.json
+      description: 结构化窄摘要（changed_modules / risk_count / new_features / risk_breakdown / scenario），供 ai-case change_analysis workflow 的 extract_story_output 消费给下游 TC 生成 prompt 注入。schema 在 contracts/ca-summary.schema.json
+      format: json
   structured:
     scenario:
       type: string
