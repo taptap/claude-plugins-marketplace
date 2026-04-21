@@ -278,7 +278,11 @@ def _validate_case_schema(raw: Any, idx: int) -> list[str]:
         )
     else:
         # 检测是否 MS 内部格式（{num, desc, result}）— 允许透传
-        is_ms_format = isinstance(steps[0], dict) and 'desc' in steps[0]
+        # 用 num/result 而非 desc 判定：desc 容易被 AI 当 action 的 typo 误写，
+        # num/result 是 MS 特有，不会被误用为 action/expected
+        is_ms_format = isinstance(steps[0], dict) and (
+            'num' in steps[0] or 'result' in steps[0]
+        )
         for si, step in enumerate(steps):
             sprefix = f'{prefix} steps[{si}]'
             if not isinstance(step, dict):
@@ -897,6 +901,21 @@ def cmd_batch_update_results(plan_id: str, results_file: str):
 
 # ==================== CLI 入口 ====================
 
+def _flag_value(args: list[str], flag: str, default: str | None = None) -> str | None:
+    """从 args 中读取 --flag 后跟的值。flag 不存在返回 default；存在但缺值时清晰报错退出。
+
+    避免用 args[args.index(flag) + 1] 在用户漏写值时抛 IndexError 然后被外层
+    except 包成 'list index out of range' — 对 AI 自我修复极不友好。
+    """
+    if flag not in args:
+        return default
+    idx = args.index(flag)
+    if idx + 1 >= len(args):
+        print(f"ERROR: {flag} 缺少参数值", file=sys.stderr)
+        sys.exit(2)
+    return args[idx + 1]
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__, file=sys.stderr)
@@ -909,10 +928,7 @@ def main():
         if cmd == 'ping':
             cmd_ping()
         elif cmd == 'list-modules':
-            parent = ''
-            if '--parent-id' in args:
-                idx = args.index('--parent-id')
-                parent = args[idx + 1]
+            parent = _flag_value(args, '--parent-id', '')
             cmd_list_modules(parent)
         elif cmd == 'ensure-module':
             if len(args) < 2:
@@ -923,14 +939,9 @@ def main():
             if len(args) < 2:
                 print("用法: import-cases <parent_module_id> <cases.json> [--requirement <需求名>] [--tags 'AI 变更分析']", file=sys.stderr)
                 sys.exit(1)
-            req_name = ''
-            if '--requirement' in args:
-                idx = args.index('--requirement')
-                req_name = args[idx + 1]
-            import_tags = None
-            if '--tags' in args:
-                idx = args.index('--tags')
-                import_tags = [t.strip() for t in args[idx + 1].split(',') if t.strip()]
+            req_name = _flag_value(args, '--requirement', '')
+            tags_raw = _flag_value(args, '--tags')
+            import_tags = [t.strip() for t in tags_raw.split(',') if t.strip()] if tags_raw else None
             cmd_import_cases(args[0], args[1], requirement_name=req_name, tags=import_tags)
         elif cmd == 'list-stages':
             cmd_list_stages()
@@ -938,10 +949,9 @@ def main():
             if len(args) < 1:
                 print("用法: find-or-create-plan <plan_name> [--stage smoke]", file=sys.stderr)
                 sys.exit(1)
-            stage = 'smoke'
+            stage = _flag_value(args, '--stage', 'smoke')
             if '--stage' in args:
                 idx = args.index('--stage')
-                stage = args[idx + 1]
                 args = args[:idx] + args[idx+2:]
             cmd_find_or_create_plan(args[0], stage)
         elif cmd == 'add-cases-to-plan':
@@ -959,14 +969,8 @@ def main():
                 print("用法: update-case-result <plan_case_id> <status> [--actual-result TEXT] [--comment TEXT]",
                       file=sys.stderr)
                 sys.exit(1)
-            actual = ''
-            comment = ''
-            if '--actual-result' in args:
-                idx = args.index('--actual-result')
-                actual = args[idx + 1]
-            if '--comment' in args:
-                idx = args.index('--comment')
-                comment = args[idx + 1]
+            actual = _flag_value(args, '--actual-result', '')
+            comment = _flag_value(args, '--comment', '')
             cmd_update_case_result(args[0], args[1], actual, comment)
         elif cmd == 'batch-update-results':
             if len(args) < 3 or args[1] != '--results-json':

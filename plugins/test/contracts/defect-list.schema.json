@@ -30,7 +30,8 @@
             "description": "缺陷名称（canonical 字段名，参见 requirement-traceability/TEMPLATES.md）。注意 schema 显式 ban `title`——尽管 JIRA / TAPD 等行业习惯用 title，marketplace 内部约定用 name，schema ban 是为了让规约可 enforce"
           },
           "priority": {
-            "enum": ["P0", "P1", "P2", "P3"]
+            "enum": ["P0", "P1", "P2"],
+            "description": "缺陷优先级，requirement-traceability TEMPLATES.md 仅定义 P0-P2 判定规则"
           },
           "category": {
             "type": "string",
