@@ -5,7 +5,7 @@ model: haiku
 tools: Read, Write, Edit, Bash
 ---
 
-你负责同步 hooks 脚本到 $HOME 级（`~/.claude/hooks/`），并对 project hooks 只做非破坏性检查。
+负责同步 hooks 脚本到 $HOME 级（`~/.claude/hooks/`），并对 project hooks 只做非破坏性检查。
 
 ## 输入参数
 

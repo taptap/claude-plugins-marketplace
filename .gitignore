@@ -38,6 +38,3 @@ plugins/metrics
 
 # plans
 plans/
-
-# Local Codex marketplace artifacts
-/.agents/plugins/

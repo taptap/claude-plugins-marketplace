@@ -1,11 +1,11 @@
 ---
 name: codex-plugins-config
-description: 配置 Codex 插件（project hooks + 独立 home clone）到项目目录
+description: 配置 Codex 插件（project hooks + 项目级声明清单）到项目目录
 model: haiku
 tools: Read, Write, Edit, Bash
 ---
 
-你负责在项目目录生成 Codex hooks，并通过项目脚本维护用户自己的 home-level Codex 插件 clone 和 marketplace。
+负责在项目目录生成 Codex SessionStart hook、复制 ensure-codex-plugins 脚本，并种子项目级 `.codex/config.toml` 作为团队的插件启用清单。
 
 ## 输入参数
 
@@ -30,7 +30,7 @@ tools: Read, Write, Edit, Bash
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -f .codex/hooks/scripts/ensure-codex-plugins.sh ]; then bash .codex/hooks/scripts/ensure-codex-plugins.sh >/dev/null 2>&1 & fi",
+            "command": "ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd); SCRIPT=\"$ROOT/.codex/hooks/scripts/ensure-codex-plugins.sh\"; if [ -f \"$SCRIPT\" ]; then bash \"$SCRIPT\"; fi",
             "statusMessage": "Ensuring Codex plugins..."
           }
         ]
@@ -44,10 +44,12 @@ tools: Read, Write, Edit, Bash
 - 如果文件不存在：以上述 JSON 创建
 - 如果文件已存在：
   - 读取现有 JSON
-  - 仅同步 `hooks.SessionStart` 中 `matcher = "startup"` 且 command 指向 `.codex/hooks/scripts/ensure-codex-plugins.sh` 的那一项
+  - 仅同步 `hooks.SessionStart` 中 `matcher = "startup"` 且 command 字面量包含 `.codex/hooks/scripts/ensure-codex-plugins.sh` 的那一项；以新 command 字符串覆盖该条目（保证升级到当前 startup 写法）
   - 保留其他 `SessionStart` 条目、其他 matcher、以及其他顶层 hooks
-  - 如果已存在等价条目则跳过
+  - 如果已存在的 command 完全等于目标 command 则跳过
 - 如果现有文件不是合法 JSON：返回 failed，不要覆盖用户文件
+
+说明：startup hook 必须**同步执行**且不重定向输出——`ensure-codex-plugins.sh` 头注释明确"保证首轮对话前插件已可用"。后台 `&` 会让首轮对话发出时插件未必就绪，且 `>/dev/null 2>&1` 会把脚本本身的关键提示（marketplace 未注册、源插件目录缺失等）一并吞掉。
 
 ### 2. 复制 .codex/hooks/scripts/ensure-codex-plugins.sh
 
@@ -59,14 +61,99 @@ cp "{SCRIPTS_DIR}/ensure-codex-plugins.sh" "{PROJECT_ROOT}/.codex/hooks/scripts/
 chmod +x "{PROJECT_ROOT}/.codex/hooks/scripts/ensure-codex-plugins.sh"
 ```
 
-说明：
-- 该脚本会在 Codex SessionStart 时维护 `~/.agents/plugins/taptap-plugins/` clone，并合并更新 `~/.agents/plugins/marketplace.json`
-- 不要在 repo 中生成 `.agents/plugins/marketplace.json`
-- `~/.agents/plugins/marketplace.json` 属于用户 home 目录配置，不应提交到项目仓库
-- personal marketplace 的 `source.path` 基准是 `~`，不是 `.agents/plugins/` 目录，也不是项目 repo 根目录
-- 如果 `~/.agents/plugins/taptap-plugins/` 已存在且不是 `taptap/agents-plugins` 仓库，脚本应记录 warning 并跳过，不自动覆盖
-- Codex 插件发现只依赖 `plugins/*/.codex-plugin/plugin.json`，不要读取 `.claude-plugin/marketplace.json`
-- 不要删除或覆盖用户已有的其他 `.codex/hooks.json` 配置
+### 3. 种子 .codex/config.toml
+
+目标：保证项目根 `{PROJECT_ROOT}/.codex/config.toml` 同时含以下三件事：
+
+1. `[features]` 段下 `codex_hooks = true`（**必须**，否则 SessionStart hook 完全不会被 Codex 触发）
+2. `[plugins."git@taptap-plugins"]` 段，`enabled = true`
+3. `[plugins."sync@taptap-plugins"]` 段，`enabled = true`
+
+处理规则（共同）：
+- 文件不存在：创建并按上述顺序写入三件事
+- 文件存在：保留全部其他段（marketplace、profile、其它 plugin 段、`shell_environment_policy` 等都不动）
+
+`[features].codex_hooks` 处理细则：
+- `[features]` 段缺失：追加 `[features]\ncodex_hooks = true\n`
+- `[features]` 段存在但无 `codex_hooks` key：在该段内追加 `codex_hooks = true`
+- `codex_hooks = true`：跳过
+- `codex_hooks = false`：**保留不动**（用户可能刻意禁用 hook）
+
+`[plugins."git@taptap-plugins"]` / `[plugins."sync@taptap-plugins"]` 处理细则：
+- 段缺失：追加该段，`enabled = true`
+- 段存在但 `enabled = false`：**保留不动**（用户可能刻意禁用）
+- 段存在且 `enabled = true`：跳过
+- 段存在但既无 `enabled = true` 也无 `enabled = false`：在该段内追加 `enabled = true`
+
+如果现有文件不能被解析（例如严重损坏），返回 failed，不要覆盖。
+
+不要使用第三方 toml 库，直接用 python3 的行/正则处理（参考 `ensure-codex-plugins.sh` 中现有 Python heredoc 段的模式）。
+
+参考骨架：
+
+```bash
+python3 - "{PROJECT_ROOT}/.codex/config.toml" <<'PY'
+import re, sys
+from pathlib import Path
+
+p = Path(sys.argv[1])
+text = p.read_text(encoding="utf-8") if p.is_file() else ""
+changed = False
+
+# --- features.codex_hooks ---
+features_re = re.compile(r'(?ms)^\[features\]\s*\n.*?(?=^\[|\Z)')
+fm = features_re.search(text)
+if fm:
+    block = fm.group(0)
+    if not re.search(r"(?mi)^codex_hooks\s*=\s*(true|false)\s*$", block):
+        new_block = block.rstrip("\n") + "\ncodex_hooks = true\n"
+        text = text[:fm.start()] + new_block + text[fm.end():]
+        changed = True
+    # codex_hooks = true / false 都保留不动
+else:
+    if text and not text.endswith("\n\n"):
+        text = text.rstrip("\n") + "\n\n"
+    text += "[features]\ncodex_hooks = true\n"
+    changed = True
+
+# --- plugin enable 段 ---
+for pid in ["git@taptap-plugins", "sync@taptap-plugins"]:
+    block_re = re.compile(rf'(?ms)^\[plugins\."{re.escape(pid)}"\]\s*\n.*?(?=^\[|\Z)')
+    m = block_re.search(text)
+    if m:
+        block = m.group(0)
+        if re.search(r"(?mi)^enabled\s*=\s*(true|false)\s*$", block):
+            continue  # 用户已表态
+        new_block = block.rstrip("\n") + "\nenabled = true\n"
+        text = text[:m.start()] + new_block + text[m.end():]
+        changed = True
+    else:
+        if text and not text.endswith("\n\n"):
+            text = text.rstrip("\n") + "\n\n"
+        text += f'[plugins."{pid}"]\nenabled = true\n'
+        changed = True
+
+if changed or not p.is_file():
+    p.parent.mkdir(parents=True, exist_ok=True)
+    if not text.endswith("\n"):
+        text += "\n"
+    p.write_text(text, encoding="utf-8")
+    print("WROTE")
+else:
+    print("UNCHANGED")
+PY
+```
+
+## 说明（脚本运行时行为，写在结果提示里）
+
+- `[features] codex_hooks = true` 是 Codex CLI 的实验 feature flag。**未开启则任何 `.codex/hooks.json` 都不会被触发**。这就是为什么任务 3 要保证它存在
+- ensure-codex-plugins.sh 在 Codex SessionStart 时**同步执行**（hook command 不带 `&`），只做两件事：
+  1. 检查 `~/.codex/config.toml` 是否已含 `[marketplaces.taptap-plugins]`。缺失则调用 `codex marketplace add taptap/agents-plugins`（GitHub 远程）让 Codex 自己注册。失败（比如 codex CLI 不在 PATH，或对 GitHub repo 无访问权限）就 log warning + exit 0
+  2. 把项目 `.codex/config.toml` 中 enabled = true 的 `*@taptap-plugins` 镜像到 `~/.codex/config.toml`
+- 之后的 cache 安装、`~/.codex/plugins/cache/taptap-plugins/<plugin>/<version>/`、`~/.codex/plugins/installed_plugins.json` 维护**全部由 Codex 自己负责**，本脚本不再插手
+- Codex CLI 自身不读 `<repo>/.codex/config.toml`；该文件仅作为团队的"声明式清单"，由 SessionStart 脚本镜像到 `~/.codex/config.toml` 生效
+- `~/.codex/...` 下任何文件都不应提交到项目仓库
+- Codex marketplace 发现依赖 `<repo-root>/.agents/plugins/marketplace.json`（Codex 格式，已存在于 `taptap/agents-plugins` 仓库）；plugin 元信息依赖 `plugins/*/.codex-plugin/plugin.json`（必须含 `interface` 段，否则 Codex 不会在 picker 里展示）
 
 ## 输出格式（严格遵循）
 
@@ -75,6 +162,6 @@ chmod +x "{PROJECT_ROOT}/.codex/hooks/scripts/ensure-codex-plugins.sh"
 - 详情:
   - .codex/hooks.json: [已生成/已是最新]
   - .codex/hooks/scripts/ensure-codex-plugins.sh: [已复制/已是最新]
-  - ~/.agents/plugins/taptap-plugins: [由 SessionStart 自动 clone / 更新]
-  - ~/.agents/plugins/marketplace.json: [由 SessionStart 自动合并维护]
+  - .codex/config.toml: [已生成/已合并/已是最新]
+- 提示: 首次启动 Codex 时若日志显示"codex marketplace add 失败"，请手动 `codex marketplace add taptap/agents-plugins`（确保已登录 GitHub）后重启
 - 错误: [如有]

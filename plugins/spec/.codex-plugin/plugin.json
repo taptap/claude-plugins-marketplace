@@ -1,9 +1,17 @@
 {
   "name": "spec",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Spec-Driven Development 插件，自动执行完整开发流程",
   "author": {
     "name": "TapTap AI Team"
   },
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "TapTap Spec",
+    "shortDescription": "Spec-Driven Development workflow with module discovery and doc auto-sync",
+    "longDescription": "Drives a full SDD workflow: spec writing, planning, task implementation, parallel-work merging, module index discovery, and doc/code auto-sync rules.",
+    "developerName": "TapTap AI Team",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"]
+  }
 }

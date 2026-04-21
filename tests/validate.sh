@@ -177,7 +177,44 @@ else
     if [[ -z "$mp_version" ]]; then
       pass "[${plugin_dir}] not in .claude-plugin/marketplace.json (allowed for Codex-only plugins)"
     fi
+
+    # interface 段 schema 校验：必含 displayName / category / capabilities
+    iface_display=$(jq -r '.interface.displayName // empty' "$codex_json")
+    iface_category=$(jq -r '.interface.category // empty' "$codex_json")
+    iface_caps=$(jq -r '.interface.capabilities // empty | type' "$codex_json")
+    if [[ -n "$iface_display" && -n "$iface_category" && "$iface_caps" == "array" ]]; then
+      pass "[${plugin_dir}] codex plugin.json has interface.{displayName, category, capabilities}"
+    else
+      fail "[${plugin_dir}] codex plugin.json missing interface fields (displayName='$iface_display' category='$iface_category' capabilities=$iface_caps)"
+    fi
   done
+fi
+
+# .agents/plugins/marketplace.json 校验（Codex 端 marketplace 入口）
+codex_marketplace="${REPO_ROOT}/.agents/plugins/marketplace.json"
+if [[ -f "$codex_marketplace" ]]; then
+  cm_name=$(jq -r '.name // empty' "$codex_marketplace")
+  cm_display=$(jq -r '.interface.displayName // empty' "$codex_marketplace")
+  if [[ "$cm_name" == "taptap-plugins" && -n "$cm_display" ]]; then
+    pass ".agents/plugins/marketplace.json has name=taptap-plugins and interface.displayName"
+  else
+    fail ".agents/plugins/marketplace.json invalid: name='$cm_name' displayName='$cm_display'"
+  fi
+
+  # 列表中的每个 plugin 都应在 plugins/<name>/.codex-plugin/plugin.json 存在
+  cm_plugin_count=$(jq -r '.plugins | length' "$codex_marketplace")
+  for j in $(seq 0 $((cm_plugin_count - 1))); do
+    cm_plugin_name=$(jq -r ".plugins[$j].name" "$codex_marketplace")
+    cm_plugin_path=$(jq -r ".plugins[$j].source.path" "$codex_marketplace")
+    target="${REPO_ROOT}/${cm_plugin_path#./}/.codex-plugin/plugin.json"
+    if [[ -f "$target" ]]; then
+      pass "[${cm_plugin_name}] .agents/plugins/marketplace.json source.path → ${cm_plugin_path} exists"
+    else
+      fail "[${cm_plugin_name}] .agents/plugins/marketplace.json source.path → ${cm_plugin_path} missing manifest at ${target}"
+    fi
+  done
+else
+  fail ".agents/plugins/marketplace.json missing (required for Codex marketplace add)"
 fi
 
 # ============================================================
@@ -388,61 +425,122 @@ if command -v python3 >/dev/null 2>&1; then
     fail "set-auto-update-plugins.sh exited non-zero during custom repo test"
   fi
 
+  # Test A: ensure-codex-plugins.sh 在 marketplace 未注册时调用 codex marketplace add
   tmp_root="$(new_tmpdir)"
   home_dir="${tmp_root}/home"
-  clone_dir="${home_dir}/.agents/plugins/taptap-plugins"
-  mkdir -p "${clone_dir}/plugins/git/.codex-plugin" "${home_dir}/.agents/plugins"
-  git -C "$clone_dir" init >/dev/null 2>&1
-  git -C "$clone_dir" remote add origin https://github.com/taptap/agents-plugins.git
-  jq -n --arg version "0.1.14" '{
-    name: "git",
-    version: $version,
-    description: "validator fixture"
-  }' > "${clone_dir}/plugins/git/.codex-plugin/plugin.json"
-  jq -n '{
-    name: "local-plugins",
-    interface: {
-      displayName: "Local Plugins"
-    },
-    plugins: [
-      {
-        name: "removed",
-        source: {
-          source: "local",
-          path: "./.agents/plugins/taptap-plugins/plugins/removed"
-        },
-        policy: {
-          installation: "AVAILABLE",
-          authentication: "ON_INSTALL"
-        },
-        category: "Productivity"
-      },
-      {
-        name: "external",
-        source: {
-          source: "local",
-          path: "./other/external"
-        },
-        policy: {
-          installation: "AVAILABLE",
-          authentication: "ON_INSTALL"
-        },
-        category: "Productivity"
-      }
-    ]
-  }' > "${home_dir}/.agents/plugins/marketplace.json"
+  project_dir="${tmp_root}/project"
+  bin_dir="${tmp_root}/bin"
+  shim_log="${tmp_root}/codex-shim.log"
 
-  if HOME="$home_dir" bash "${REPO_ROOT}/plugins/sync/scripts/ensure-codex-plugins.sh" >/dev/null 2>&1; then
-    removed_exists=$(jq -r '[.plugins[] | select(.name == "removed")] | length' "${home_dir}/.agents/plugins/marketplace.json")
-    external_exists=$(jq -r '[.plugins[] | select(.name == "external")] | length' "${home_dir}/.agents/plugins/marketplace.json")
-    git_exists=$(jq -r '[.plugins[] | select(.name == "git")] | length' "${home_dir}/.agents/plugins/marketplace.json")
-    if [[ "$removed_exists" == "0" && "$external_exists" == "1" && "$git_exists" == "1" ]]; then
-      pass "ensure-codex-plugins.sh prunes stale managed entries and preserves foreign plugins"
+  mkdir -p "${home_dir}/.codex" "${project_dir}" "${bin_dir}"
+  : > "${shim_log}"
+
+  # mock codex shim：每次调用把 args 追加到 log
+  cat > "${bin_dir}/codex" <<EOF
+#!/usr/bin/env bash
+echo "\$@" >> "${shim_log}"
+exit 0
+EOF
+  chmod +x "${bin_dir}/codex"
+
+  # 用户级 config 完全空白（无 marketplaces 段）
+  : > "${home_dir}/.codex/config.toml"
+
+  # 项目根（空 .codex/config.toml 也行，主要测 marketplace add 触发）
+  git -C "$project_dir" init >/dev/null 2>&1
+
+  if (cd "$project_dir" && PATH="${bin_dir}:$PATH" HOME="$home_dir" bash "${REPO_ROOT}/plugins/sync/scripts/ensure-codex-plugins.sh" >/dev/null 2>&1); then
+    if grep -q "^marketplace add taptap/agents-plugins$" "${shim_log}"; then
+      pass "ensure-codex-plugins.sh calls codex marketplace add taptap/agents-plugins when marketplace missing"
     else
-      fail "ensure-codex-plugins.sh did not prune stale managed entries correctly"
+      fail "ensure-codex-plugins.sh did not invoke 'codex marketplace add taptap/agents-plugins' (shim log: $(cat "${shim_log}"))"
     fi
   else
-    fail "ensure-codex-plugins.sh exited non-zero during stale managed entry test"
+    fail "ensure-codex-plugins.sh exited non-zero during marketplace-add test"
+  fi
+
+  # Test B: marketplace 已注册时不重复调用 codex marketplace add
+  tmp_root="$(new_tmpdir)"
+  home_dir="${tmp_root}/home"
+  project_dir="${tmp_root}/project"
+  bin_dir="${tmp_root}/bin"
+  shim_log="${tmp_root}/codex-shim.log"
+
+  mkdir -p "${home_dir}/.codex" "${project_dir}" "${bin_dir}"
+  : > "${shim_log}"
+
+  cat > "${bin_dir}/codex" <<EOF
+#!/usr/bin/env bash
+echo "\$@" >> "${shim_log}"
+exit 0
+EOF
+  chmod +x "${bin_dir}/codex"
+
+  # 用户级 config 已注册 marketplace
+  printf '[marketplaces.taptap-plugins]\nsource_type = "git"\nsource = "https://github.com/taptap/agents-plugins"\n' \
+    > "${home_dir}/.codex/config.toml"
+
+  git -C "$project_dir" init >/dev/null 2>&1
+
+  if (cd "$project_dir" && PATH="${bin_dir}:$PATH" HOME="$home_dir" bash "${REPO_ROOT}/plugins/sync/scripts/ensure-codex-plugins.sh" >/dev/null 2>&1); then
+    if [[ ! -s "${shim_log}" ]]; then
+      pass "ensure-codex-plugins.sh skips codex marketplace add when already registered"
+    else
+      fail "ensure-codex-plugins.sh unexpectedly invoked codex (shim log: $(cat "${shim_log}"))"
+    fi
+  else
+    fail "ensure-codex-plugins.sh exited non-zero during already-registered test"
+  fi
+
+  # Test C: 项目 .codex/config.toml 中 enabled = true 的 *@taptap-plugins 镜像到用户级
+  tmp_root="$(new_tmpdir)"
+  home_dir="${tmp_root}/home"
+  project_dir="${tmp_root}/project"
+  bin_dir="${tmp_root}/bin"
+
+  mkdir -p "${home_dir}/.codex" "${project_dir}/.codex" "${bin_dir}"
+
+  # codex shim（应不被 add 调用，因 user 已注册）
+  cat > "${bin_dir}/codex" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  chmod +x "${bin_dir}/codex"
+
+  printf '[marketplaces.taptap-plugins]\nsource_type = "git"\nsource = "https://github.com/taptap/agents-plugins"\n' \
+    > "${home_dir}/.codex/config.toml"
+
+  printf '[plugins."git@taptap-plugins"]\nenabled = true\n\n[plugins."sync@taptap-plugins"]\nenabled = true\n' \
+    > "${project_dir}/.codex/config.toml"
+
+  git -C "$project_dir" init >/dev/null 2>&1
+
+  if (cd "$project_dir" && PATH="${bin_dir}:$PATH" HOME="$home_dir" bash "${REPO_ROOT}/plugins/sync/scripts/ensure-codex-plugins.sh" >/dev/null 2>&1); then
+    user_cfg="${home_dir}/.codex/config.toml"
+    git_enabled=$(grep -E '^\[plugins\."git@taptap-plugins"\]' "$user_cfg" | wc -l | tr -d ' ')
+    sync_enabled=$(grep -E '^\[plugins\."sync@taptap-plugins"\]' "$user_cfg" | wc -l | tr -d ' ')
+    if [[ "$git_enabled" == "1" && "$sync_enabled" == "1" ]] && grep -qE '^enabled = true$' "$user_cfg"; then
+      pass "ensure-codex-plugins.sh mirrors project enabled plugins to user config"
+    else
+      fail "ensure-codex-plugins.sh did not mirror enabled plugins (git=$git_enabled sync=$sync_enabled, user_cfg: $(cat "$user_cfg"))"
+    fi
+  else
+    fail "ensure-codex-plugins.sh exited non-zero during mirror test"
+  fi
+
+  # Test D: codex CLI 缺失时优雅 skip
+  tmp_root="$(new_tmpdir)"
+  home_dir="${tmp_root}/home"
+  project_dir="${tmp_root}/project"
+
+  mkdir -p "${home_dir}/.codex" "${project_dir}"
+  : > "${home_dir}/.codex/config.toml"  # 无 marketplace
+  git -C "$project_dir" init >/dev/null 2>&1
+
+  if (cd "$project_dir" && PATH="/usr/bin:/bin" HOME="$home_dir" bash "${REPO_ROOT}/plugins/sync/scripts/ensure-codex-plugins.sh" >/dev/null 2>&1); then
+    pass "ensure-codex-plugins.sh exits 0 gracefully when codex CLI is missing"
+  else
+    fail "ensure-codex-plugins.sh did not exit 0 when codex CLI missing"
   fi
 else
   echo "  SKIP: python3 not installed, skipping sync runtime edge cases"
