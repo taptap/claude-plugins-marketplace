@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "TapTap 插件库 - 面向 AI 开发工具的工作流自动化插件集",
-    "version": "0.1.35",
+    "version": "0.1.36",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -14,7 +14,7 @@
       "name": "spec",
       "source": "./plugins/spec",
       "description": "Spec-Driven Development 插件，自动执行完整开发流程",
-      "version": "0.1.7",
+      "version": "0.1.8",
       "author": {
         "name": "TapTap AI Team"
       },
@@ -26,7 +26,7 @@
       "name": "git",
       "source": "./plugins/git",
       "description": "Git 工作流命令插件，提供提交/推送/MR、远程平台操作、自动代码审查（Agent Team 审查+辩论 + Codex 双视角），支持项目自定义审查规则",
-      "version": "0.1.15",
+      "version": "0.1.16",
       "author": {
         "name": "TapTap AI Team"
       },
@@ -38,7 +38,7 @@
       "name": "sync",
       "source": "./plugins/sync",
       "description": "项目配置同步插件，提供 MCP、LSP、Hooks、状态栏和 Claude Skills 同步功能",
-      "version": "0.1.27",
+      "version": "0.1.28",
       "author": {
         "name": "TapTap AI Team"
       },
@@ -50,7 +50,7 @@
       "name": "test",
       "source": "./plugins/test",
       "description": "QA 工作流插件，提供需求评审与澄清、测试用例生成（含冗余对评审）、用例评审、变更分析、代码级测试生成（单元/集成）、需求回溯（含冒烟测试模式）、Bug 修复分析等 QA 全流程 Skill",
-      "version": "0.0.5",
+      "version": "0.0.6",
       "author": {
         "name": "TapTap AI Team"
       },

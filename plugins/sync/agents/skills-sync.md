@@ -5,7 +5,7 @@ model: haiku
 tools: Bash
 ---
 
-你负责同步 Claude Skills 到项目。
+负责同步 Claude Skills 到项目。
 
 ## 输入参数
 

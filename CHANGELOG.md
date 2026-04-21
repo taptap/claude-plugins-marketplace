@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.1.36 — Codex plugins: align with official `codex marketplace add` workflow + harness AGENTS.md
+
+### Sync Plugin (0.1.28)
+
+- Rewrote `ensure-codex-plugins.sh` to delegate cache management to Codex itself: the script now only registers `taptap-plugins` via `codex marketplace add taptap/agents-plugins` (when missing) and mirrors project-level `[plugins."*@taptap-plugins"] enabled = true` into `~/.codex/config.toml`. Removed all hand-rolled cache symlink and `installed_plugins.json` maintenance.
+- Updated `codex-plugins-config` agent to document the new flow (GitHub remote registration, no local cache writes) and removed stale `~/.agents/plugins/` references.
+- Replaced one validate.sh case with four new ones covering the new behavior (marketplace add when missing, skip when registered, project mirror, graceful skip when codex CLI is unavailable). Added schema validation that every `.codex-plugin/plugin.json` must include `interface.{displayName, category, capabilities}` and that `.agents/plugins/marketplace.json` matches `plugins/*/.codex-plugin/`.
+
+### Git Plugin (0.1.16)
+
+- Added required Codex `interface` block (displayName, shortDescription, longDescription, developerName, category, capabilities) so the plugin appears in the Codex TUI picker.
+
+### Spec Plugin (0.1.8)
+
+- Added required Codex `interface` block.
+
+### Test Plugin (0.0.6)
+
+- Added required Codex `interface` block.
+
+### Repo harness
+
+- Rewrote root `AGENTS.md` (also exposed as `CLAUDE.md` via symlink) into a proper harness file with sections for repository layout, commands, conventions, plugin contract, and safety rules. Codex now picks up the same instructions Claude Code already loaded.
+
+### Marketplace
+
+- Added `.agents/plugins/marketplace.json` (Codex-format) so `codex marketplace add taptap/agents-plugins` can discover the marketplace from GitHub. Each plugin declares `policy.installation`; `git` and `sync` use `INSTALLED_BY_DEFAULT` so adding the marketplace auto-installs the core plugins.
+- Removed the blanket `/.agents/plugins/` ignore in `.gitignore` since Codex 0.121.0 does not write any artifacts under that directory.
+- Bumped marketplace metadata version from 0.1.35 to 0.1.36.
+- Updated git plugin to 0.1.16, spec plugin to 0.1.8, sync plugin to 0.1.28, test plugin to 0.0.6.
+
 ## 0.1.35 — Test plugin major refactor: traceability auto-writeback, handoff pilot, cross-repo contract bridge
 
 ### Test Plugin (0.0.5)

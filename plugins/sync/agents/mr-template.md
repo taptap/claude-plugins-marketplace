@@ -5,7 +5,7 @@ model: haiku
 tools: Read, Bash
 ---
 
-你负责同步 GitLab MR 默认模板。
+负责同步 GitLab MR 默认模板。
 
 ## 输入参数
 
