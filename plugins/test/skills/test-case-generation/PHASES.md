@@ -122,7 +122,7 @@ Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JS
 2. **全部至少 partial（无 none）** → 继续执行但设 `confidence_ceiling = 70`，后续生成的所有用例 confidence 封顶于此值
 3. **任一维度 none 且无上游 clarified_requirements** → 暂停，向用户呈现充分性报告并请求决策：
 
-调用 AskUserQuestion 工具：
+调用 AskUserQuestion 工具（按 [输出溯源原则](../../CONVENTIONS.md#输出溯源原则) 标注 `evidence_tag` + `evidence_ref`，本场景是固定处置选项，标 `derived` 且 `evidence_ref` 必须含 `sufficiency_assessment.json` 中具体维度名的原文摘录。下方示例的 `{维度名}` 是占位符，AI 必须替换为真实维度名如 `performance` / `error_handling`，保留花括号视为违规）：
 
 ```json
 {
@@ -130,10 +130,11 @@ Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JS
     {
       "question": "需求文档在以下维度信息不足，可能导致生成的用例包含推测性内容：\n{逐维度列出 none/partial 的具体缺失说明}\n\n您希望如何处理？",
       "header": "充分性检查",
+      "evidence_ref": "sufficiency_assessment.json 中『{具体维度名}: none』",
       "options": [
-        {"label": "补充需求信息", "description": "请在回复中补充缺失的内容，将重新评估"},
-        {"label": "继续生成（标注风险）", "description": "用例将标记为低置信度（上限 50），需人工逐条确认"},
-        {"label": "终止生成", "description": "建议先完善需求或执行 requirement-clarification 后重试"}
+        {"label": "补充需求信息", "description": "请在回复中补充缺失的内容，将重新评估", "evidence_tag": "derived", "evidence_ref": "sufficiency_assessment.json『{维度名}: none』"},
+        {"label": "继续生成（标注风险）", "description": "用例将标记为低置信度（上限 50），需人工逐条确认", "evidence_tag": "derived", "evidence_ref": "sufficiency_assessment.json『{维度名}: none』"},
+        {"label": "终止生成", "description": "建议先完善需求或执行 requirement-clarification 后重试", "evidence_tag": "derived", "evidence_ref": "sufficiency_assessment.json『{维度名}: none』"}
       ],
       "multiSelect": false
     }
@@ -444,6 +445,10 @@ Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JS
 
 调用 AskUserQuestion 工具提供结构化选项（格式见 CONVENTIONS.md「[AskUserQuestion 交互式提问](../../CONVENTIONS.md#askuserquestion-交互式提问)」），降低用户认知负担。
 
+> **CRITICAL — 选项溯源**：本阶段选项是固定处置选项（接受/驳回/补充），属于元操作。`evidence_tag` 标 `derived`，`evidence_ref` 必须包含 phase 5.6 合并结果中对应 finding 的原文摘录（用 `「」` 圈出 finding 关键描述）。**禁止**在 option label/description 中编造未在 finding 原文出现的具体名词（用例新字段、新版本号、新 API 路径 等）。详见 [输出溯源原则](../../CONVENTIONS.md#输出溯源原则)。
+>
+> **占位符必须替换**：下方示例的 `{N}` / `{finding_id}` / `{finding 原文摘录}` 等花括号占位符，AI 生成时**必须**替换为真实的 finding 编号和原话。保留花括号会通过 schema 但属于违规。
+
 **首先**提供批量处理选项：
 
 ```json
@@ -452,10 +457,11 @@ Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JS
     {
       "question": "评审发现 {N} 个待确认问题，您希望如何处理？",
       "header": "批量处理",
+      "evidence_ref": "phase 5.6 合并结果『发现 {N} 个待确认 findings』",
       "options": [
-        {"label": "接受全部建议修改", "description": "一次性采纳所有评审建议"},
-        {"label": "逐条确认", "description": "逐个展示每个问题"},
-        {"label": "驳回全部", "description": "保持原样"}
+        {"label": "接受全部建议修改", "description": "一次性采纳所有评审建议", "evidence_tag": "derived", "evidence_ref": "phase 5.6 findings『{N} 个待确认』"},
+        {"label": "逐条确认", "description": "逐个展示每个问题", "evidence_tag": "derived", "evidence_ref": "phase 5.6 findings『{N} 个待确认』"},
+        {"label": "驳回全部", "description": "保持原样", "evidence_tag": "derived", "evidence_ref": "phase 5.6 findings『{N} 个待确认』"}
       ],
       "multiSelect": false
     }
@@ -471,10 +477,11 @@ Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JS
     {
       "question": "{问题描述}（涉及用例 {case_id}，共识置信度 {merged_confidence}）",
       "header": "问题 1",
+      "evidence_ref": "tc_gen_review.md {finding_id}『{finding 原文摘录}』",
       "options": [
-        {"label": "接受建议修改", "description": "{suggestion}"},
-        {"label": "驳回（保持原样）", "description": "不做修改，保留当前用例"},
-        {"label": "补充说明", "description": "请在回复中补充"}
+        {"label": "接受建议修改", "description": "{suggestion}", "evidence_tag": "derived", "evidence_ref": "tc_gen_review.md {finding_id}『{finding 原文摘录}』"},
+        {"label": "驳回（保持原样）", "description": "不做修改，保留当前用例", "evidence_tag": "derived", "evidence_ref": "tc_gen_review.md {finding_id}『{finding 原文摘录}』"},
+        {"label": "补充说明（请在回复中补充）", "description": "用户在回复中补充", "evidence_tag": "unknown", "evidence_ref": null}
       ],
       "multiSelect": false
     }
