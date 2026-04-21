@@ -231,7 +231,9 @@ def _execute_read_file(path: str, work_dir: str,
     try:
         resolved = Path(work_dir, path).resolve()
         work_resolved = Path(work_dir).resolve()
-        if not str(resolved).startswith(str(work_resolved)):
+        # 用 Path.is_relative_to (3.9+) 而非 startswith，避免 sibling-prefix 漏洞：
+        # work_dir=/tmp/foo 时，/tmp/foobar/x 用 startswith 会通过校验
+        if not (resolved == work_resolved or resolved.is_relative_to(work_resolved)):
             return f"ERROR: Path traversal blocked: {path}"
 
         if not resolved.is_file():
