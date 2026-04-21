@@ -6,6 +6,12 @@ description: >
   供下游 skill 消费。需求评审会前的质量把关请使用 requirement-review。
   不适用于：评审会前质量把关（使用 requirement-review）。
   触发：帮我理清需求、需求澄清、这个需求不太明确、我有个新需求、澄清一下、拉齐需求。
+handoffs:
+  - label: 生成测试用例
+    skill: test:test-case-generation
+    when: 需求已澄清，准备进入用例设计阶段
+    prompt_hint: "基于本次产出的 clarified_requirements.json / requirement_points.json 生成用例"
+    recommended: true
 ---
 
 # 需求澄清
@@ -115,7 +121,28 @@ description: >
    - [ ] `clarified_requirements.json`
    - [ ] `requirement_points.json`
    - [ ] `implementation_brief.json`
-4. **完成标志**：所有输出文件生成后，输出一行总结："需求澄清完成，已生成 N 个产物文件。" 这是 skill 的唯一合法终止点。
+4. **完成标志与 Next Steps 输出**：所有输出文件生成后，**必须**按以下格式输出（这是 skill 的唯一合法终止点，不允许只输出一行总结）：
+
+   ````markdown
+   ## ✓ 需求澄清完成
+
+   - 功能点：N 个（confirmed M 个 / partial K 个 / unconfirmed L 个）
+   - 输出文件：clarification_log.md / clarified_requirements.json / requirement_points.json / implementation_brief.json
+
+   ## 下一步
+
+   **推荐：生成测试用例** —— 基于已确认的功能点和验收标准设计测试用例
+
+   ```
+   Skill(skill: "test:test-case-generation")
+   ```
+
+   是否现在直接执行？回复"是"自动接力，回复"看看产物再决定"则停在此处。
+   ````
+
+   - 推荐项来源于本 skill 的 frontmatter `handoffs[recommended=true]` 条目；如未来增加多个 handoff，按 `recommended` 标志和 `when` 条件挑选最匹配的一项作为推荐
+   - 用户回复"是"/"继续"/"go" → 立即用 Skill 工具调用对应 skill；回复"先看产物"/"等下" → 停止，不再继续
+   - 不要省略 ✓ 摘要段，不要把 Next Steps 写成自然语言段落，必须是上述格式
 
 ## 阶段流程
 
