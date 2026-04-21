@@ -1,5 +1,5 @@
 name: change-analysis
-version: "1.0"
+version: "1.1"
 description: >
   分析代码变更的影响面和测试覆盖。输入 Story/Bug 链接或需求文档 + 代码变更（MR/PR 或本地 diff），
   输出 change_analysis.json + change_coverage_report.json + 可选 supplementary_cases.json。
@@ -46,6 +46,13 @@ input:
 
 output:
   files:
+    - name: change_checklist.md
+      description: fetch 阶段写入的清单（需求点 / 代码变更 / 已有用例统计），后续阶段逐项处理并追加节
+      format: markdown
+    - name: bug_description.md
+      description: Bug 场景下 fetch 阶段写入的 Bug 描述（来自本地文件或 URL）
+      format: markdown
+      optional: true
     - name: change_analysis.json
       description: 变更分析总结（场景、风险等级、关键发现、行动项）
       format: json
@@ -69,6 +76,9 @@ output:
       description: 为覆盖缺口生成的补充用例（Story 场景，可选）
       format: json
       optional: true
+    - name: ca_summary.json
+      description: 结构化窄摘要（changed_modules / risk_count / new_features / risk_breakdown / scenario），供 ai-case change_analysis workflow 的 extract_story_output 消费给下游 TC 生成 prompt 注入。schema 在 contracts/ca-summary.schema.json
+      format: json
   structured:
     scenario:
       type: string
@@ -101,6 +111,9 @@ dependencies:
     - shared-tools/scripts/github_helper.py
     - shared-tools/scripts/search_mrs.py
     - shared-tools/scripts/search_prs.py
+    - shared-tools/scripts/codex_agent.py  # Phase 3.5 cross-validation fallback
+  agents:
+    - change-analysis/codex-change-analyzer  # Phase 3.5 cross-validation
   env_vars:
     - FEISHU_APP_ID
     - FEISHU_APP_SECRET

@@ -1,0 +1,46 @@
+# 桥接校验白名单：声明哪些文件不是 skill 产物，不应进入比对
+#
+# 三类文件需要排除：
+#   1. framework: Claude Code / 插件框架本身的文件（PHASES.md / SKILL.md / mcp.json 等）
+#   2. backend_written: ai-case 后端自己写入工作目录的文件，skill 只是消费者
+#   3. dynamic_fallback: 由 ai-case 动态发现/兜底处理，可不在 contract.yaml 中声明
+#
+# 维护原则：尽量保守，不在白名单的就要在 contract.yaml 里声明出来。
+
+framework:
+  - PHASES.md
+  - SKILL.md
+  - CHECKLIST.md
+  - METHODS.md
+  - mcp.json
+  - plugin.json
+  - marketplace.json
+  - README.md
+  - EXTERNAL-IMPACT.md
+
+backend_written:
+  # ai-case story_prefetch.py 写入工作目录的文件
+  - requirement_doc.md
+  # ai-case 预取 MS 用例快照
+  - ms_cases_snapshot.json
+  # ai-case test_case_generation.post_complete 把 module_*_cases.json 合并产出
+  # （skill 只产 module_*_cases.json，generated_cases.json 是 ai-case 后处理的成果，
+  #  不属于 marketplace 契约范围）
+  - generated_cases.json
+  # ai-case change_analysis workflow 在 prompt 里指示 Codex 子 Agent 写入；
+  # 不属于 marketplace skill 自身产物
+  - codex_change_findings.json
+  # ai-case smoke_test workflow 是 ai-case 自家编排（基于 requirement-traceability skill），
+  # 这些文件名是它内部 prompt 里指示 AI 写入的中间产物
+  - code_analysis.md
+  - coverage_report.json
+  # ai-case smoke_test post_complete 基于 skill 产的 .json 渲染人类可读 markdown，
+  # 供飞书导出消费，避免裸 JSON 当 markdown 上传
+  - smoke_test_report.md
+
+dynamic_fallback:
+  # feishu_export 在候选列表未命中时的通用兜底
+  - report.md
+  # ai-case 的历史 fallback 链兜底（skill 已不产出，建议 ai-case 后续清理）
+  # 现版本由 ai-case post_complete 写 generated_cases.json 取代
+  - final_cases.json

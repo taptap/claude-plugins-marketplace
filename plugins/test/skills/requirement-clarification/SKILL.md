@@ -3,8 +3,15 @@ name: requirement-clarification
 description: >
   当收到新需求（链接、文档、口述或对话中的碎片化信息）时，通过多维度结构化问答
   与用户拉齐对需求的理解，识别模糊地带并逐项确认，输出结构化澄清结果和编号功能点清单
-  供下游 skill 消费。适用于用户说"帮我理清需求""这个需求不太明确""我有个新需求"
-  "澄清一下"等场景。需求评审会前的质量把关请使用 requirement-review。
+  供下游 skill 消费。需求评审会前的质量把关请使用 requirement-review。
+  不适用于：评审会前质量把关（使用 requirement-review）。
+  触发：帮我理清需求、需求澄清、这个需求不太明确、我有个新需求、澄清一下、拉齐需求。
+handoffs:
+  - label: 生成测试用例
+    skill: test:test-case-generation
+    when: 需求已澄清，准备进入用例设计阶段
+    prompt_hint: "基于本次产出的 clarified_requirements.json / requirement_points.json 生成用例"
+    recommended: true
 ---
 
 # 需求澄清
@@ -87,6 +94,7 @@ description: >
 - 提供选项或默认值帮助回答，如「支付超时后订单状态：A) 保持待支付 B) 自动取消 C) 其他」
 - 对用户不关心的维度，AI 提出默认假设让用户确认，而非追问到底
 - 标注问题来源维度和关联功能点
+- **每个 option 必须带 evidence 标注**：遵循 [输出溯源原则](../../CONVENTIONS.md#输出溯源原则) 的三级标签 `quoted` / `derived` / `unknown`。`quoted` / `derived` 的 `evidence_ref` 必须包含成对引号包裹的原文摘录（不能只写定位）。**AI 没依据时不要编候选让用户选**——改用 `unknown` + [反捏造模板](../../CONVENTIONS.md#反捏造模板何时不要列候选)的开放式追问。
 
 ## 模型分层
 
@@ -113,7 +121,28 @@ description: >
    - [ ] `clarified_requirements.json`
    - [ ] `requirement_points.json`
    - [ ] `implementation_brief.json`
-4. **完成标志**：所有输出文件生成后，输出一行总结："需求澄清完成，已生成 N 个产物文件。" 这是 skill 的唯一合法终止点。
+4. **完成标志与 Next Steps 输出**：所有输出文件生成后，**必须**按以下格式输出（这是 skill 的唯一合法终止点，不允许只输出一行总结）：
+
+   ````markdown
+   ## ✓ 需求澄清完成
+
+   - 功能点：N 个（confirmed M 个 / partial K 个 / unconfirmed L 个）
+   - 输出文件：clarification_log.md / clarified_requirements.json / requirement_points.json / implementation_brief.json
+
+   ## 下一步
+
+   **推荐：生成测试用例** —— 基于已确认的功能点和验收标准设计测试用例
+
+   ```
+   Skill(skill: "test:test-case-generation")
+   ```
+
+   是否现在直接执行？回复"是"自动接力，回复"看看产物再决定"则停在此处。
+   ````
+
+   - 推荐项来源于本 skill 的 frontmatter `handoffs[recommended=true]` 条目；如未来增加多个 handoff，按 `recommended` 标志和 `when` 条件挑选最匹配的一项作为推荐
+   - 用户回复"是"/"继续"/"go" → 立即用 Skill 工具调用对应 skill；回复"先看产物"/"等下" → 停止，不再继续
+   - 不要省略 ✓ 摘要段，不要把 Next Steps 写成自然语言段落，必须是上述格式
 
 ## 阶段流程
 

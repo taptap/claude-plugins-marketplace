@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 文档过期检查脚本
 对比文档更新时间和代码修改时间，检测可能过期的文档
@@ -15,11 +14,10 @@
     python check-stale-docs.py
 """
 
-import os
-import sys
 import argparse
+import os
+from datetime import datetime
 from pathlib import Path
-from datetime import datetime, timedelta
 
 # ============================================================
 # 默认配置（可通过命令行参数覆盖）
@@ -55,7 +53,7 @@ def parse_extensions(ext_str):
     """解析扩展名字符串为集合"""
     if not ext_str:
         return set()
-    return {ext.strip() if ext.strip().startswith('.') else f'.{ext.strip()}' 
+    return {ext.strip() if ext.strip().startswith('.') else f'.{ext.strip()}'
             for ext in ext_str.split(',')}
 
 
@@ -71,24 +69,23 @@ def get_latest_code_mtime(module_dir, code_extensions):
     """获取模块目录下所有代码文件的最新修改时间"""
     if not module_dir.exists():
         return None
-    
+
     latest_time = None
-    
+
     try:
         for root, dirs, files in os.walk(module_dir):
             # 跳过隐藏目录
             dirs[:] = [d for d in dirs if not d.startswith('.')]
-            
+
             for file in files:
                 file_path = Path(root) / file
                 if file_path.suffix in code_extensions:
                     mtime = get_file_mtime(file_path)
-                    if mtime:
-                        if latest_time is None or mtime > latest_time:
-                            latest_time = mtime
+                    if mtime and (latest_time is None or mtime > latest_time):
+                        latest_time = mtime
     except Exception as e:
         print(f"⚠️  扫描 {module_dir} 时出错: {e}")
-    
+
     return latest_time
 
 
@@ -97,26 +94,26 @@ def check_stale_docs(modules_dir, docs_dir, code_extensions, stale_days=None):
     if not docs_dir.exists():
         print(f"❌ 文档目录不存在: {docs_dir}")
         return [], [], []
-    
+
     stale_docs = []
     up_to_date_docs = []
     no_code_modules = []
-    
+
     # 获取所有文档文件
     doc_files = list(docs_dir.glob("*.md"))
-    
+
     for doc_file in doc_files:
         module_name = doc_file.stem
         module_dir = modules_dir / module_name
-        
+
         # 获取文档修改时间
         doc_mtime = get_file_mtime(doc_file)
         if not doc_mtime:
             continue
-        
+
         # 获取代码最新修改时间
         code_mtime = get_latest_code_mtime(module_dir, code_extensions)
-        
+
         if not code_mtime:
             # 模块目录不存在或没有代码文件
             no_code_modules.append({
@@ -124,7 +121,7 @@ def check_stale_docs(modules_dir, docs_dir, code_extensions, stale_days=None):
                 'doc_time': doc_mtime,
             })
             continue
-        
+
         # 比较时间
         if code_mtime > doc_mtime:
             # 代码比文档新
@@ -142,21 +139,21 @@ def check_stale_docs(modules_dir, docs_dir, code_extensions, stale_days=None):
                 'doc_time': doc_mtime,
                 'code_time': code_mtime,
             })
-    
+
     return stale_docs, up_to_date_docs, no_code_modules
 
 
-def print_results(stale_docs, up_to_date_docs, no_code_modules, 
+def print_results(stale_docs, up_to_date_docs, no_code_modules,
                   modules_dir_name, docs_dir_path, code_extensions, stale_days=None):
     """打印检查结果"""
     print("=" * 70)
     print("文档过期检查")
     print("=" * 70)
     print()
-    
+
     total = len(stale_docs) + len(up_to_date_docs) + len(no_code_modules)
-    
-    print(f"📊 统计信息：")
+
+    print("📊 统计信息：")
     print(f"   业务模块目录：{modules_dir_name}/")
     print(f"   文档目录：{docs_dir_path}/")
     print(f"   代码扩展名：{', '.join(sorted(code_extensions))}")
@@ -165,25 +162,25 @@ def print_results(stale_docs, up_to_date_docs, no_code_modules,
     print(f"   状态正常：{len(up_to_date_docs)}")
     print(f"   无代码模块：{len(no_code_modules)}")
     print()
-    
+
     if stale_docs:
         print("⚠️  可能过期的文档（代码修改时间晚于文档）：")
         print()
         # 按过期天数排序
         stale_docs.sort(key=lambda x: x['days_diff'], reverse=True)
-        
+
         shown = 0
         for doc in stale_docs:
             if stale_days and doc['days_diff'] < stale_days:
                 continue
-            
+
             shown += 1
             print(f"   📄 {doc['module']}")
             print(f"      文档更新：{doc['doc_time'].strftime('%Y-%m-%d %H:%M:%S')}")
             print(f"      代码更新：{doc['code_time'].strftime('%Y-%m-%d %H:%M:%S')}")
             print(f"      相差天数：{doc['days_diff']} 天")
             print()
-        
+
         if shown > 0:
             print("建议：")
             print("   1. 检查这些模块的代码变更")
@@ -196,17 +193,17 @@ def print_results(stale_docs, up_to_date_docs, no_code_modules,
     else:
         print("✅ 所有文档都是最新的！")
         print()
-    
+
     if up_to_date_docs:
         print(f"✅ 状态正常的文档：{len(up_to_date_docs)} 个")
         print()
-    
+
     if no_code_modules:
         print("ℹ️  无代码文件的模块（可能是资源或配置）：")
         for doc in no_code_modules:
             print(f"   - {doc['module']}")
         print()
-    
+
     print("=" * 70)
 
 
@@ -241,24 +238,24 @@ def main():
                        help=f'代码文件扩展名，逗号分隔（默认：{DEFAULT_CODE_EXTENSIONS}）')
     parser.add_argument('--days', type=int, default=None,
                        help='只显示指定天数以上未更新的文档')
-    
+
     args = parser.parse_args()
-    
+
     # 确定路径
     root_dir = Path(args.root) if args.root else DEFAULT_ROOT_DIR
     modules_dir_name = args.modules_dir if args.modules_dir else DEFAULT_MODULES_DIR
     docs_dir_path = args.docs_dir if args.docs_dir else DEFAULT_DOCS_DIR
     code_extensions = parse_extensions(args.extensions if args.extensions else DEFAULT_CODE_EXTENSIONS)
-    
+
     modules_dir = root_dir / modules_dir_name
     docs_dir = root_dir / docs_dir_path
-    
+
     print("正在扫描文档和代码...")
     stale_docs, up_to_date_docs, no_code_modules = check_stale_docs(
         modules_dir, docs_dir, code_extensions, args.days
     )
-    
-    print_results(stale_docs, up_to_date_docs, no_code_modules, 
+
+    print_results(stale_docs, up_to_date_docs, no_code_modules,
                   modules_dir_name, docs_dir_path, code_extensions, args.days)
 
 

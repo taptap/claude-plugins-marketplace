@@ -21,6 +21,14 @@ jobs:
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
 
+      - name: Setup Python (for contract bridge check)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python deps
+        run: pip install pyyaml jsonschema
+
       - name: Run validation
         run: bash tests/validate.sh
         env:

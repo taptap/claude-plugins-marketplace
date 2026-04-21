@@ -1,0 +1,37 @@
+# pre-commit hooks for marketplace repository
+# 安装：pip install pre-commit && pre-commit install
+# 手动跑：pre-commit run --all-files
+
+repos:
+  - repo: local
+    hooks:
+      - id: contract-bridge-check
+        name: Contract bridge check (lenient)
+        description: 校验 contract.yaml 自身合规；如能找到 ai-case 消费侧则做双侧对账
+        entry: python3 scripts/contract-bridge-check.py --lenient
+        language: system
+        pass_filenames: false
+        # 仅在以下文件改动时触发，避免每次 commit 都跑
+        files: |
+          (?x)^(
+            plugins/.+/contract\.yaml|
+            plugins/.+\.md|
+            scripts/contract-bridge-.+\.(py|yaml)|
+            \.claude-plugin/marketplace\.json
+          )$
+
+      - id: validate-contracts
+        name: Validate contract.yaml schema
+        description: 调用 marketplace 自带的 validate_contracts.py 校验所有 contract.yaml 格式
+        entry: python3 plugins/test/skills/shared-tools/scripts/validate_contracts.py plugins/test/skills/
+        language: system
+        pass_filenames: false
+        files: ^plugins/.+/contract\.yaml$
+
+      - id: testcase-schema-sanity
+        name: testcase.schema.json sanity (load + accept/reject samples)
+        description: 校验 testcase.schema.json 自身合法且能正确接受/拒绝样本数据
+        entry: bash tests/check-schemas.sh
+        language: system
+        pass_filenames: false
+        files: ^plugins/test/contracts/testcase\.schema\.json$

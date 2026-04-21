@@ -92,11 +92,29 @@ Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JS
 
 #### 消费上游信号
 
-当工作目录中存在 `clarified_requirements.json`（上游 requirement-clarification 产出）时，额外检查：
+**信号来源 1：工作目录中的 `clarified_requirements.json`**（上游 requirement-clarification 产出）
 
 - `confidence_level == "low"` → 等同于存在 none 维度，触发暂停
 - `open_question_count > 3` → 触发暂停，提示用户先解决未澄清问题
 - 存在 `clarification_status == "unconfirmed"` 的功能点 → 在充分性报告中标注，不单独触发暂停
+
+**信号来源 2：prompt 末尾平台注入的「同 Story 已完成的分析（上游参考信息）」块**
+
+平台后端会把同一 Story 下已完成的 `requirement_review` / `change_analysis` 结构化摘要注入到 prompt 末尾。当存在该块时，按以下规则消费：
+
+- **`requirement_review` 块**（来自 RR workflow `extract_story_output`）：
+  - `verdict == "not_ready"` → **强制暂停**：直接调用 AskUserQuestion 提示用户「需求评审判定 not_ready，建议先解决阻断项后再生成用例」，3 个选项（修复需求 / 继续生成并标注风险 confidence_ceiling=50 / 终止）
+  - `verdict == "ready_with_conditions"` → 不暂停，但在 `context_summary.md` 中标注"基于 RR 条件就绪状态生成"，受影响的功能点 confidence 上限设为 80
+  - `blocking_issues` 列表非空 → 在阶段 4 多视角分析时，**优先把每条 blocking_issue 转化为待覆盖的异常场景**，不能漏
+
+- **`change_analysis` 块**（来自 CA workflow `extract_story_output`）：
+  - `new_features` 列表非空 → **必须为每条 new_feature 至少生成 1 条用例**，在用例 metadata 标注 `source: ca_new_feature`，避免漏覆盖变更新增功能点
+  - `changed_modules` → 拆解模块时（阶段 3）优先按这个清单对齐，模块名命中的优先级高
+  - `risk_count > 0` 或 `risk_breakdown.high > 0` → 在阶段 4 加入"风险点专项验证"维度，每个 high 风险至少 1 条针对性用例
+
+- **冲突处理**：若 RR `verdict == "not_ready"` 同时 CA 有 `new_features`，**仍以 RR 暂停为准**，CA 信息留待用户决策后消费
+
+- **缺失即跳过**：上游块本身不存在或字段缺失 → 不阻断、不暂停，按其他信号正常推进
 
 #### 决策逻辑
 
@@ -104,7 +122,7 @@ Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JS
 2. **全部至少 partial（无 none）** → 继续执行但设 `confidence_ceiling = 70`，后续生成的所有用例 confidence 封顶于此值
 3. **任一维度 none 且无上游 clarified_requirements** → 暂停，向用户呈现充分性报告并请求决策：
 
-调用 AskUserQuestion 工具：
+调用 AskUserQuestion 工具（按 [输出溯源原则](../../CONVENTIONS.md#输出溯源原则) 标注 `evidence_tag` + `evidence_ref`，本场景是固定处置选项，标 `derived` 且 `evidence_ref` 必须含 `sufficiency_assessment.json` 中具体维度名的原文摘录。下方示例的 `{维度名}` 是占位符，AI 必须替换为真实维度名如 `performance` / `error_handling`，保留花括号视为违规）：
 
 ```json
 {
@@ -112,10 +130,11 @@ Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JS
     {
       "question": "需求文档在以下维度信息不足，可能导致生成的用例包含推测性内容：\n{逐维度列出 none/partial 的具体缺失说明}\n\n您希望如何处理？",
       "header": "充分性检查",
+      "evidence_ref": "sufficiency_assessment.json 中『{具体维度名}: none』",
       "options": [
-        {"label": "补充需求信息", "description": "请在回复中补充缺失的内容，将重新评估"},
-        {"label": "继续生成（标注风险）", "description": "用例将标记为低置信度（上限 50），需人工逐条确认"},
-        {"label": "终止生成", "description": "建议先完善需求或执行 requirement-clarification 后重试"}
+        {"label": "补充需求信息", "description": "请在回复中补充缺失的内容，将重新评估", "evidence_tag": "derived", "evidence_ref": "sufficiency_assessment.json『{维度名}: none』"},
+        {"label": "继续生成（标注风险）", "description": "用例将标记为低置信度（上限 50），需人工逐条确认", "evidence_tag": "derived", "evidence_ref": "sufficiency_assessment.json『{维度名}: none』"},
+        {"label": "终止生成", "description": "建议先完善需求或执行 requirement-clarification 后重试", "evidence_tag": "derived", "evidence_ref": "sufficiency_assessment.json『{维度名}: none』"}
       ],
       "multiSelect": false
     }
@@ -147,7 +166,11 @@ Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JS
     "has_clarified_requirements": false,
     "confidence_level": null,
     "open_question_count": 0,
-    "unconfirmed_points": []
+    "unconfirmed_points": [],
+    "rr_verdict": null,
+    "rr_blocking_count": 0,
+    "ca_new_feature_count": 0,
+    "ca_high_risk_count": 0
   },
   "user_decision": "proceed_with_risk | supplemented | aborted | null",
   "confidence_ceiling": 100,
@@ -306,6 +329,7 @@ Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JS
 ### 5.2 快速自审
 
 > 格式校验（priority 合规、steps/expected 对齐）由后端 `post_complete` 自动完成，AI 只需关注内容质量。
+> 但**禁止依赖后端兜底**：`steps` 必须始终是 `[{"action": "...", "expected": "..."}]` 配对格式，禁止使用 `steps: string[]` + 顶层 `expected` 的旧格式（详见 [CONVENTIONS.md 禁止的旧格式](../../CONVENTIONS.md#禁止的旧格式)）。
 
 **跨模块去重**（两步法）：
 1. **字面去重**（快速）：使用 Grep 搜索 `test_cases.json` 中的 `"title"` 字段，标记完全相同或高度相似的标题对
@@ -421,6 +445,10 @@ Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JS
 
 调用 AskUserQuestion 工具提供结构化选项（格式见 CONVENTIONS.md「[AskUserQuestion 交互式提问](../../CONVENTIONS.md#askuserquestion-交互式提问)」），降低用户认知负担。
 
+> **CRITICAL — 选项溯源**：本阶段选项是固定处置选项（接受/驳回/补充），属于元操作。`evidence_tag` 标 `derived`，`evidence_ref` 必须包含 phase 5.6 合并结果中对应 finding 的原文摘录（用 `「」` 圈出 finding 关键描述）。**禁止**在 option label/description 中编造未在 finding 原文出现的具体名词（用例新字段、新版本号、新 API 路径 等）。详见 [输出溯源原则](../../CONVENTIONS.md#输出溯源原则)。
+>
+> **占位符必须替换**：下方示例的 `{N}` / `{finding_id}` / `{finding 原文摘录}` 等花括号占位符，AI 生成时**必须**替换为真实的 finding 编号和原话。保留花括号会通过 schema 但属于违规。
+
 **首先**提供批量处理选项：
 
 ```json
@@ -429,10 +457,11 @@ Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JS
     {
       "question": "评审发现 {N} 个待确认问题，您希望如何处理？",
       "header": "批量处理",
+      "evidence_ref": "phase 5.6 合并结果『发现 {N} 个待确认 findings』",
       "options": [
-        {"label": "接受全部建议修改", "description": "一次性采纳所有评审建议"},
-        {"label": "逐条确认", "description": "逐个展示每个问题"},
-        {"label": "驳回全部", "description": "保持原样"}
+        {"label": "接受全部建议修改", "description": "一次性采纳所有评审建议", "evidence_tag": "derived", "evidence_ref": "phase 5.6 findings『{N} 个待确认』"},
+        {"label": "逐条确认", "description": "逐个展示每个问题", "evidence_tag": "derived", "evidence_ref": "phase 5.6 findings『{N} 个待确认』"},
+        {"label": "驳回全部", "description": "保持原样", "evidence_tag": "derived", "evidence_ref": "phase 5.6 findings『{N} 个待确认』"}
       ],
       "multiSelect": false
     }
@@ -448,10 +477,11 @@ Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JS
     {
       "question": "{问题描述}（涉及用例 {case_id}，共识置信度 {merged_confidence}）",
       "header": "问题 1",
+      "evidence_ref": "tc_gen_review.md {finding_id}『{finding 原文摘录}』",
       "options": [
-        {"label": "接受建议修改", "description": "{suggestion}"},
-        {"label": "驳回（保持原样）", "description": "不做修改，保留当前用例"},
-        {"label": "补充说明", "description": "请在回复中补充"}
+        {"label": "接受建议修改", "description": "{suggestion}", "evidence_tag": "derived", "evidence_ref": "tc_gen_review.md {finding_id}『{finding 原文摘录}』"},
+        {"label": "驳回（保持原样）", "description": "不做修改，保留当前用例", "evidence_tag": "derived", "evidence_ref": "tc_gen_review.md {finding_id}『{finding 原文摘录}』"},
+        {"label": "补充说明（请在回复中补充）", "description": "用户在回复中补充", "evidence_tag": "unknown", "evidence_ref": null}
       ],
       "multiSelect": false
     }

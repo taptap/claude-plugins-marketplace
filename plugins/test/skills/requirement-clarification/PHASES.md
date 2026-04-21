@@ -272,6 +272,10 @@ python3 $SKILLS_ROOT/shared-tools/scripts/fetch_feishu_doc.py \
 
 按 SKILL.md 中定义的问题编排策略执行。所有提问**必须**通过调用 AskUserQuestion 工具完成，格式见 CONVENTIONS.md「[AskUserQuestion 交互式提问](../../CONVENTIONS.md#askuserquestion-交互式提问)」。
 
+> **CRITICAL — 选项溯源**：每个 option 必须填 `evidence_tag`（`quoted` / `derived` / `unknown`）+ `evidence_ref`。`quoted` / `derived` 的 `evidence_ref` **必须包含成对引号包裹的原文摘录**（如 `"需求第 9 行『发现改为动态』"`），仅写定位会被 schema 拒收。**AI 没依据时不要编候选让用户选**——改用 `unknown` + 开放式追问（候选写到 `question` 文本里作为提示词，`option` 留给元操作）。详见 [输出溯源原则](../../CONVENTIONS.md#输出溯源原则) 与 [反捏造模板](../../CONVENTIONS.md#反捏造模板何时不要列候选)。
+>
+> **占位符必须替换**：下方示例中的 `{N}` / `{xxx}` 是占位符，AI 实际生成时**必须**替换为真实的行号和原文摘录。schema 只校验引号格式，不会发现 `『{阻断项原文摘录}』` 这种未替换的占位符——但留下花括号即视为违规，会在 review 时被打回。
+
 **首轮（骨架确认）** — 各模式均必经：
 - 确认功能范围、目标用户、核心场景
 - **确认平台范围**（必问）：需求涉及哪些平台？是否需要多端协调？
@@ -289,22 +293,24 @@ python3 $SKILLS_ROOT/shared-tools/scripts/fetch_feishu_doc.py \
     {
       "question": "本次需求涉及哪些平台？",
       "header": "平台范围",
+      "evidence_ref": null,
       "options": [
-        {"label": "仅前端", "description": "iOS/Android/Web/PC 平台"},
-        {"label": "仅后端", "description": "服务端逻辑变更"},
-        {"label": "前后端同时修改", "description": "前后端联动变更"},
-        {"label": "多端同步", "description": "请在回复中列出具体平台"}
+        {"label": "仅前端", "description": "iOS/Android/Web/PC 平台", "evidence_tag": "unknown", "evidence_ref": null},
+        {"label": "仅后端", "description": "服务端逻辑变更", "evidence_tag": "unknown", "evidence_ref": null},
+        {"label": "前后端同时修改", "description": "前后端联动变更", "evidence_tag": "unknown", "evidence_ref": null},
+        {"label": "多端同步（请在回复中列出具体平台）", "description": "用户在回复中补充", "evidence_tag": "unknown", "evidence_ref": null}
       ],
       "multiSelect": false
     },
     {
       "question": "核心变更属于以下哪种类型？",
       "header": "变更类型",
+      "evidence_ref": "需求第 N 行变更点清单",
       "options": [
-        {"label": "新增功能模块", "description": "全新的功能模块开发"},
-        {"label": "修改现有逻辑", "description": "对已有功能的行为变更"},
-        {"label": "UI/交互调整", "description": "界面或交互流程变化"},
-        {"label": "性能优化/重构", "description": "非功能性改进"}
+        {"label": "新增功能模块", "description": "全新的功能模块开发", "evidence_tag": "derived", "evidence_ref": "需求第 N 行『新增 XX』中的『新增』"},
+        {"label": "修改现有逻辑", "description": "对已有功能的行为变更", "evidence_tag": "derived", "evidence_ref": "需求第 N 行『XX 改为 YY』中的『改为』"},
+        {"label": "UI/交互调整", "description": "界面或交互流程变化", "evidence_tag": "derived", "evidence_ref": "需求第 N 行『XX 吸顶 / 去掉 XX』等界面措辞"},
+        {"label": "性能优化/重构", "description": "非功能性改进", "evidence_tag": "derived", "evidence_ref": "需求第 N 行『loading 骨架屏替换』"}
       ],
       "multiSelect": true
     }

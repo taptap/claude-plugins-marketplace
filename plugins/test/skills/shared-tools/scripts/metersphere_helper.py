@@ -204,51 +204,148 @@ def _sanitize_quotes(text: str) -> str:
     return ''.join(result)
 
 
-def _convert_case(raw: dict) -> dict | None:
-    """将 AI 生成的用例转为 MS API 格式"""
-    steps_raw = raw.get('steps', [])
-    if steps_raw and isinstance(steps_raw[0], dict):
-        if 'desc' in steps_raw[0]:
-            ms_steps = [{'num': s.get('num', i+1),
-                         'desc': _sanitize_quotes(s.get('desc', '')),
-                         'result': _sanitize_quotes(s.get('result') or s.get('expected', ''))}
-                        for i, s in enumerate(steps_raw)]
-        else:
-            ms_steps = [{'num': i+1,
-                         'desc': _sanitize_quotes(s.get('action', '')),
-                         'result': _sanitize_quotes(s.get('expected', ''))}
-                        for i, s in enumerate(steps_raw)]
+CONVENTIONS_DOC = 'plugins/test/CONVENTIONS.md#用例-json-格式'
+
+# 顶层允许的字段（其他视为拼写错误）
+_ALLOWED_CASE_FIELDS = frozenset({
+    'title', 'priority', 'preconditions', 'steps',
+    'case_id', 'module', 'test_method', 'confidence', 'review_confidence', 'source',
+})
+_ALLOWED_STEP_FIELDS = frozenset({'action', 'expected'})
+# MS 内部格式（后端二次转换的回流）允许的步骤字段
+_ALLOWED_MS_STEP_FIELDS = frozenset({'num', 'desc', 'result'})
+
+
+def _validate_case_schema(raw: Any, idx: int) -> list[str]:
+    """严格 schema 校验，与 ai-case case_schema.TestCase 行为对齐。
+
+    返回错误消息列表，空表示通过。规则：
+    - 必填：title / priority / preconditions / steps
+    - steps 必须是 [{action, expected}] 配对对象数组（不接受字符串数组）
+    - 拒绝旧字段：name / prerequisite / 顶层 expected / tags
+    - 拒绝拼写错误的未知字段
+    """
+    errors: list[str] = []
+    prefix = f'[{idx}]'
+    if not isinstance(raw, dict):
+        return [f'{prefix} 用例必须是对象，收到 {type(raw).__name__}']
+
+    title_for_log = raw.get('title') or '<未命名>'
+    prefix = f'[{idx}] {title_for_log}'
+
+    # 旧字段拒绝
+    if 'name' in raw and 'title' not in raw:
+        errors.append(f'{prefix}: 字段 name 不被接受，必须使用 title。详见 {CONVENTIONS_DOC}')
+    if 'prerequisite' in raw and 'preconditions' not in raw:
+        errors.append(f'{prefix}: 字段 prerequisite 不被接受，必须使用 preconditions（字符串数组）。详见 {CONVENTIONS_DOC}')
+    if 'expected' in raw:
+        errors.append(f'{prefix}: expected 不能出现在用例顶层，只能作为 steps[i] 子字段。详见 {CONVENTIONS_DOC}')
+    if 'tags' in raw:
+        errors.append(f'{prefix}: tags 不能由 AI 写入用例（标签由脚本/后端统一赋值）。详见 {CONVENTIONS_DOC}')
+
+    # 未知字段（拼写错误）
+    unknown = set(raw.keys()) - _ALLOWED_CASE_FIELDS - {'name', 'prerequisite', 'expected', 'tags'}
+    if unknown:
+        errors.append(f'{prefix}: 未知字段 {sorted(unknown)}（可能拼写错误）。允许字段：{sorted(_ALLOWED_CASE_FIELDS)}')
+
+    # 必填字段
+    title = raw.get('title')
+    if not isinstance(title, str) or not title.strip():
+        errors.append(f'{prefix}: title 必填且非空字符串')
+    elif len(title) > MAX_CASE_NAME_LENGTH:
+        errors.append(f'{prefix}: title 长度 {len(title)} 超过上限 {MAX_CASE_NAME_LENGTH}')
+
+    priority = raw.get('priority')
+    if priority not in VALID_PRIORITIES:
+        errors.append(f'{prefix}: priority 必须是 {sorted(VALID_PRIORITIES)} 之一，收到 {priority!r}')
+
+    precond = raw.get('preconditions')
+    if precond is None:
+        errors.append(f'{prefix}: preconditions 必填（字符串数组，可空数组）')
+    elif not isinstance(precond, list):
+        errors.append(f'{prefix}: preconditions 必须是字符串数组，收到 {type(precond).__name__}')
+    elif any(not isinstance(p, str) for p in precond):
+        errors.append(f'{prefix}: preconditions 数组元素必须全是字符串')
+
+    # steps 校验
+    steps = raw.get('steps')
+    if not isinstance(steps, list) or not steps:
+        errors.append(f'{prefix}: steps 必填且至少 1 步')
+    elif isinstance(steps[0], (str, bytes)):
+        errors.append(
+            f'{prefix}: steps 必须是 [{{action, expected}}] 配对对象数组，'
+            f'不接受字符串数组。详见 {CONVENTIONS_DOC}',
+        )
     else:
-        expected_raw = raw.get('expected', [])
-        ms_steps = [{'num': i+1,
-                     'desc': _sanitize_quotes(str(s)),
-                     'result': _sanitize_quotes(str(expected_raw[i]) if i < len(expected_raw) else '')}
-                    for i, s in enumerate(steps_raw)]
+        # 检测是否 MS 内部格式（{num, desc, result}）— 允许透传
+        # 用 num/result 而非 desc 判定：desc 容易被 AI 当 action 的 typo 误写，
+        # num/result 是 MS 特有，不会被误用为 action/expected
+        is_ms_format = isinstance(steps[0], dict) and (
+            'num' in steps[0] or 'result' in steps[0]
+        )
+        for si, step in enumerate(steps):
+            sprefix = f'{prefix} steps[{si}]'
+            if not isinstance(step, dict):
+                errors.append(f'{sprefix}: 必须是对象，收到 {type(step).__name__}')
+                continue
+            if is_ms_format:
+                step_unknown = set(step.keys()) - _ALLOWED_MS_STEP_FIELDS
+                if step_unknown:
+                    errors.append(f'{sprefix}: 未知字段 {sorted(step_unknown)}（MS 格式只允许 {sorted(_ALLOWED_MS_STEP_FIELDS)}）')
+                if not isinstance(step.get('desc'), str) or not step.get('desc', '').strip():
+                    errors.append(f'{sprefix}: desc 必填且非空字符串')
+            else:
+                step_unknown = set(step.keys()) - _ALLOWED_STEP_FIELDS
+                if step_unknown:
+                    errors.append(f'{sprefix}: 未知字段 {sorted(step_unknown)}（可能拼写错误，允许：{sorted(_ALLOWED_STEP_FIELDS)}）')
+                if not isinstance(step.get('action'), str) or not step.get('action', '').strip():
+                    errors.append(f'{sprefix}: action 必填且非空字符串')
+                expected = step.get('expected', '')
+                if expected is not None and not isinstance(expected, str):
+                    errors.append(f'{sprefix}: expected 必须是字符串（可为空字符串）')
 
-    valid_steps = [s for s in ms_steps if s.get('desc', '').strip()]
-    if not valid_steps:
-        return None
+    return errors
 
-    precond = raw.get('preconditions', raw.get('prerequisite', ''))
-    if isinstance(precond, list):
-        precond = '\n'.join(precond)
 
-    name = _sanitize_title(raw.get('title', raw.get('name', ''))).strip()
-    if not name:
-        return None
+def _convert_case(raw: dict, *, tags: list[str] | None = None) -> dict:
+    """将 schema 校验通过的用例转为 MS API 格式。
+
+    输入只接受两种格式（AI 写入的旧格式已被 _validate_case_schema 拦截）：
+    - 标准配对格式：steps[{action, expected}]
+    - MS 内部格式（回流）：steps[{num, desc, result}]
+
+    tags 由调用方按工作流类型指定（变更分析 'AI 变更分析' / 用例评审 'AI 用例评审'），
+    AI 输出中的 tags 字段已被 _validate_case_schema 拦截。
+    """
+    steps_raw = raw['steps']
+    if isinstance(steps_raw[0], dict) and 'desc' in steps_raw[0]:
+        ms_steps = [
+            {'num': s.get('num', i + 1),
+             'desc': _sanitize_quotes(s.get('desc', '')),
+             'result': _sanitize_quotes(s.get('result', ''))}
+            for i, s in enumerate(steps_raw)
+        ]
+    else:
+        ms_steps = [
+            {'num': i + 1,
+             'desc': _sanitize_quotes(s['action']),
+             'result': _sanitize_quotes(s.get('expected', ''))}
+            for i, s in enumerate(steps_raw)
+        ]
+
+    precond_list = raw.get('preconditions') or []
+    precond = '\n'.join(precond_list)
+
+    name = _sanitize_title(raw['title']).strip()
     if len(name) > MAX_CASE_NAME_LENGTH:
         name = name[:MAX_CASE_NAME_LENGTH] + '…'
 
-    priority = raw.get('priority', 'P2')
-    if priority not in VALID_PRIORITIES:
-        priority = 'P2'
-
     return {
         'name': name,
-        'priority': priority,
+        'priority': raw['priority'],
         'prerequisite': _sanitize_quotes(precond),
-        'steps': valid_steps,
-        'tags': ['AI 用例生成'],
+        'steps': ms_steps,
+        'tags': tags or ['AI 用例生成'],
     }
 
 
@@ -350,7 +447,7 @@ def _ensure_module_path(parent_id: str, path: str) -> tuple[dict, int]:
     """按 '/' 分隔的路径逐层创建模块，返回 (叶子模块信息, 新建模块数)"""
     parts = [p.strip() for p in path.split('/') if p.strip()]
     if not parts:
-        parts = ['未分组']
+        parts = ['未分类']
     created = 0
     current_parent = parent_id
     result = None
@@ -562,8 +659,13 @@ def cmd_ensure_module(parent_id: str, name: str):
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
-def cmd_import_cases(parent_module_id: str, cases_file: str, requirement_name: str = ''):
-    """按 module 字段分组导入用例，可选按需求名创建父模块"""
+def cmd_import_cases(parent_module_id: str, cases_file: str,
+                     requirement_name: str = '', tags: list[str] | None = None):
+    """按 module 字段分组导入用例，可选按需求名创建父模块。
+
+    tags: 用例标签列表，默认 ['AI 用例生成']。
+          变更分析使用 ['AI 变更分析']，用例评审使用 ['AI 用例评审']。
+    """
     if not parent_module_id:
         parent_module_id = _cfg('MS_DEFAULT_NODE_ID')
 
@@ -578,18 +680,41 @@ def cmd_import_cases(parent_module_id: str, cases_file: str, requirement_name: s
     with open(cases_file, 'r', encoding='utf-8') as f:
         raw_cases = json.load(f)
 
-    if isinstance(raw_cases, dict):
-        raw_cases = raw_cases.get('cases', raw_cases.get('test_cases', [raw_cases]))
+    # 严格契约：顶层必须是 list
+    if not isinstance(raw_cases, list):
+        if isinstance(raw_cases, dict):
+            print(
+                f"ERROR: 用例文件顶层必须是 JSON 数组，收到 dict（含键 {list(raw_cases.keys())[:5]}）。"
+                f"禁止用 {{cases:[...]}} 或 {{modules:[...]}} 包裹。详见 {CONVENTIONS_DOC}",
+                file=sys.stderr,
+            )
+        else:
+            print(f"ERROR: 用例文件顶层必须是 JSON 数组，收到 {type(raw_cases).__name__}", file=sys.stderr)
+        sys.exit(2)
 
-    # 转换并按 module 分组
+    if not raw_cases:
+        print("ERROR: 用例数组为空，至少需要 1 条用例", file=sys.stderr)
+        sys.exit(2)
+
+    # 严格 schema 校验 — 失败即报错退出，让 AI 修正后重试
+    all_errors: list[str] = []
+    for idx, raw in enumerate(raw_cases):
+        all_errors.extend(_validate_case_schema(raw, idx))
+    if all_errors:
+        print(f"ERROR: 用例 schema 校验失败（{len(all_errors)} 处）：", file=sys.stderr)
+        for line in all_errors[:30]:
+            print(f"  {line}", file=sys.stderr)
+        if len(all_errors) > 30:
+            print(f"  ...（仅展示前 30 个错误，共 {len(all_errors)}）", file=sys.stderr)
+        print(f"\n请按 {CONVENTIONS_DOC} 修正后重试。", file=sys.stderr)
+        sys.exit(2)
+
+    # 转换并按 module 分组（schema 已通过，转换不再失败）；tags 由调用方按工作流类型传入
     by_module: dict[str, list[dict]] = {}
     skipped = 0
     for raw in raw_cases:
-        converted = _convert_case(raw)
-        if not converted:
-            skipped += 1
-            continue
-        module_name = raw.get('module', '未分组')
+        converted = _convert_case(raw, tags=tags)
+        module_name = raw.get('module', '未分类')
         by_module.setdefault(module_name, []).append(converted)
 
     # 去重
@@ -776,6 +901,21 @@ def cmd_batch_update_results(plan_id: str, results_file: str):
 
 # ==================== CLI 入口 ====================
 
+def _flag_value(args: list[str], flag: str, default: str | None = None) -> str | None:
+    """从 args 中读取 --flag 后跟的值。flag 不存在返回 default；存在但缺值时清晰报错退出。
+
+    避免用 args[args.index(flag) + 1] 在用户漏写值时抛 IndexError 然后被外层
+    except 包成 'list index out of range' — 对 AI 自我修复极不友好。
+    """
+    if flag not in args:
+        return default
+    idx = args.index(flag)
+    if idx + 1 >= len(args):
+        print(f"ERROR: {flag} 缺少参数值", file=sys.stderr)
+        sys.exit(2)
+    return args[idx + 1]
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__, file=sys.stderr)
@@ -788,10 +928,7 @@ def main():
         if cmd == 'ping':
             cmd_ping()
         elif cmd == 'list-modules':
-            parent = ''
-            if '--parent-id' in args:
-                idx = args.index('--parent-id')
-                parent = args[idx + 1]
+            parent = _flag_value(args, '--parent-id', '')
             cmd_list_modules(parent)
         elif cmd == 'ensure-module':
             if len(args) < 2:
@@ -800,23 +937,21 @@ def main():
             cmd_ensure_module(args[0], args[1])
         elif cmd == 'import-cases':
             if len(args) < 2:
-                print("用法: import-cases <parent_module_id> <cases.json> [--requirement <需求名>]", file=sys.stderr)
+                print("用法: import-cases <parent_module_id> <cases.json> [--requirement <需求名>] [--tags 'AI 变更分析']", file=sys.stderr)
                 sys.exit(1)
-            req_name = ''
-            if '--requirement' in args:
-                idx = args.index('--requirement')
-                req_name = args[idx + 1]
-            cmd_import_cases(args[0], args[1], requirement_name=req_name)
+            req_name = _flag_value(args, '--requirement', '')
+            tags_raw = _flag_value(args, '--tags')
+            import_tags = [t.strip() for t in tags_raw.split(',') if t.strip()] if tags_raw else None
+            cmd_import_cases(args[0], args[1], requirement_name=req_name, tags=import_tags)
         elif cmd == 'list-stages':
             cmd_list_stages()
         elif cmd == 'find-or-create-plan':
             if len(args) < 1:
                 print("用法: find-or-create-plan <plan_name> [--stage smoke]", file=sys.stderr)
                 sys.exit(1)
-            stage = 'smoke'
+            stage = _flag_value(args, '--stage', 'smoke')
             if '--stage' in args:
                 idx = args.index('--stage')
-                stage = args[idx + 1]
                 args = args[:idx] + args[idx+2:]
             cmd_find_or_create_plan(args[0], stage)
         elif cmd == 'add-cases-to-plan':
@@ -834,14 +969,8 @@ def main():
                 print("用法: update-case-result <plan_case_id> <status> [--actual-result TEXT] [--comment TEXT]",
                       file=sys.stderr)
                 sys.exit(1)
-            actual = ''
-            comment = ''
-            if '--actual-result' in args:
-                idx = args.index('--actual-result')
-                actual = args[idx + 1]
-            if '--comment' in args:
-                idx = args.index('--comment')
-                comment = args[idx + 1]
+            actual = _flag_value(args, '--actual-result', '')
+            comment = _flag_value(args, '--comment', '')
             cmd_update_case_result(args[0], args[1], actual, comment)
         elif cmd == 'batch-update-results':
             if len(args) < 3 or args[1] != '--results-json':

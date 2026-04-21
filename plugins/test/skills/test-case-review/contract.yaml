@@ -1,5 +1,5 @@
 name: test-case-review
-version: "1.0"
+version: "1.1"
 description: >
   评审已有测试用例的覆盖度和质量。输入测试用例 + 需求文档，
   输出 review_result.json + review_summary.md + 可选 supplementary_cases.json。
@@ -34,6 +34,9 @@ input:
 
 output:
   files:
+    - name: review_data.md
+      description: fetch 阶段写入的需求摘要 + 设计稿摘要 + 用例完整列表 + 统计
+      format: markdown
     - name: review_result.json
       description: 结构化评审结果（4 维度统计、问题清单、行动项）
       format: json

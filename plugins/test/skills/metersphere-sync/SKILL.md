@@ -19,10 +19,10 @@ description: >
 
 ## 核心能力
 
-- 用例导入 — 按 module 字段自动创建子模块，批量导入用例，打上 `AI 用例生成` 标签
+- 用例导入 — 按 module 字段自动创建子模块，批量导入用例，标签由 `--tags` 参数指定（默认 `AI 用例生成`）
 - 测试计划管理 — 按需求名查找或创建测试计划（限定在 AI 工作流分类下），关联导入的用例
 - 计划幂等 — 同名计划存在时追加用例，不存在时新建
-- 验证回写 — 基于 verification_cases.json 的置信度和结果，自动标记高置信度 Pass/Failure 用例
+- 验证回写 — 基于 forward_verification.json（requirement-traceability 产出）的置信度和结果，自动标记高置信度 Pass/Failure 用例
 - 冒烟测试联动 — 消费 smoke_test_report.json（requirement-traceability 产出），P0 缺陷时全量降级为 Prepare
 - 人工标记 — 置信度不足的用例保持待执行状态，添加评论注明原因
 
@@ -32,7 +32,7 @@ description: >
 导入用例 + 创建/复用测试计划 + 关联用例。适用于测试用例生成完成后的首次同步。
 
 ### mode=execute
-在 sync 的基础上，增加验证结果回写。需要额外输入 `verification_cases.json`，可选输入 `smoke_test_report.json`。
+在 sync 的基础上，增加验证结果回写。需要额外输入 `forward_verification.json`（requirement-traceability 产出），可选输入 `smoke_test_report.json`。
 适用于需求还原度检查完成后，将 AI 验证结果写回 MS 测试计划。当冒烟测试发现 P0 缺陷时，自动将所有用例降级为待人工验证。
 
 ## 工具调用
@@ -83,3 +83,15 @@ python3 $HELPER update-case-result <plan_case_id> <Pass|Failure|Prepare> \
 ## 详细阶段操作
 
 详见 [PHASES.md](PHASES.md)。
+
+## Closing Checklist（CRITICAL）
+
+skill 执行的最终阶段完成后，**必须**逐一验证以下产出文件：
+
+- [ ] `ms_sync_report.json` — 非空，包含导入结果和计划信息
+- [ ] `ms_case_mapping.json` — 非空，包含用例 ID 映射
+- [ ] `ms_plan_info.json` — 非空，包含测试计划信息
+
+全部必须项通过后，输出完成总结。如文件缺失，**停止并补生成**，不允许声明完成。
+
+通用阶段执行约定见 [CONVENTIONS.md](../../CONVENTIONS.md#阶段执行保障)。

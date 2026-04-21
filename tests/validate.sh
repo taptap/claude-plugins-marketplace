@@ -529,6 +529,49 @@ do
 done
 
 # ============================================================
+# N. Contract bridge check（producer 端 contract.yaml 自检 + 与消费方对账）
+# ============================================================
+echo "=== Check N: Contract bridge ==="
+
+BRIDGE_SCRIPT="${REPO_ROOT}/scripts/contract-bridge-check.py"
+if [[ ! -f "$BRIDGE_SCRIPT" ]]; then
+  fail "contract-bridge-check.py not found at ${BRIDGE_SCRIPT}"
+elif ! command -v python3 >/dev/null 2>&1; then
+  echo "  SKIP: python3 not installed"
+elif ! python3 -c 'import yaml' >/dev/null 2>&1; then
+  echo "  SKIP: PyYAML not installed (pip install pyyaml)"
+else
+  # marketplace 单仓 CI 用 lenient：找不到 ai-case consumer 就只校验 contract.yaml 自身合规
+  if python3 "$BRIDGE_SCRIPT" --lenient >/tmp/bridge-check.log 2>&1; then
+    pass "contract bridge check"
+  else
+    fail "contract bridge check"
+    sed 's/^/    /' /tmp/bridge-check.log
+  fi
+fi
+
+# ============================================================
+# N+1. testcase.schema.json 校验（委托给 tests/check-schemas.sh）
+# ============================================================
+echo "=== Check N+1: testcase.schema.json ==="
+
+CHECK_SCHEMAS="${REPO_ROOT}/tests/check-schemas.sh"
+if [[ ! -f "$CHECK_SCHEMAS" ]]; then
+  fail "check-schemas.sh not found at ${CHECK_SCHEMAS}"
+elif ! command -v python3 >/dev/null 2>&1; then
+  echo "  SKIP: python3 not installed"
+elif ! python3 -c 'import jsonschema' >/dev/null 2>&1; then
+  echo "  SKIP: jsonschema not installed (pip install jsonschema)"
+else
+  if bash "$CHECK_SCHEMAS" >/tmp/schema-check.log 2>&1; then
+    pass "testcase.schema.json valid + rejects 4 invalid patterns"
+  else
+    fail "testcase.schema.json validation"
+    sed 's/^/    /' /tmp/schema-check.log
+  fi
+fi
+
+# ============================================================
 # Summary
 # ============================================================
 echo ""

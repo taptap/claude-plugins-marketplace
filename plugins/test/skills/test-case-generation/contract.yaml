@@ -1,8 +1,9 @@
 name: test-case-generation
-version: "2.0"
+version: "2.1"
 description: >
-  根据需求文档和澄清结果拆解功能模块，生成结构化测试用例，并通过冗余对评审确保质量。
-  输入需求链接、本地需求文档或上游澄清结果，输出 final_cases.json。
+  根据需求文档和澄清结果拆解功能模块，由并行子 Agent 生成各模块用例文件 module_{N}_cases.json，
+  并合并出 review 前的中间版本 test_cases.json，可选地走 review 阶段产出评审结果。
+  输入需求链接、本地需求文档或上游澄清结果。
 
 input:
   one_of:
@@ -43,30 +44,34 @@ input:
 
 output:
   files:
-    - name: final_cases.json
-      description: 评审通过 + 补充的完整用例集（含 review_confidence 和 source 字段）
-      format: json
-    - name: test_cases.json
-      description: 生成阶段的用例集（review 前的中间版本，保留供对比）
+    # ===== 必产物（每次 session 都会写）=====
+    - name: sufficiency_assessment.json
+      description: understand 阶段的需求充分性评估结果（4 维度评分 + 置信度上限）
       format: json
     - name: decomposition.md
-      description: 功能模块拆解清单
+      description: decompose 阶段的功能模块拆解清单
       format: markdown
     - name: context_summary.md
-      description: 全局上下文摘要
+      description: decompose 阶段的全局上下文摘要（>=3 模块时生成）
       format: markdown
-    - name: tc_gen_review.md
-      description: 4 维度冗余对评审结果
-      format: markdown
-    - name: review_summary.json
-      description: 评审摘要统计（用例数/覆盖率/问题数/维度评分）
+    - name: "module_*_cases.json"
+      description: generate 阶段各功能模块的用例文件（N 由模块拆解数决定，由并行子 Agent 写入）
       format: json
-    - name: supplementary_cases.json
-      description: 补充用例（如有覆盖缺口）
+      pattern: true
+    - name: test_cases.json
+      description: generate 收尾时由 Bash 合并 module_*_cases.json 产出的中间用例集（review 前快照）
+      format: json
+    # ===== 可选产物（仅 review 阶段实际执行时产出）=====
+    - name: tc_gen_review.md
+      description: review 阶段的 4 维度冗余对评审结果（review 未启用时不产出）
+      format: markdown
+      optional: true
+    - name: review_summary.json
+      description: review 阶段的评审摘要统计（用例数/覆盖率/问题数/维度评分）
       format: json
       optional: true
-    - name: sufficiency_assessment.json
-      description: 需求充分性评估结果（4 维度评分 + 置信度上限）
+    - name: supplementary_cases.json
+      description: output 阶段的补充用例（如有覆盖缺口）
       format: json
       optional: true
   structured:

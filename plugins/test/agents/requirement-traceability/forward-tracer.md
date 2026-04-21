@@ -30,7 +30,7 @@ Opus
 
 ## 输入
 
-1. **需求点清单**：`analysis_checklist.md` 中的需求点列表（R-1, R-2...）
+1. **需求点清单**：`change_checklist.md` 中的需求点列表（R-1, R-2...）
 2. **代码变更数据**：git diff 内容或 MR/PR diff
 3. **需求文档**（如有）：`clarified_requirements.json` 或需求文档
 
@@ -71,8 +71,9 @@ Opus
 
 ## 冗余机制
 
-- 降级启动时与 **reverse-tracer** 并行独立执行
-- 如果正向追溯和反向追溯都确认同一映射 → 置信度 +20
+- 本 Agent 仅在正向通道**降级**时启动（见「执行时机」）。常态下正向通道由主 Agent 内联执行，本 Agent 不参与
+- 启动时与 **reverse-tracer** 并行独立执行
+- 如果正向追溯和反向追溯都确认同一映射 → 按 [CONVENTIONS.md 跨 Agent 共识规则](../../CONVENTIONS.md#跨-agent-共识规则) 计算置信度加成
 - 独立分析，不共享中间结果
 
 ## 注意事项

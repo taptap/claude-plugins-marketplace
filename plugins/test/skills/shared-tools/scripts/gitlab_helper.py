@@ -20,14 +20,14 @@ GitLab 辅助工具 — 供 AI Agent 在变更分析流程中使用
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 from pathlib import Path
 import ssl
 import sys
 import urllib.request
-from typing import Optional, Union
-from urllib.parse import urlencode, quote
+from urllib.parse import quote, urlencode
 
 # ==================== .env 自动加载 ====================
 try:
@@ -51,7 +51,7 @@ if os.environ.get("GITLAB_SSL_VERIFY", "").lower() in ("false", "0", "no"):
 
 # ==================== GitLab API ====================
 
-def _api_get(path: str, params: Optional[dict] = None, raw: bool = False):
+def _api_get(path: str, params: dict | None = None, raw: bool = False):
     """
     调用 GitLab REST API（GET）
 
@@ -261,10 +261,8 @@ def main():
 
     except urllib.error.HTTPError as e:
         body = ""
-        try:
+        with contextlib.suppress(Exception):
             body = e.read().decode("utf-8", errors="replace")[:500]
-        except Exception:
-            pass
         print(f"[ERROR] GitLab API 返回 {e.code}: {e.reason}", file=sys.stderr)
         if body:
             print(f"  响应: {body}", file=sys.stderr)

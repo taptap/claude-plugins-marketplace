@@ -1,5 +1,62 @@
 # Changelog
 
+## 0.1.35 — Test plugin major refactor: traceability auto-writeback, handoff pilot, cross-repo contract bridge
+
+### Test Plugin (0.0.5)
+
+- Added requirement-clarification handoff pilot: frontmatter declares `handoffs[]` (recommended next skill, when, prompt hint); Closing step now emits a structured "Next Steps" block with copyable Skill() invocation and explicit confirm-to-relay prompt (spec-kit-style pattern, validated on a single skill before broader rollout)
+- Added Phase 6 writeback in requirement-traceability: standard mode now invokes metersphere-sync execute internally to write back MS test plan case status, so running traceability standalone (outside qa-workflow) no longer leaves MS plans empty; smoke-test mode still skips MS write
+- Changed qa-workflow to drop the standalone metersphere-sync execute step (#9 removed) since write-back is now handled by traceability; qa-full step IDs renumbered (#10/#11/#12 → #9/#10/#11); qa-lite/verify-only template skip lists updated; PHASES.md cross-references and earlier numbering inconsistencies fixed
+- Removed `verification-test-generation` skill (and `agents/verification-test-writer.md`); merged its core capability into requirement-traceability's forward channel as embedded 3.2.0 traceability assessment + 3.2.1 tracing flow steps; retired the `verification_cases.json` intermediate artifact
+- Changed requirement-traceability forward channel: now consumes `final_cases.json` directly (priority 1) → `requirement_points.json` acceptance_criteria (priority 2) → traceability_checklist.md descriptions (weakest); writes upstream `case_id` directly into `forward_verification.json` so MS write-back can match at test-case granularity (FP-level aggregation only in degraded mode)
+- Changed `_shared/TRACEABILITY_PROTOCOL.md` artifact spec from "verification cases JSON format" to "forward_verification.json format" with updated field schema; CONVENTIONS.md numbering prefix table removed `VC-`
+- Added cross-repo contract bridge with ai-case backend: `scripts/contract-bridge-check.py` validates skill contract.yaml output declarations against backend consumer references; rr_summary.json / ca_summary.json now declared in producer contracts
+- Added 4 JSON schemas under `contracts/`: testcase.schema.json (auto-derived from ai-case Pydantic), defect-list.schema.json (catches field name drift), smoke-test-report.schema.json (catches verdict/summary drift), rr-summary.schema.json, ca-summary.schema.json
+- Added codex_agent.py (`shared-tools/scripts/`): standalone OpenAI Chat Completions + Tool Use agent loop for Codex cross-validation when codex CLI unavailable; supports bash/read_file/grep tools with sandboxed work_dir
+- Added codex-change-analyzer agent in change-analysis Phase 3.5 for parallel cross-validation analysis with environment-aware fallback (codex CLI → codex_agent.py → claude-fallback)
+- Added contract-driven RR/CA summary outputs in test-case-generation: skill produces rr_summary.json / ca_summary.json with structured fields consumed by ai-case workflows
+- Added strict case JSON schema enforcement across MS import path: rejects AI-written `tags` field (assigned by backend per workflow type)
+- Added exploratory testing method as the 7th test method in test-case-generation, CONVENTIONS.md, and test-case-writer agent
+- Added `_shared/TEST_QUALITY_GUIDELINES.md` to deduplicate rules across unit-test-design and integration-test-design
+- Added `_shared/LARGE_FILE_HANDLING.md` to prevent JSON truncation in Write tool
+- Added Closing Checklists to metersphere-sync, qa-workflow, requirement-review, and other skills
+- Added negative trigger boundaries to reduce AI mis-triggering across skills
+- Added requirement-review skill with 12-dimension evaluation framework
+- Added change-analysis, test-case-review, and api-contract-validation skills
+- Added smoke-test mode with defect extraction and P0 gate to requirement-traceability
+- Added Android third-party interaction impact assessment to change-analysis
+- Added data sufficiency gate for conditional report sections
+- Changed feedback skill: split 800+ line monolith into SKILL.md + PHASES.md + TEMPLATES.md + TEAM_ASSIGNMENTS.md + contract.yaml
+- Changed SKILL.md boilerplate: slimmed docs, split METHODS, improved triggers
+- Changed intermediate file naming for disambiguation and shared content extraction
+- Fixed feedback TEAM_ASSIGNMENTS.md: unified TapPlay dev owner to 陆航 (was contradicting across 3 locations)
+- Fixed feishu_api.py `_request` method: corrected X-PLUGIN-TOKEN headers indentation into else block
+- Fixed test case JSON format contract: eliminated Format A/B ambiguity
+- Fixed confidence scoring contradictions in requirement-traceability
+- Fixed large file write guard to prevent JSON truncation in test-case-generation
+- Changed metersphere_helper.py: added `--tags` CLI parameter for per-workflow tag assignment
+- Changed Feishu export: removed per-skill create_feishu_doc.py invocations, delegated to platform handler
+- Fixed codex_agent.py path traversal: replaced `startswith` check with `Path.is_relative_to` to block sibling-prefix bypass (e.g. `/tmp/foo` vs `/tmp/foobar/x`)
+- Fixed codex_agent.py OpenAI call timeout: floored to 5s to avoid passing 0/negative values to SDK when `elapsed` approaches budget
+- Fixed feedback TEAM_ASSIGNMENTS.md: unified TapPlay dev owner to 陆航 (was contradicting across 3 locations)
+- Fixed feishu_api.py `_request` method: corrected X-PLUGIN-TOKEN headers indentation into else block
+- Fixed test case JSON format contract: eliminated Format A/B ambiguity
+- Fixed confidence scoring contradictions in requirement-traceability
+- Fixed large file write guard to prevent JSON truncation in test-case-generation
+- Cleaned up deprecated bug-fix-review skill (merged into change-analysis)
+- Cleaned up committed __pycache__ and added gitignore rule
+- Untracked ai-workflow-panorama.html from version control
+
+### Spec Plugin (0.1.7)
+
+- Cleaned up ruff lint warnings in `doc-auto-sync` scripts (check-docs.py, check-stale-docs.py): removed unused imports, modernized type hints, no behavioral changes
+
+### Marketplace
+
+- Bumped version from 0.1.34 to 0.1.35
+- Updated test plugin to version 0.0.5
+- Updated spec plugin to version 0.1.7
+
 ## 0.1.33 — Add metersphere-sync, feedback skill, and Urhox binary analysis to test plugin
 
 ### Test Plugin (0.0.3)
