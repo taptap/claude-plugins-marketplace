@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.37 — Codex plugins: zero-touch auto-install for team distribution
+
+### Sync Plugin (0.1.29)
+
+- Added Step 3 to `ensure-codex-plugins.sh`: auto-install enabled `*@taptap-plugins` plugins from the marketplace clone (`~/.codex/.tmp/marketplaces/taptap-plugins/`) into `~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/`. This is the equivalent of the TUI "Install plugin" action, which Codex 0.121.0 otherwise requires the user to run by hand for git-source marketplaces.
+- The script now also auto-enables every plugin marked `INSTALLED_BY_DEFAULT` in `marketplace.json` (currently `git` and `sync`), unless the user has explicitly set `enabled = false`. Together with the project-mirror step, a fresh team member running the SessionStart hook gets `git`/`sync` registered, enabled, and installed end-to-end with zero TUI clicks.
+- Reverse-engineered finding documented in the script header: `installed_plugins.json` is no longer used by Codex 0.121.0+; install state is derived from cache directory existence (`cache/<marketplace>/<plugin>/<version>/.codex-plugin/plugin.json`).
+
+### Marketplace
+
+- Bumped version from 0.1.36 to 0.1.37.
+- Updated sync plugin to 0.1.29.
+
 ## 0.1.36 — Codex plugins: align with official `codex marketplace add` workflow + harness AGENTS.md
 
 ### Sync Plugin (0.1.28)
