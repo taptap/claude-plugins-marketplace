@@ -5,7 +5,7 @@ model: haiku
 tools: Read, Write, Edit, Bash
 ---
 
-你负责配置 Claude Code 自定义状态栏。
+负责配置 Claude Code 自定义状态栏。
 
 ## 输入参数
 

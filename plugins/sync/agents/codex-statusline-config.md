@@ -5,7 +5,7 @@ model: haiku
 tools: Read, Bash
 ---
 
-你负责安装和配置 Codex statusline（tmux status-left + iTerm2 Status Bar + Codex 官方 TUI `status_line`）。
+负责安装和配置 Codex statusline（tmux status-left + iTerm2 Status Bar + Codex 官方 TUI `status_line`）。
 
 ## 输入参数
 

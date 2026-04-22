@@ -1,0 +1,56 @@
+{
+  "name": "taptap-plugins",
+  "interface": {
+    "displayName": "TapTap Plugins"
+  },
+  "plugins": [
+    {
+      "name": "spec",
+      "source": {
+        "source": "local",
+        "path": "./plugins/spec"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "git",
+      "source": {
+        "source": "local",
+        "path": "./plugins/git"
+      },
+      "policy": {
+        "installation": "INSTALLED_BY_DEFAULT",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "sync",
+      "source": {
+        "source": "local",
+        "path": "./plugins/sync"
+      },
+      "policy": {
+        "installation": "INSTALLED_BY_DEFAULT",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "test",
+      "source": {
+        "source": "local",
+        "path": "./plugins/test"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

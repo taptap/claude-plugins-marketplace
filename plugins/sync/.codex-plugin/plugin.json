@@ -1,9 +1,20 @@
 {
   "name": "sync",
-  "version": "0.1.27",
+  "version": "0.1.29",
   "description": "项目配置同步插件，提供 MCP、LSP、Hooks、状态栏和 Claude Skills 同步功能",
   "author": {
     "name": "TapTap AI Team"
   },
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "TapTap Sync",
+    "shortDescription": "Sync MCP/LSP/hooks/statusline/skills templates into a project",
+    "longDescription": "Bootstraps a project's Claude Code and Codex environment: configures MCP servers (context7/feishu/grafana), detects LSP, sets up SessionStart hooks, syncs GitLab MR templates, the Claude Skills library, the status line, and Codex plugins.",
+    "developerName": "TapTap AI Team",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ]
+  }
 }

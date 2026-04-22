@@ -5,7 +5,7 @@ model: haiku
 tools: Read, Write, Edit
 ---
 
-你负责配置 Claude Code 的 `context7` MCP。
+负责配置 Claude Code 的 `context7` MCP。
 
 ## 输入参数
 

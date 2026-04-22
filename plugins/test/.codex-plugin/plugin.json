@@ -5,5 +5,13 @@
   "author": {
     "name": "TapTap AI Team"
   },
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "TapTap QA",
+    "shortDescription": "QA workflow: requirement review, test case generation/review, change analysis, code-level test generation, traceability, bug-fix analysis",
+    "longDescription": "Skills covering the full QA loop: clarify requirements, generate and review test cases (with redundancy pair review), analyze diff impact, generate unit/integration tests at code level, trace requirements (including smoke mode), and analyze bug fixes.",
+    "developerName": "TapTap AI Team",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"]
+  }
 }
