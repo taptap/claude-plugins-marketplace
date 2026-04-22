@@ -297,7 +297,7 @@ Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JS
 
 1. Task 返回后用 Glob 确认 `module_{index}_cases.json` 是否存在
 2. 文件不存在或为空：重试 1 次
-3. JSON 格式错误：严重问题才修复，轻微格式问题由后端 `post_complete` 自动修正
+3. JSON 格式错误：MCP tool `mcp__cases__save_test_cases` 已在生成阶段强约束字段，理论上不会出现格式错；如确实失败说明逻辑错（如 cases 数组为空、文件路径越权），按错误信息修正后重试
 4. 重试仍失败：在主 Agent 中直接生成
 5. 所有模块处理完后再进入 review 阶段
 
@@ -332,8 +332,7 @@ Write 工具的 `content` 参数受 LLM 输出 token 上限约束。超限时 JS
 
 ### 5.2 快速自审
 
-> 格式校验（priority 合规、steps/expected 对齐）由后端 `post_complete` 自动完成，AI 只需关注内容质量。
-> 但**禁止依赖后端兜底**：`steps` 必须始终是 `[{"action": "...", "expected": "..."}]` 配对格式，禁止使用 `steps: string[]` + 顶层 `expected` 的旧格式（详见 [CONVENTIONS.md 禁止的旧格式](../../CONVENTIONS.md#禁止的旧格式)）。
+> 格式校验（priority 合规、steps/expected 配对、字段名拼写）由 `mcp__cases__save_test_cases` 的 input_schema 在生成阶段强制，违反直接被 API 拒绝。本节只关注内容质量（去重、覆盖度、置信度），不必再操心字段格式。
 
 **跨模块去重**（两步法）：
 1. **字面去重**（快速）：使用 Grep 搜索 `test_cases.json` 中的 `"title"` 字段，标记完全相同或高度相似的标题对
