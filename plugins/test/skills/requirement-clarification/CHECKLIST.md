@@ -24,3 +24,7 @@
 - 所有维度均 confirmed → 理想结束
 - 用户明确表示"够了" → 立即结束，剩余标记 unconfirmed
 - 达到 5 轮仍有关键维度未确认 → 结束并标记风险
+
+### 文档质量校对（必做）
+
+12 维度功能点分析完成后，对 PRD 文档本身执行 [PRD 文档质量校对](../_shared/REQUIREMENT_DIMENSIONS.md#附加项prd-文档质量校对)（错别字 / 术语一致性 / 易读性 / 文案-设计稿一致性 / 数字单位一致性）。命中项写入 `clarified_requirements.json` 的 `doc_quality_issues` 数组（每条含 `category` / `evidence`（PRD 原文摘录）/ `suggestion` / `severity`）。错别字 / 数字单位歧义视为待 PM 确认的阻断级问题，须在澄清问答中向用户确认；术语漂移、易读性问题作为关注项记录、不主动追问。

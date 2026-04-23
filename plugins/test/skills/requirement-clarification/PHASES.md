@@ -268,6 +268,20 @@ python3 $SKILLS_ROOT/shared-tools/scripts/fetch_feishu_doc.py \
 
 契约草案暂存在内存中，待 consolidate 阶段写入 `implementation_brief.json` 的 `api_contracts` 字段。
 
+### 3.2.5 PRD 文档质量校对（必做）
+
+12 维度功能点分析完成后、进入渐进式确认之前，对 PRD 文档**文本本身**做一次校对，按 [REQUIREMENT_DIMENSIONS.md 附加项](../_shared/REQUIREMENT_DIMENSIONS.md#附加项prd-文档质量校对) 的 5 类检查项执行：错别字 / 术语一致性 / 易读性 / 文案-设计稿一致性 / 数字单位一致性。
+
+执行规则：
+1. 仅基于 PRD 原文判定，每条发现必须含**原文摘录**（用 `『』` 圈出）；找不到原文 = 不写这条
+2. 所有发现先在内存中暂存，按 `severity` 区分后续处理：
+   - `blocking`（错别字、数字单位歧义、占位符不一致）→ 必须在 3.3 渐进式确认中通过 AskUserQuestion 单独提问（option 提供「按建议修正 / 维持原文 / PM 线下确认」三个元操作，`evidence_tag = derived`，`evidence_ref` 必须包含 PRD 原文摘录）；用户答复后将决策合并到该条的 `resolution` 字段
+   - `concern`（术语漂移、易读性）→ 不主动追问，直接进入 4.1 consolidate 阶段
+3. 4.1 consolidate 阶段把所有发现（含 blocking 决策结果）写入 `clarified_requirements.json` 的 `doc_quality_issues` 数组
+4. 该步骤无条件触发，不允许跳过；若 PRD 完全无文案问题，仍须在 4.1 写入 `doc_quality_issues: []`
+
+`doc_quality_issues` 每条字段：`category`（错别字/术语/易读性/文案一致性/单位）、`evidence`（PRD 原文摘录）、`suggestion`（建议改写或 `null`）、`severity`（`blocking` / `concern`）、`resolution`（仅 blocking 项有值，用户决策原文）。
+
 ### 3.3 渐进式确认
 
 按 SKILL.md 中定义的问题编排策略执行。所有提问**必须**通过调用 AskUserQuestion 工具完成，格式见 CONVENTIONS.md「[AskUserQuestion 交互式提问](../../CONVENTIONS.md#askuserquestion-交互式提问)」。
@@ -425,6 +439,8 @@ clarify 阶段结束后，**必须立即进入阶段 4: consolidate**。
 - `unconfirmed`：关键维度未确认
 
 字段按实际澄清结果填写，未涉及的维度留空数组或 null，不强制填充。
+
+`doc_quality_issues` 字段从 3.2.5 阶段暂存的发现回填，blocking 项需带上用户在 3.3 给出的决策（写入 `resolution` 字段）。无发现时写入空数组 `[]`，**禁止**省略该字段。
 
 ### 4.2 生成 requirement_points.json
 
