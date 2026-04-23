@@ -80,8 +80,24 @@ output:
       description: 风险评估和行动建议
       format: json
     - name: forward_verification.json
-      description: 正向用例中介验证结果
+      description: 正向用例中介验证结果（v2 schema，含 evidence + external_dependencies）
       format: json
+    - name: forward_verification.enriched.json
+      description: writeback 后的 fv，每条带 ms_id 字段（下次跑可跳过 lookup）
+      format: json
+      optional: true
+    - name: ms_sync_report.json
+      description: writeback-from-fv 输出（含 summary by_target_status / updated / unchanged / failed 明细）
+      format: json
+      optional: true
+    - name: pass_with_caveats.md
+      description: 标 pass 但需外部验证（device/server 等）的条目清单（writeback 自动生成，给 QA 看）
+      format: markdown
+      optional: true
+    - name: pending_external_validation.md
+      description: 同上数据按依赖类型分组（device 一节、server 一节...）
+      format: markdown
+      optional: true
     - name: ui_fidelity_report.json
       description: UI 还原度检查报告（条件产出，仅有设计稿时）
       format: json

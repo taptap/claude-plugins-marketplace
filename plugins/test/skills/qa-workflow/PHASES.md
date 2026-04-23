@@ -170,12 +170,12 @@ Skill(skill: "test:requirement-traceability", args: "code_changes=<...> story_li
 
 此步骤包含两部分（详见 requirement-traceability/PHASES.md）：
 
-1. **正向用例中介验证**：消费上游 `final_cases.json`（来自步骤 #2 test-case-generation），对每条用例执行代码路径追踪，输出 `forward_verification.json`
-2. **Phase 6 writeback**：标准模式下自动调用 metersphere-sync execute，把 `forward_verification.json` 落到 MS 用例状态，输出 `ms_sync_report.json`
+1. **正向用例中介验证**：消费上游 `final_cases.json`（来自步骤 #2 test-case-generation），对每条用例执行代码路径追踪，落盘 `forward_verification.json`，强制走 `validate-fv` schema 校验（4.6a），高 conf fail 触发 4.7 复核
+2. **Phase 6 writeback**：标准模式下直接调 `metersphere_helper.py writeback-from-fv`（不走 Skill(metersphere-sync)），按 P6 状态映射把 fv 写回 MS plan，落盘 `ms_sync_report.json` + `forward_verification.enriched.json` + `pass_with_caveats.md` + `pending_external_validation.md`。前置条件：上游必须已经跑过 `metersphere-sync mode=sync`（步骤 #2 之后会跑）产出 `ms_case_mapping.json`（v2）和 `ms_plan_info.json`
 
 完成后：
 1. Read `$TEST_WORKSPACE/ms_sync_report.json`
-2. 提取 `auto_passed`、`manual_required` 用于 2.4 摘要
+2. 提取 `summary.by_target_status.{Pass, Prepare, Failure}` 和 `summary.failed` 用于 2.4 摘要；如需筛 caveats，回读 `pass_with_caveats.md`
 
 ### 2.4 暂停 — 等待人工验证
 

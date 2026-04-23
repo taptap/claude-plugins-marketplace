@@ -25,6 +25,22 @@
 
 仅 MR/PR 模式需要：从链接或预取数据的 `provider` 字段判断代码托管平台（GitLab / GitHub）。
 
+### 1.3 Precondition 校验（CRITICAL，标准模式必须执行）
+
+仅当本次执行需要走到 Phase 6 写回 MS plan（即非 smoke-test 模式）时检查；smoke-test 模式跳过本节。
+
+| 项 | 校验 |
+| --- | --- |
+| `final_cases.json` 存在 | 文件可读、顶层 array 非空 |
+| `ms_case_mapping.json` 存在 | 文件可读、顶层为 `{generated_at, source_cases_file, ms_project_id, entries}` 结构（v2 格式） |
+| mapping 与 cases 一致 | mapping.source_cases_file.sha256 == sha256(final_cases.json) |
+
+任一不满足 → **停止**，提示用户：
+- mapping 缺失 → 先跑 `metersphere-sync` mode=sync 完成 import
+- mapping 过期（sha 不匹配）→ 跑 `metersphere_helper.py refresh-mapping --diff-only` 查看差异，再 `--apply` 修复
+
+> **Phase 4.6 兜底落盘** 的定位：last-resort 救命，**不应**承担 precondition 缺失的责任。如果走到了 4.6，说明 Phase 3.2 的 forward_verification 产出有 bug，应该回归 3.2 修而不是依赖兜底。
+
 ## 阶段 2: fetch - 数据获取
 
 ### 2.0 输入路由
@@ -61,9 +77,11 @@
 
 写入 `traceability_checklist.md`：需求点清单（R1, R2...）、代码变更清单、统计。
 
-## 阶段 3: map - 构建映射矩阵（冗余对并行）
+## 阶段 3: map - 构建映射矩阵
 
-本阶段使用冗余对模式：forward-tracer 和 reverse-tracer 两个 Agent 并行独立分析，在阶段 4 交叉验证。
+本阶段主 agent 顺序执行两个通道：先正向（用例中介验证 → `forward_verification.json`），再反向（代码追溯，主 agent 内联到 `code_analysis.md`），在阶段 4 交叉验证。
+
+> **历史变更（v0.0.16）**：旧版本声称 forward-tracer / reverse-tracer 两个 sub-agent 并行调度，但实际 AI 跑 skill 时 sub-agent 调度不可靠（46 条用例的实际跑都是手工补的）。当前版本主 agent 顺序内联。`agents/requirement-traceability/forward-tracer.md` / `reverse-tracer.md` agent 定义文件保留，作为降级路径（3.2.4）和未来选配（条件成熟时再做 sub-agent 调度）。
 
 ### 3.0 准备 diff 数据
 
@@ -165,12 +183,24 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
    - 输出匹配预期 → `pass`
    - 输出不匹配预期 → `fail`，记录实际输出
    - 无法确定 → `inconclusive`
-4. **反证检查**（仅 `pass` 结论）：构造一个使该断言失败的代码变体场景。如果能轻易构造（如删除一行条件判断即可导致失败）→ 降低 confidence 10 分并在 trace 中追加 `risk_note`
-5. **评估置信度**：
-   - 90-100：代码路径清晰，断言可直接验证，反证检查未发现风险
-   - 70-89：代码路径可追踪但存在间接调用或条件分支
-   - 50-69：基于 diff 推断，无法看到完整上下文
-   - <50：纯推测，代码路径不可达
+4. **写 evidence**（pass / fail 必须）：每条结论都要带可独立复算的证据。详见 3.2.3 schema。
+   - `code_location`：array of `file:line` 或 `file:start-end`，**文件必须存在、行号必须在文件长度内**（schema 校验时会查）
+   - `verification_logic`：为什么从这段代码能推出 pass/fail 的论证（让另一个人/AI 只看 evidence 就能复算）
+   - `considered_failure_modes`：对抗式自检——列出考虑过但被排除的失败模式（pass + conf≥85 必填，fail 选填）
+5. **「假装这条会 fail」自检清单**（仅 `pass` 必须过一遍，任一答"是"且 evidence 没体现 → conf 上限 80 + 必须填 `external_dependencies`）：
+   - [ ] 涉及空/null/边界条件？代码有防护吗？
+   - [ ] 异步/回调追到完成态了吗？
+   - [ ] mock 数据 vs 真实数据区分清楚了吗？
+   - [ ] feature flag / 配置项默认是开的吗？
+   - [ ] 依赖 server / device / 三方行为吗？默认值是验证过的还是假设的？
+6. **评估置信度**（评分锚点；schema 会拒绝 pass + conf<70）：
+
+   | conf 区间 | 含义 |
+   | --- | --- |
+   | 95-100 | 完整调用链可追到入口和出口，无外部依赖，evidence 三件套齐 |
+   | 85-94 | 调用链可追，1-2 个内部分支已逐个推理，无外部依赖 |
+   | 70-84 | 逻辑可追但依赖框架默认行为或外部状态（必须填 `external_dependencies`，下游会降级为 MS Prepare） |
+   | < 70 | 不应标 pass，必须降为 inconclusive；schema 会硬拒
 
 #### 3.2.2 追踪记录格式
 
@@ -189,24 +219,67 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 
 `inconclusive` 原因分类必须填入 `verification.inconclusive_reason` 字段，取值见 3.2.0 表格。
 
-#### 3.2.3 写入结果
+#### 3.2.3 写入结果（v2 schema）
 
-将所有用例的验证结果写入 `forward_verification.json`，格式：
+将所有用例的验证结果写入 `forward_verification.json`。完整 schema 在 `_shared/schemas/forward_verification.schema.json`，落盘后必须通过 `metersphere_helper.py validate-fv` 校验（见 4.6 之后的 4.6a）。
+
+字段示例：
 
 ```json
 [
   {
     "case_id": "M1-TC-01",
     "requirement_id": "FP-1",
-    "result": "pass | fail | inconclusive",
-    "confidence": 85,
-    "trace": "applyCoupon(100, 50) -> ...",
-    "expected": "<用例 expected 原文摘录>",
-    "actual": "<代码追踪推断的实际行为>",
-    "inconclusive_reason": "call_depth_exceeded | null"
+    "requirement_name": "网络失败时弹 toast",
+    "result": "pass",
+    "confidence": 90,
+    "trace": "applyCoupon(100, 50) -> min(coupon, order) -> 50 == expected 50 ✓",
+    "expected": "网络失败时弹 toast 提示",
+    "evidence": {
+      "code_location": ["src/Network.swift:87", "src/Toast.swift:142-150"],
+      "verification_logic": "Network.swift:87 在 catch 分支调 ToastCenter.show(errorMsg)；errorMsg 由 TapNetwork.swift:33 兜底为非空字符串。因此 toast 必弹。",
+      "considered_failure_modes": [
+        {"mode": "errorMsg 为空字符串", "ruled_out_by": "TapNetwork.swift:33 默认值兜底"},
+        {"mode": "ToastCenter 未初始化", "ruled_out_by": "AppDelegate.swift:21 启动时初始化"}
+      ]
+    },
+    "external_dependencies": {
+      "types": [],
+      "notes": ""
+    }
+  },
+  {
+    "case_id": "M2-TC-04",
+    "requirement_id": "FP-2",
+    "result": "fail",
+    "confidence": 80,
+    "actual": "errorMsg 空字符串时不弹 toast",
+    "evidence": {
+      "code_location": ["src/Network.swift:142"],
+      "verification_logic": "guard 检查 errorMsg.isEmpty 直接 return，导致 toast 不弹",
+      "considered_failure_modes": [
+        {"mode": "上层兜底", "ruled_out_by": "调用栈追到 ViewModel 层无兜底"}
+      ]
+    }
+  },
+  {
+    "case_id": "M3-TC-09",
+    "requirement_id": "FP-3",
+    "result": "inconclusive",
+    "confidence": null,
+    "inconclusive_reason": "external_dependency",
+    "trace": "调用 thirdPartySDK.report() 行为不可见"
   }
 ]
 ```
+
+**关键字段约束**（schema 强制）：
+- `pass` 必须带 `evidence.{code_location, verification_logic}`
+- `pass` 且 `confidence ≥ 85` 还必须带 `evidence.considered_failure_modes`
+- `pass` 且 `confidence < 70` → schema 直接拒绝（强制降为 inconclusive）
+- `fail` 必须带 `actual` + `evidence`
+- `inconclusive` 必须带 `inconclusive_reason`
+- `external_dependencies.types` 取值：`device | server | third_party | framework_default | user_action | data_state | timing`
 
 #### 3.2.4 降级回退
 
@@ -263,29 +336,33 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 - 仅有前端变更无后端变更（或反之）→ 仅检查与 OpenAPI spec 的一致性（如有 spec），否则仅记录 API 相关变更的概要，不做一致性判定
 - diff 信息不足以提取接口签名 → 标记为 `inconclusive`，在报告中注明原因
 
-### 3.3 反向通道：直接代码追溯
+### 3.3 反向通道：直接代码追溯（主 agent 内联，不拆 sub-agent）
 
-保持现有 reverse-tracer Agent 模式不变。在**单条消息**中与正向通道并行启动：
+> **历史变更说明**：旧版本描述「启动 reverse-tracer sub-agent 并行」，agent 定义文件 `agents/requirement-traceability/reverse-tracer.md` 是存在的，但实际 AI 跑 skill 时 sub-agent 调度不可靠——上次跑 46 条用例的反向部分实际是主 agent 手工补的。当前版本明确：**主 agent 顺序内联完成反向追溯，不调 Task 启动 sub-agent**。
+>
+> agent 定义文件保留作为：（1）降级路径（3.2.4 forward-tracer），（2）未来如果收集到足够数据证明 sub-agent 调度有价值，可以再开启。在此之前默认不调。
 
-**Task prompt 示例**：
+**主 agent 反向追溯流程**（在正向通道完成 3.2 后串行执行）：
 
+1. **回读输入**：Read `./traceability_checklist.md`（需求点列表 R1, R2...）；Read 已经在 Phase 2 拿到的 diff 数据 / `./requirement_doc.md`
+2. **逐条代码变更归属**：对 diff 里每个文件 / 函数级变更，判断它属于哪个需求点：
+   - 直接命中需求关键词 → `mapped`
+   - 部分相关（重构、附带改动）→ `tangential`
+   - 完全无关 / 无法归因 → `orphan`（写进缺口报告）
+3. **输出**：直接写进 `code_analysis.md`，不需要单独 JSON 文件；reverse 部分用以下格式：
+
+```markdown
+## reverse-tracer 输出（主 agent 内联）
+
+### 已归属变更
+- src/Network.swift:140-160 → FP-2「网络错误处理」（confidence 90）
+- ...
+
+### 未归属变更（orphan）
+- src/Util/Logging.swift:50-60 → 无法归因到任何需求点（可能是顺手优化）
 ```
-你是反向追溯 Agent。请先 Read agents/requirement-traceability/reverse-tracer.md 获取你的完整角色定义和输出格式要求。
 
-## 需求点清单
-请 Read ./traceability_checklist.md 获取需求点列表（R1, R2...）。
-
-## 代码变更
-{diff 内容直接内联，或指示 "请 Read ./diff.txt 获取代码变更"}
-
-## 需求文档（如有）
-请 Read ./requirement_doc.md 获取需求文档。如文件不存在则基于 traceability_checklist.md 中的需求描述进行追溯。
-
-## 任务
-按角色定义执行反向追溯，输出 JSON 格式的 code_to_requirement 映射。每条映射必须包含 confidence 评分（0-100）。
-```
-
-- **reverse-tracer**：Agent 定义见 [reverse-tracer.md](../../agents/requirement-traceability/reverse-tracer.md)，指定 `model="opus"`
+**注**：`code_to_requirement` JSON 结构不再独立产出；下游 Phase 4.1 直接从 `code_analysis.md` 这一节读取。
 
 ### 3.4 UI 还原度检查（条件触发）
 
@@ -313,9 +390,10 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 
 ### 3.5 降级回退
 
-- Task 工具不可用 → 在主 Agent 中顺序执行正向验证和反向追溯
-- 单个通道失败 → 重试 1 次，仍失败则在主 Agent 中接管该方向的追溯
-- 两个通道都失败 → 回退到原有的逐代码变更循环分析模式
+- 反向追溯失败（diff 完全无法解析）→ 主 agent 跳过 3.3，仅依赖 3.2 正向通道的结果，在 4.1 交叉验证时标注「reverse 缺失」
+- 正向通道完全失败（无可追踪用例）→ 走 3.2.4 的 forward-tracer 降级路径
+
+> 不再有「Task 工具不可用」的降级讨论——本 skill 已经不依赖 Task 工具拆 sub-agent。
 
 ### 3.6 记录中间结果
 
@@ -331,17 +409,17 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 
 在原有交叉验证基础上，新增正向验证结果的合并：
 
-1. 回读 `forward_verification.json` 和 reverse-tracer 的输出
+1. 回读 `forward_verification.json`（正向用例验证产出）和 `code_analysis.md` 的「reverse-tracer 输出（主 agent 内联）」节（反向代码追溯结果）
 2. 对每个需求点：
    - 正向用例验证 pass → 需求实现确认（confidence 取用例验证的 confidence）
    - 正向用例验证 fail → 标记为实现缺口
-   - 正向用例 inconclusive + reverse-tracer 确认 → 使用 reverse-tracer 的 confidence
-3. 反向追溯的"未归属代码变更"保持原有逻辑
+   - 正向用例 inconclusive + 反向确认 → 使用反向追溯的 confidence
+3. 反向追溯的"未归属代码变更"（orphan）保持原有逻辑
 
 对每个映射对判定方向：
    - **双向确认**：正向和反向都确认同一映射 → `trace_direction: "bidirectional"`，confidence 按 [CONVENTIONS.md 跨 Agent 共识规则](../../CONVENTIONS.md#跨-agent-共识规则) 计算：双方 confidence 均 >= 70 → `min(100, max(两者) + 20)`；任一方 < 60 → 不加成，取两者算术平均值；其余情况（一方 60-69）→ 不加成，取两者中较高值
    - **仅正向确认**：正向找到但反向未找到 → `trace_direction: "forward-only"`，保留正向通道的 confidence
-   - **仅反向确认**：反向找到但正向未找到 → `trace_direction: "reverse-only"`，保留 reverse-tracer 的 confidence
+   - **仅反向确认**：反向找到但正向未找到 → `trace_direction: "reverse-only"`，保留反向追溯的 confidence
    - **正反矛盾**：正向 pass 但反向 missing（或反向确认但正向 fail）→ 保留对应单通道的 `trace_direction`，confidence 在原值基础上 -15（下限 50），标记 `conflict: true`，建议人工复核
    - **均未找到**：确认为覆盖缺口
 
@@ -463,6 +541,62 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 ```
 
 **`source: "synthesized_from_coverage_report"` 字段是兜底版的标记**，下游 metersphere-sync 在 Phase 4.4 看到该字段时，回写评论中追加"AI 回溯（降级判定，无用例级粒度）"以提示人工后续复核。
+
+> **定位提醒**：4.6 是 last-resort 救命，不应承担 precondition 缺失或 3.2 跑偏的责任。**正常路径不应该走到 4.6**。如果反复走到这里，说明 3.2 有 bug，回归 3.2 修。
+
+### 4.6a forward_verification.json schema 校验（CRITICAL，必须执行）
+
+无论 fv 是 3.2 正常产出还是 4.6 兜底合成，落盘后**强制**跑 schema 校验：
+
+```bash
+python3 $SKILLS_ROOT/shared-tools/scripts/metersphere_helper.py \
+  validate-fv $TEST_WORKSPACE/forward_verification.json
+```
+
+- 校验通过（exit 0）→ 继续 4.7 / Phase 5
+- 校验失败（exit 2）→ stderr 是结构化 `{type: validation, errors: [{path, message}]}`，**stop**
+  - 字段缺失 → 回归 3.2 让 AI 补 evidence / external_dependencies
+  - 文件路径不存在 → 检查 evidence.code_location 是否拼错或文件被删除
+  - conf<70 还标 pass → 回归 3.2 降为 inconclusive
+
+绝不允许「校验失败但带 bug fv 跑下去污染 MS plan」。
+
+### 4.7 高 conf fail 复核（标准模式）
+
+> **触发条件**：fv 中存在 `result == "fail"` 且 `confidence >= 80` 的条目。低 conf fail 自带「待确认」语义，不需要复核；高 conf fail 是危险品（下游会当真），必须人工 ack。
+
+对每条高 conf fail，逐条 AskUserQuestion（不批量）：
+
+```
+case {case_id}: {title or requirement_name}
+AI 判定: Failure (conf={confidence})
+Evidence:
+  - location: {evidence.code_location}
+  - logic: {evidence.verification_logic}
+  - considered modes:
+      - {mode}: ruled out by {ruled_out_by}
+      - ...
+
+请确认:
+  A. 确认是缺陷 → 保持 fail
+  B. 误判，重判为 Pass → 改写本条 fv 的 result=pass，evidence.human_override 记录
+  C. 改为 inconclusive → 改写 result=inconclusive + inconclusive_reason="human_override"，evidence.human_override 记录
+```
+
+被改判的条目，写回 fv.json，并在 `evidence.human_override` 里记录：
+
+```json
+"evidence": {
+  ...,
+  "human_override": {
+    "from": "fail",
+    "to": "pass",
+    "reason": "PM 复核：网络错误文案在 TapNetwork 兜底下不会为空"
+  }
+}
+```
+
+复核改写完后**重跑一次 4.6a 的 schema 校验**确认仍合法（schema 允许 human_override）。
 
 ### 5S.1 缺陷提取与优先级判定（仅 smoke-test 模式）
 
@@ -647,50 +781,65 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 
 ### 6.1 前置校验
 
-1. 确认 `$TEST_WORKSPACE/forward_verification.json` 存在且非空。
-   - **如缺失**：说明 4.6 兜底落盘也没执行（异常状态）。**不要静默跳过**，立即回到 4.6 步骤执行兜底合成；合成成功后继续 6.1 后续步骤。
-   - **如本步骤无法补救**（例如 `traceability_coverage_report.json` 也缺失）：在最终摘要中明确告警"无验证结果可回写，MS 测试计划状态未更新"，并提示用户检查 Phase 4 是否被异常终止，但**不要静默跳过**。
-2. 解析 `plan_name`：
-   - 优先用 init/fetch 阶段已确定的 `plan_name` 参数
-   - 未提供时，回读 `$TEST_WORKSPACE/clarified_requirements.json` 提取 story 标题
-   - 都没有 → 提示用户提供 `plan_name`，停止本阶段
-3. 检查工作目录是否存在 `ms_plan_info.json`（来自上游 metersphere-sync sync 模式）：
-   - 存在 → 复用其中的 `plan_id`，避免 metersphere-sync 重新查找
-   - 不存在 → metersphere-sync 内部会按 `plan_name` 查找或创建
+1. **fv 完整性**：确认 `$TEST_WORKSPACE/forward_verification.json` 存在、非空、且通过 4.6a `validate-fv` 校验。
+   - 1.3 precondition + 4.6a 都强制查过；正常路径走到这里都满足
+   - 如某种异常导致缺失：last-resort 回到 4.6 兜底合成；如 `traceability_coverage_report.json` 也缺失则在最终摘要明确告警"无验证结果可回写"，**不允许静默跳过**
+2. **mapping 完整性**：确认 `$TEST_WORKSPACE/ms_case_mapping.json` 存在（已在 1.3 precondition 校验过 sha 一致）。
+3. **plan_id 必须就位**：writeback-from-fv 需要 `plan_id` 入参，**不会创建 plan**。检查 `$TEST_WORKSPACE/ms_plan_info.json` 是否存在：
+   - 存在 → 提取 `plan_id` 用于 6.2
+   - 不存在 → **stop**，提示用户：「先跑 `metersphere-sync mode=sync` 把用例 import 到 MS 并创建测试计划，会落盘 ms_plan_info.json，然后才能进 writeback」
 
-### 6.2 调用 metersphere-sync execute
+### 6.2 调用 helper.writeback-from-fv（直接调脚本，不再走 Skill）
 
-通过 Skill 工具调用 `test:metersphere-sync`，传入 `mode=execute` 与已解析的 `plan_name`。`forward_verification.json` 不需要作为参数显式传递 — 它已在 `$TEST_WORKSPACE/` 工作目录中，metersphere-sync 自行从约定路径读取。
+> **历史变更**：旧版本写「通过 Skill 工具调用 `test:metersphere-sync` mode=execute」。**这条路径在实践中跑不通**——单会话只能调一个 skill，traceability 内部不能再 Skill() 调 metersphere-sync。
+>
+> 新路径：直接调 `metersphere_helper.py writeback-from-fv` 共享脚本。helper 是工具脚本，不是 skill，不受单会话约束。状态映射 / 三级查找 / 幂等 / 重试 / 报告全部封装在脚本里。
 
-调用示意（实际由模型运行 Skill 工具时填写参数）：
+```bash
+python3 $SKILLS_ROOT/shared-tools/scripts/metersphere_helper.py \
+  writeback-from-fv \
+  --plan-id <plan_id from ms_plan_info.json> \
+  --fv-path $TEST_WORKSPACE/forward_verification.json
+# 第一次跑或大改后建议加 --dry-run 先看一遍
+```
 
-- **skill**：`test:metersphere-sync`
-- **args**：自然语言指令，必须包含两个关键信息 — 模式（`mode=execute`）和测试计划名（`plan_name=<6.1 解析得到的真实 plan_name>`）。如 `ms_plan_info.json` 已存在，可补一句"复用其中的 plan_id"提示 metersphere-sync 跳过查找
+helper 内部完成：
 
-> **避免误用**：不要把 `forward_verification.json` 路径作为 args 字面拼接（旧文档曾用过 shell 变量插值如 `$TEST_WORKSPACE/...`，Skill 工具不会做 shell 展开）。下游 skill 已知道从工作目录约定路径读取该文件。
-
-metersphere-sync execute 内部会：
-
-1. 从工作目录约定路径读取 `forward_verification.json` 每条记录
-2. 按 [metersphere-sync 的置信度判定规则](../metersphere-sync/SKILL.md#置信度判定规则) 决定 MS 状态（Pass / Failure / Prepare）
-3. 调用 MS API 更新对应用例状态
-4. 写出 `ms_sync_report.json`
+1. **fv schema 校验**（与 4.6a 同一套，重跑兜底）
+2. **三级查找** `case_id → ms_id → plan_case_id`（基于 `ms_case_mapping.json`）
+3. **P6 状态映射**：
+   - `pass` + `external_dependencies.types` 空 → MS `Pass`
+   - `pass` + `external_dependencies.types` 非空 → MS **`Prepare`**（不再 Pass + caveat）
+   - `fail` → MS `Failure`
+   - `inconclusive` → MS `Prepare`
+4. **幂等比对**：当前 MS 状态 == target → skip 记 unchanged
+5. **retry**：retriable 错误（5xx / network）单次内自动重试 1 次
+6. **三个产物**（自动落盘到 `$TEST_WORKSPACE/`）：
+   - `ms_sync_report.json` — 完整明细 + summary
+   - `forward_verification.enriched.json` — 原 fv + 回写后的 ms_id（下次跑可跳过 lookup）
+   - `pass_with_caveats.md` + `pending_external_validation.md` — 给 QA 的人话清单
 
 ### 6.3 完成校验
 
 1. 确认 `$TEST_WORKSPACE/ms_sync_report.json` 已生成且非空
-2. 从报告中提取 `auto_passed` / `auto_failed` / `manual_required` 计数
+2. 从 `summary.by_target_status` 提取 Pass/Prepare/Failure 三个数字
 3. Chat 输出回写摘要：
 
 ```
 MS 测试计划回写完成：
-- 自动 Pass：N 条（高置信度验证通过）
-- 自动 Failure：M 条（高置信度验证失败）
-- 待人工验证：K 条（置信度不足或 inconclusive）
+- Pass：33 条（AI 静态验证通过且无外部依赖）
+- Prepare：13 条（11 条带外部依赖待回归 + 2 条 inconclusive）
+- Failure：0 条
 - 测试计划：<plan_url>
+- 待回归清单：$TEST_WORKSPACE/pending_external_validation.md
 ```
 
 ### 6.4 失败处理
 
-- metersphere-sync execute 报 MS 连通失败 / 鉴权失败 → 不重试，把错误信息透传给用户，标记本阶段 `failed`，但不影响 traceability 主产出（traceability_matrix / coverage_report / risk_assessment 已经在 Phase 4 落地）
-- forward_verification.json 全为 `inconclusive` → metersphere-sync 会全部标记 Prepare 并附评论；本阶段视为成功
+- helper 调用 exit code != 0 → stderr 是结构化 JSON，按 `type` 处理：
+  - `type: precondition_failed` / `not_found` （mapping 缺失等）→ 提示用户跑 `metersphere-sync mode=sync` 或 `refresh-mapping`
+  - `type: stale_mapping` → 提示用户跑 `refresh-mapping --diff-only` 看差异
+  - `type: validation` → fv 不合规，回归 4.6a 修
+  - `type: api_error` 不可重试 → 透传错误给用户，标记本阶段 `failed`，但不影响 4. output 已经落地的主产出
+  - `type: network` 可重试 → helper 已内部重试 1 次，再失败说明问题持续，让用户检查网络
+- writeback report.failed 非空 → exit 1。失败的 case 在 `ms_sync_report.json.failed[]` 里逐条列出原因，可针对性重跑 lookup 诊断

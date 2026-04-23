@@ -40,24 +40,40 @@ input:
       description: 测试计划名称（不提供则需用户指定）
     confidence_threshold:
       type: number
-      description: 自动标记通过的置信度阈值（默认 90）
+      description: >
+        【已废弃 v0.0.16】当前 P6 状态映射不再用阈值；pass + ext_deps 非空直接降级为 Prepare。
+        如果传入会被 writeback-from-fv 忽略。保留字段定义用于向后兼容老调用方，不影响行为。
+      deprecated: true
     mode:
       type: string
       description: >
         执行模式：sync（导入用例 + 创建计划）、
-        execute（导入 + 创建计划 + 基于验证结果自动标记执行状态）
+        execute（在 sync 已完成的基础上额外跑 writeback-from-fv，把 fv 写回 plan）
 
 output:
   files:
     - name: ms_sync_report.json
-      description: 同步结果报告（导入统计、计划链接、执行回写统计）
+      description: writeback-from-fv 输出（execute 模式产出，含 summary by_target_status / updated / unchanged / failed）
       format: json
+      optional: true
     - name: ms_case_mapping.json
-      description: 用例 ID 映射（local_id → ms_id + module）
+      description: 用例 ID 映射 v2（含 generated_at / source_cases_file.sha256 / ms_project_id / entries[{case_id, ms_id, title, module, module_path, import_status}]）
       format: json
     - name: ms_plan_info.json
       description: 测试计划信息（plan_id, plan_url）
       format: json
+    - name: forward_verification.enriched.json
+      description: writeback 后的 fv，每条带 ms_id 字段（execute 模式产出）
+      format: json
+      optional: true
+    - name: pass_with_caveats.md
+      description: pass 但需外部验证的条目清单（execute 模式产出，给 QA 看）
+      format: markdown
+      optional: true
+    - name: pending_external_validation.md
+      description: 同上数据按依赖类型分组（execute 模式产出）
+      format: markdown
+      optional: true
   structured:
     imported_count:
       type: number
@@ -68,12 +84,12 @@ output:
     plan_url:
       type: string
       description: MeterSphere 测试计划链接
-    auto_passed:
+    by_target_status:
+      type: object
+      description: writeback 写回统计 {Pass, Prepare, Failure}（execute 模式）
+    pending_external_count:
       type: number
-      description: 自动标记通过的用例数（execute 模式）
-    manual_required:
-      type: number
-      description: 需人工执行的用例数（execute 模式）
+      description: 被降级为 Prepare 等待外部验证的条目数（execute 模式 caveats 报告）
 
 dependencies:
   scripts:

@@ -170,17 +170,19 @@
 }
 ```
 
-## forward_verification.json
+## forward_verification.json (v2)
 
-正向用例中介验证结果。**顶层是平铺 JSON 数组**（不再是带 `results` 包裹的对象，与 PHASES.md 3.2.3 / 4.6 对齐）。每条记录的字段集随产出路径不同：
+正向用例中介验证结果。**顶层是平铺 JSON 数组**。**权威 schema 在 `_shared/schemas/forward_verification.schema.json`**；本节是人话索引，schema 与本节冲突时以 schema 为准。完整字段表见 [`_shared/TRACEABILITY_PROTOCOL.md`](../_shared/TRACEABILITY_PROTOCOL.md#forward_verificationjson-格式v2)。
+
+> **v2 关键变化**：pass 必须带 `evidence`；pass + conf<70 schema 拒绝；ext_deps 非空的 pass 下游降级为 MS Prepare（不再是「Pass + caveat」）。
 
 | 路径 | 来源 PHASES 步骤 | `case_id` 命名 | 必有字段 |
 | --- | --- | --- | --- |
-| 用例中介验证（常态） | 3.2.3 | 上游 `final_cases.json` 的 `case_id`（如 `M1-TC-01`），降级用例时 `R-{requirement_id}-AC{N}` | `case_id` / `requirement_id` / `result` / `confidence` / `trace` / `expected` / `actual` / `inconclusive_reason` |
-| forward-tracer 降级 | 3.2.4 | `FORWARD-TRACER-{requirement_id}` | 同上（`actual` 可填 forward-tracer 的 evidence 摘录） |
-| coverage-report 兜底合成 | 4.6 | `FORWARD-TRACER-FP-{N}` | `case_id` / `requirement_id` / `requirement_name` / `result` / `confidence` / `trace` / `source: "synthesized_from_coverage_report"` |
+| 用例中介验证（常态） | 3.2.3 | 上游 `final_cases.json` 的 `case_id`（如 `M1-TC-01`） | `case_id` / `requirement_id` / `result` / `confidence` + 按 result 分支必填 evidence / actual / inconclusive_reason |
+| forward-tracer 降级 | 3.2.4 | `FORWARD-TRACER-{requirement_id}` | 同上 |
+| coverage-report 兜底合成 | 4.6 | `FORWARD-TRACER-FP-{N}` | `case_id` / `requirement_id` / `requirement_name` / `result` / `confidence` / `trace` / `source: "synthesized_from_coverage_report"`；兜底版 evidence 可缺，但下游 4.6a schema 校验会要求补 |
 
-`inconclusive_reason` 仅在 `result == "inconclusive"` 时填，取值见 PHASES.md 3.2.0 表格（`call_depth_exceeded` / `dynamic_dispatch` / `external_dependency` / `complex_logic`）。
+落盘后必须跑 `metersphere_helper.py validate-fv` 校验。
 
 ### 示例
 
@@ -193,8 +195,14 @@
     "confidence": 90,
     "trace": "applyCoupon(100, 50) -> min(coupon, order) -> min(100, 50) -> 50 == expected 50 ✓",
     "expected": "actual_discount == 50",
-    "actual": "返回 50，与预期一致",
-    "inconclusive_reason": null
+    "evidence": {
+      "code_location": ["src/coupon.go:42"],
+      "verification_logic": "min(coupon, order) 直接返回较小值，与 expected 50 一致",
+      "considered_failure_modes": [
+        {"mode": "coupon 为负数", "ruled_out_by": "上层 validateCoupon 已拦截负数（src/coupon.go:18）"}
+      ]
+    },
+    "external_dependencies": {"types": [], "notes": ""}
   },
   {
     "case_id": "M2-TC-03",
