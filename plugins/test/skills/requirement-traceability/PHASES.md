@@ -189,7 +189,15 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 3. **每个 sub-agent 必须自校验**：用 `metersphere_helper.py validate-fv $TEST_WORKSPACE/forward_verification.{M}.json` 校验通过才能返回；不通过 sub-agent 内部修复重试
 4. 所有 sub-agent 完成后，主 agent 合并所有 `forward_verification.{M}.json` → `forward_verification.json`，再统一跑 4.6a 校验
 
-**降级路径**：任一 sub-agent 多次校验失败仍无法产出合规 fv → 主 agent 接管该模块的内联追踪（走 3.2.1）。**绝不允许跳过该模块的 cases**。
+**降级路径**：
+
+| 失败场景 | 处理 |
+| --- | --- |
+| **D5a — Task 工具不可用 / 全部 sub-agent 启动失败** | 直接退回 M ≤ 3 路径——主 agent 顺序内联跑完所有模块的 3.2.1。在 chat 输出标记 `subagent_dispatch_failed: true` |
+| **某个 sub-agent 多次校验失败仍无法产出合规 fv** | 主 agent 接管该模块的内联追踪（走 3.2.1）。其他 sub-agent 不受影响 |
+| **某个 sub-agent 长时间无返回（卡死）** | 由 Task 工具的超时机制兜底；超时后等同上一行处理 |
+
+**绝不允许**「sub-agent 失败 → 跳过该模块的 cases」。所有 case 必须有 fv 条目（最低限 inconclusive）。
 
 #### 3.2.0 可追踪性评估（前置硬规则）
 
@@ -715,8 +723,11 @@ Evidence:
 - 缺陷名称 = 关联需求点名称 + 验证用例的场景描述
 - 预期结果 = `expected` 字段原文
 - 实际结果 = 从 `trace` 字段推导（代码执行路径偏离预期的关键分支点或返回值）
-- 优先级判定：confidence >= 85 → P0；confidence >= 70 → P1
+- **优先级判定（D8 教训：兜底合成的 fail 不能直接判 P0/P1）**：
+  - **常态 fail**（fv 条目无 `source` 字段，或 `source != "synthesized_from_coverage_report"`）：confidence ≥ 85 → P0；confidence ≥ 70 → P1
+  - **兜底合成 fail**（`source == "synthesized_from_coverage_report"`，由 4.6 兜底产出，不带用例级 evidence）：**统一标 P2** + 缺陷描述追加 "（降级判定，无用例级粒度，需人工核实是否真为缺陷）"。**绝不判 P0/P1**——兜底合成的 fail 来自 coverage_report 的 `verdict: missing/unimplemented`，置信度本身是文档/启发式推断，不是代码追踪结果，把它直接当 P0 阻断会有大量假阳性
 - `evidence.source` = `"forward_verification"`，`evidence.source_id` = 对应 `case_id`
+- `evidence.synthesized` = `true`（仅当 fv 条目带 `source: "synthesized_from_coverage_report"` 时附加，便于下游审计）
 
 **来源 2：需求实现缺失**
 
@@ -864,6 +875,13 @@ Evidence:
 3. **无进展**：本轮与上轮的缺口列表完全一致（无新覆盖的需求点）→ 强制退出，标注为"需人工介入"
 4. **用户主动终止**：用户在 5.2 步骤选择停止
 
+> **D4 — 退出后总是进 Phase 6**：无论 `exit_reason` 是哪个，只要 `forward_verification.json` 存在（4.6a 已校验通过），**Phase 6 writeback 仍必须执行**。理由：
+> - `all_covered` → 全部 pass，正常 writeback 把所有 case 标 MS Pass
+> - `max_iterations` / `no_progress` → 还有未覆盖的缺口，但已验证的部分仍要回写让 QA 看到
+> - `user_terminated` → 用户决定停止 loop 不代表放弃 writeback；如用户也不想 writeback，Phase 6.1.b 软警告里再让用户决定
+>
+> **绝不要**「loop 没收敛 → 跳过 writeback」——loop 是缺口修复机制，不是 writeback 的前置条件。
+
 退出时更新 `traceability_coverage_report.json` 的 `loop_metadata` 字段：
 
 ```json
@@ -926,11 +944,13 @@ helper 内部完成：
    - `forward_verification.enriched.json` — 原 fv + 回写后的 ms_id（下次跑可跳过 lookup）
    - `pass_with_caveats.md` + `pending_external_validation.md` — 给 QA 的人话清单
 
-### 6.3 完成校验
+### 6.3 完成校验 + 摘要文案分支（D7）
 
 1. 确认 `$TEST_WORKSPACE/ms_sync_report.json` 已生成且非空
-2. 从 `summary.by_target_status` 提取 Pass/Prepare/Failure 三个数字
-3. Chat 输出回写摘要：
+2. 从 `summary.by_target_status` 提取 Pass/Prepare/Failure 三个数字 + 从 fv 统计 inconclusive 与 ext_deps 数量
+3. 按情形分支输出 chat 摘要：
+
+#### 常态摘要（Pass 或 Failure 占多数）
 
 ```
 MS 测试计划回写完成：
@@ -939,6 +959,50 @@ MS 测试计划回写完成：
 - Failure：0 条
 - 测试计划：<plan_url>
 - 待回归清单：$TEST_WORKSPACE/pending_external_validation.md
+```
+
+#### 全 Prepare / 全 inconclusive 警示摘要（D7 防御）
+
+当 `by_target_status.Pass == 0 && by_target_status.Failure == 0`（即所有 case 都映射到 Prepare），主 agent **必须**在摘要顶部加显眼警示：
+
+```
+⚠️ AI 本次未能验证任何 case（全部判定 inconclusive 或依赖外部因素）
+
+可能原因：
+  - 代码可读性不足（diff-only 模式 + 调用链过深 / 动态分派 / 跨服务）
+  - 用例输入质量低（final_cases.json 描述太抽象，无法对应具体代码路径）
+  - 大部分 pass 自检后被识别为依赖真机/server，全部降级 Prepare
+
+建议：
+  - QA 须把全部 {N} 条 case 视为「待人工执行」，不能默认 AI 减负
+  - 若担心 AI 完全失能，用 `requirement_doc_link` 重跑本 skill 提供需求文档辅助追踪
+  - 全 inconclusive 通常意味着 fv 的 inconclusive_reason 字段集中在 1-2 类，可针对性补充上下文
+
+详情：$TEST_WORKSPACE/forward_verification.json，按 inconclusive_reason 分组：
+  - external_dependency: {n1} 条
+  - call_depth_exceeded: {n2} 条
+  - dynamic_dispatch: {n3} 条
+  - ...
+
+测试计划：<plan_url>
+```
+
+#### writeback 被跳过的摘要
+
+当 6.1 step 3 的 ms_plan_info.json 缺失导致 Phase 6 被 skip，输出：
+
+```
+ℹ️ Phase 6 writeback 已跳过：ms_plan_info.json 不存在
+
+fv.json 已落盘，可后续补跑：
+  1. 跑 `metersphere-sync mode=sync` 完成 import + 创建测试计划
+  2. 重跑本 skill（fv 会被复用，不会重复跑 3.x/4.x）
+
+或如果不需要 writeback，本次产物已完整：
+  - traceability_matrix.json
+  - traceability_coverage_report.json
+  - risk_assessment.json
+  - forward_verification.json
 ```
 
 ### 6.4 失败处理

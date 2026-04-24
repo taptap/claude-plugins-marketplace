@@ -165,9 +165,43 @@ python3 $HELPER rebuild-mapping --plan-id <new_plan_id> --cases-path final_cases
 ```
 
 **异常处理**：
-- `ambiguous_titles` 非空 → exit 1。title 撞名时 rebuild 不能拍脑袋选一个；要么改 case title 消歧，要么手工编辑 mapping
-- `unmatched_local` 非空 → 提示用户先跑 `add-cases-to-plan` 把缺的关联进去
+- `ambiguous_titles` 非空 → exit 1，**mapping 不落盘**。title 撞名时 rebuild 不能拍脑袋选一个；要么改 case title 消歧，要么手工编辑 mapping
+- `unmatched_local` 非空 → exit 1，**mapping 已落盘**（仅含 matched 条目）。提示用户先跑 `add-cases-to-plan` 把缺的关联进去
 - `unmatched_in_plan` 非空 → 这些是 PM 手工加的或别的来源，与本 cases 无关，跳过
+
+#### 2.4.1 unmatched_local 修复小循环（D6）
+
+```
+              ┌─ rebuild-mapping ─┐
+              │   exit 1          │
+              │   unmatched_local │
+              │   = [TC-09, TC-12]│
+              └────────┬──────────┘
+                       │
+                       ▼
+        从 mapping 不到 ms_id —— TC-09/12 还没在 plan 里
+                       │
+                       ▼
+            ┌─── 检查这些 case 是否已在 MS 用例库 ───┐
+            │                                        │
+            ▼                                        ▼
+   已在用例库（曾 import 过）              不在用例库（漏 import）
+            │                                        │
+            ▼                                        ▼
+   add-cases-to-plan <plan_id>              先跑 mode=sync 重 import
+   --case-ids <ms_id1>,<ms_id2>             （会同时 add 到当前 plan）
+            │                                        │
+            └──────────────┬─────────────────────────┘
+                           │
+                           ▼
+                   重跑 rebuild-mapping
+                           │
+                           ▼
+                     unmatched_local 应为空
+                     mapping 完整，回到 traceability writeback
+```
+
+**关键判断点**：用 `lookup-plan-case --plan-id X --case-id <local_id>` 试一下；如返回 `not_found` 但能在 list-modules 里搜到这条 case → 用例库有但 plan 没关联 → 走 add-cases-to-plan；list-modules 也搜不到 → 走 mode=sync 重 import。
 
 ---
 
