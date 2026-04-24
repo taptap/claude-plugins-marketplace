@@ -23,9 +23,13 @@ description: >
 - Skill 类型：核心工作流
 - 适用场景：功能开发完成后，验证代码变更是否完整覆盖需求；**smoke-test 模式**下可作为冒烟测试验证引擎
 - 必要输入：代码变更（MR/PR 链接、本地 diff 文件、或直接提供 diff 文本）必须非空；需求描述推荐提供，缺失时基于代码变更做单边追溯（降级模式）
-- 输出产物：`traceability_matrix.json`、`traceability_coverage_report.json`、`risk_assessment.json`、`forward_verification.json`（正向用例中介验证结果）；标准模式额外输出 `ms_sync_report.json` + `forward_verification.enriched.json` + `pass_with_caveats.md` + `pending_external_validation.md`（writeback 阶段产出）；smoke-test 模式额外输出 `defect_list.json`、`smoke_test_report.json`
-- 失败门控：代码变更为空时停止；标准模式 mapping precondition 不满足时停止；fv schema 校验失败时停止；无法确认的映射标记为 `[推测]`；smoke-test 模式下 P0 缺陷 > 0 则 verdict = fail
-- 执行步骤：`init → fetch → map → output(4.1-4.5) → 4.6 兜底 → 4.6a 校验 → 4.7 fail 复核 → writeback`（smoke-test 模式 output 后走 5S.1/5S.2 冒烟报告并跳过 4.7 / writeback；标准模式有未覆盖需求时在 output 后追加 Phase 5 自循环，收敛后再进 writeback）
+- 输出产物：`traceability_matrix.json`、`traceability_coverage_report.json`、`risk_assessment.json`、`forward_verification.json`（正向用例中介验证结果）；标准模式且 mapping/plan_info 就位时额外输出 `ms_sync_report.json` + `forward_verification.enriched.json` + `pass_with_caveats.md` + `pending_external_validation.md`（writeback 阶段产出）；smoke-test 模式额外输出 `defect_list.json`、`smoke_test_report.json`
+- 失败门控：代码变更为空时停止；mapping sha 不匹配时停止；fv schema 校验失败时停止；无法确认的映射标记为 `[推测]`；smoke-test 模式下 P0 缺陷 > 0 则 verdict = fail
+- 执行步骤：`init → fetch → map → output(4.1-4.5) → 4.6 兜底 → 4.6a 校验 → 4.7 fail 复核 → writeback`（smoke-test 模式 output 后走 5S.1/5S.2 冒烟报告并跳过 4.7 / writeback；标准模式有未覆盖需求时在 output 后追加 Phase 5 自循环，收敛后再进 writeback；mapping/plan_info 缺失时 writeback 整段 graceful skip）
+- **可能的用户交互（standard 模式）**：
+  - **Phase 4.7 高 conf fail 复核**：每条 `result==fail && confidence>=80` 的 fv 条目触发一次 AskUserQuestion（A 保持 / B 改 Pass / C 改 inconclusive）。N 条高 conf fail 就是 N 次问询
+  - **Phase 5 缺口确认**：每个 `missing/partial` 缺口聚合一次 AskUserQuestion 让用户分类
+  - **如果 fv fail 多 + 缺口多，一次跑可能弹 N+M 次问题**。提前预告：跑大规模需求前可考虑 (a) 先跑 mode=smoke-test 走完整 4.x 不交互，看下大致情况，再切 standard；(b) 缩小 code_changes 范围分批跑
 
 ## 核心能力
 

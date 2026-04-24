@@ -29,21 +29,25 @@
 
 仅当本次执行需要走到 Phase 6 写回 MS plan（即非 smoke-test 模式）时检查；smoke-test 模式跳过本节。
 
+> **设计哲学**：硬阻断只针对「无之则后续 phase 完全跑不动」的资源；MS 相关产物（mapping / plan_info）属于「writeback 才用得到」，缺失时让 Phase 6 优雅 skip 即可，不应阻断「只想要 coverage_report」的用户。1.3.b 早期警告 + 6.1.b 优雅 skip 的组合避免 D3 「白跑 4 phase 才发现」的体验问题。
+
 #### 1.3.a 硬阻断项（任一不满足 → STOP）
 
 | 项 | 校验 | 失败提示 |
 | --- | --- | --- |
 | `final_cases.json` 存在 | 文件可读、顶层 array 非空 | 先跑 test-case-generation 产出 final_cases |
-| `ms_case_mapping.json` 存在 | 文件可读、顶层为 `{generated_at, source_cases_file, ms_project_id, entries}` 结构（v2 格式） | 先跑 `metersphere-sync` mode=sync 完成 import |
-| mapping 与 cases 一致 | mapping.source_cases_file.sha256 == sha256(final_cases.json) | 跑 `metersphere_helper.py refresh-mapping --diff-only` 查看差异，再 `--apply` 修复 |
+| mapping sha 一致（仅当 mapping 存在时校验）| mapping.source_cases_file.sha256 == sha256(final_cases.json) | 跑 `metersphere_helper.py refresh-mapping --diff-only` 查看差异，再 `--apply` 修复 |
 
-#### 1.3.b 软警告项（不满足 → 早期提示，不阻断）
+> **mapping sha 一致性是硬阻断**：sha 不匹配意味着 mapping 是过期的，writeback 时会用错的 ms_id 误改 MS 状态——比 mapping 整个不存在更危险。所以「不存在」是软警告（直接 skip），「存在但 sha 错」是硬阻断（必须先修）。
 
-> **D3 防御**：standard 模式默认会走 Phase 6 writeback。如果到了 Phase 6 才发现 ms_plan_info 缺失，前面 4 个 phase 等于白跑。1.3 提前一次性把所有 writeback 依赖的文件检查掉，缺什么早警告。
+#### 1.3.b 软警告项（不满足 → 早期警告 + 后期优雅 skip）
 
 | 项 | 校验 | 缺失时行为 |
 | --- | --- | --- |
-| `ms_plan_info.json` 存在 | 文件可读、含 `plan_id` 字段 | 在 chat 输出**警告**：「ms_plan_info.json 不存在；Phase 6 writeback 会被跳过；如需写 MS，请补跑 `metersphere-sync mode=sync` 完成测试计划创建后重跑本 skill」。**不 STOP**——用户仍可能只想要 coverage report，不想 writeback。Phase 6.1 会再校验一次，缺失时优雅 skip writeback。 |
+| `ms_case_mapping.json` 存在 | 文件可读、顶层为 `{generated_at, source_cases_file, ms_project_id, entries}` 结构（v2 格式）| chat 输出**警告**：「ms_case_mapping.json 不存在；Phase 6 writeback 会被跳过」。**不 STOP**。Phase 6.1.b 二次校验时整个 Phase 6 优雅 skip。|
+| `ms_plan_info.json` 存在 | 文件可读、含 `plan_id` 字段 | chat 输出**警告**：「ms_plan_info.json 不存在；Phase 6 writeback 会被跳过；如需写 MS，请补跑 `metersphere-sync mode=sync` 完成测试计划创建后重跑本 skill」。**不 STOP**。Phase 6.1.b 二次校验时整个 Phase 6 优雅 skip。|
+
+> **D10 — 解锁纯 coverage 用户**：用户可能根本没接 MeterSphere（外部团队 / 试用 / 本地实验），只想要 traceability_matrix / coverage_report / risk_assessment 这一组产物。1.3.b 把 mapping / plan_info 都设为软警告，不强制走完 writeback 链路。
 
 #### 1.3.c 兜底定位提醒
 
@@ -641,11 +645,53 @@ python3 $SKILLS_ROOT/shared-tools/scripts/metersphere_helper.py \
 
 - 校验通过（exit 0）→ 继续 4.7 / Phase 5
 - 校验失败（exit 2）→ stderr 是结构化 `{type: validation, errors: [{path, message}]}`，**stop**
-  - 字段缺失 → 回归 3.2 让 AI 补 evidence / external_dependencies
-  - 文件路径不存在 → 检查 evidence.code_location 是否拼错或文件被删除
-  - conf<70 还标 pass → 回归 3.2 降为 inconclusive
 
-绝不允许「校验失败但带 bug fv 跑下去污染 MS plan」。
+#### 4.6a 失败的诊断分流
+
+按 `errors[].schema_path` 或 `errors[].message` 关键词分流处理建议：
+
+| 错误特征 | 根因 | 修复 |
+| --- | --- | --- |
+| `pass` 但缺 `evidence` | 3.2.1 没填 evidence | 回归 3.2.1，按 step 4 给每条 pass 写 evidence 三件套 |
+| `evidence.code_location[X]: 文件不存在` | code_location 拼错 / 文件被删 / 改了路径 | 检查文件路径；如果路径变了，更新 code_location；如果文件确实没了，trace 改 inconclusive |
+| `pass` + `conf < 70` | 评分锚点没遵守 | 降为 inconclusive 或补强证据让 conf 升到 ≥ 70 |
+| `fail` 缺 `actual` 或 `evidence` | 3.2.1 没填完整 | 回归 3.2.1，fail 必须带 actual + evidence |
+| `pass + conf>=85` 缺 `considered_failure_modes` | 高 conf pass 未做对抗式自检 | 回归 3.2.1 step 4，加 considered_failure_modes 至少 1 条 |
+| 4.6 兜底产物缺 `source` | D2 — 4.6 漏写 source 字段 | 检查 4.6 自校验清单，补全 `source: synthesized_from_coverage_report` 重新落盘 |
+| `external_dependencies.types` 越界 enum | typo（写了 `Device` 而非 `device`）| 改成 schema 允许的 enum 值（device/server/third_party/...）|
+
+#### D11 — 4.6a 失败不丢前序产物
+
+> **重要**：4.6a 失败 stop 时，**前 4 个 phase 的产物已经落盘且仍然有效**。skill stop 不等于这些产物作废。
+
+stop 时 chat 必须输出两段：
+
+**(A) 已可用的产物清单**：
+
+```
+✅ 已落盘且仍可用：
+  - $TEST_WORKSPACE/traceability_matrix.json
+  - $TEST_WORKSPACE/traceability_coverage_report.json
+  - $TEST_WORKSPACE/risk_assessment.json
+  - $TEST_WORKSPACE/code_analysis.md
+  - $TEST_WORKSPACE/api_contract_report.json (如有)
+  - $TEST_WORKSPACE/ui_fidelity_report.json (如有)
+```
+
+**(B) Phase 4.7 + 5 + 6 已被中断的解释**：
+
+```
+⛔ Phase 4.7 / 5 / 6 已中断，因为 fv 校验失败。fv 字段错误：
+  - {errors[0].path}: {errors[0].message}
+  - {errors[1].path}: ...
+
+修复后重跑本 skill：
+  - 如错误来自 3.2 用例追踪 → fv 修好后从 4.6a 重跑（前 4 个 phase 不重复跑）
+  - 如错误来自 4.6 兜底合成 → 检查 4.6 自校验清单是否漏字段
+  - 如不想修 fv 也不需要 writeback → 把 fv.json 删掉重跑 mode=traceability，writeback 会被 6.1.b 软警告 skip，coverage 报告仍正常出
+```
+
+绝不允许「校验失败但带 bug fv 跑下去污染 MS plan」。但也绝不让 4.6a 失败显得像「整个 skill 跑废了」——前 4 个 phase 的产物是有价值的。
 
 ### 4.7 高 conf fail 复核（标准模式）
 
@@ -903,16 +949,26 @@ Evidence:
 
 ### 6.1 前置校验
 
+#### 6.1.a 硬约束
+
 1. **fv 完整性**：确认 `$TEST_WORKSPACE/forward_verification.json` 存在、非空、且通过 4.6a `validate-fv` 校验。
-   - 1.3 precondition + 4.6a 都强制查过；正常路径走到这里都满足
+   - 4.6a 已强制校验；正常路径走到这里都满足
    - 如某种异常导致缺失：last-resort 回到 4.6 兜底合成；如 `traceability_coverage_report.json` 也缺失则在最终摘要明确告警"无验证结果可回写"，**不允许静默跳过**
-2. **mapping 完整性**：确认 `$TEST_WORKSPACE/ms_case_mapping.json` 存在（已在 1.3 precondition 校验过 sha 一致）。
+
+#### 6.1.b 软依赖（缺即整个 Phase 6 优雅 skip，与 1.3.b 对齐）
+
+2. **mapping 完整性**：检查 `$TEST_WORKSPACE/ms_case_mapping.json`：
+   - 存在 → 继续（sha 一致性 1.3.a 已硬阻断校验）
+   - 不存在 → **优雅 skip 整个 Phase 6**，标 `writeback_skipped: "missing_ms_case_mapping"`，提示「先跑 `metersphere-sync mode=sync` 生成 mapping」
 3. **plan_id 必须就位**：writeback-from-fv 需要 `plan_id` 入参，**不会创建 plan**。检查 `$TEST_WORKSPACE/ms_plan_info.json` 是否存在：
    - 存在 → 提取 `plan_id` 用于 6.2
    - 不存在 → **优雅 skip 整个 Phase 6**，**不 STOP**：
      - 在最终摘要中明确标 `writeback_skipped: "missing_ms_plan_info"`
      - 提示用户：「ms_plan_info.json 不存在；本次未写 MS。如需写 MS，请补跑 `metersphere-sync mode=sync` 完成测试计划创建后重跑本 skill 的 Phase 6（fv 已落盘可直接复用）」
-     - **理由**：1.3.b 早期已经警告过用户。如果用户依然主动跑到这里说明他可能就不想 writeback（只要 coverage report）。1.3.b warn + 6.1 skip 的组合避免「白跑 4 phase 才 stop」的体验问题（D3）。
+
+> **D10 一致性**：mapping 缺失和 plan_info 缺失走相同路径——优雅 skip Phase 6 + 明确 `writeback_skipped` 标记。**绝不**一个 STOP 一个 skip。
+>
+> **设计哲学**：1.3.b 早期已经警告过用户。如果用户依然跑到这里说明他可能就不想 writeback（只要 coverage report）。1.3.b warn + 6.1.b skip 的组合解决「白跑 4 phase 才 stop」的体验问题（D3）和「纯 coverage 用户被强制走 sync」的封锁问题（D10）。
 
 ### 6.2 调用 helper.writeback-from-fv（直接调脚本，不再走 Skill）
 
