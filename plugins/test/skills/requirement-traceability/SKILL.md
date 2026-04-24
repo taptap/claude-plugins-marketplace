@@ -97,7 +97,8 @@ description: >
 
 | 任务 | 推荐模型 | 理由 |
 | --- | --- | --- |
-| 主 agent（正向用例验证 + 反向代码追溯，顺序内联） | Opus | 代码路径追踪与反向归因都需要深度推理 |
+| 主 agent（正向用例验证 + 反向代码追溯，M ≤ 3 时顺序内联） | Opus | 代码路径追踪与反向归因都需要深度推理 |
+| case-tracer sub-agent（PHASES 3.2.dispatch，M > 3 时按模块拆并行） | Opus | 每个 sub-agent 携带受限上下文（一个模块的 cases + diff），减少主 agent 全量加载负担 |
 | forward-tracer 降级 sub-agent（PHASES 3.2.4） | Opus | 仅在用例数据严重缺失时启动，需要从需求描述推断映射 |
 | UI 还原度检查 Agent | Opus | 视觉和结构差异识别需要精确对比 |
 | API 契约感知检查 | Sonnet | 接口签名提取和字段比对属于规则化处理 |
@@ -134,7 +135,7 @@ description: >
 | --- | --- | --- |
 | 1. init | 验证代码变更来源；标准模式额外校验 mapping precondition（详见 PHASES 1.3） | — |
 | 2. fetch | 获取需求文档和代码 diff | `traceability_checklist.md` |
-| 3. map | 主 agent 顺序：正向用例验证（3.2）+ 反向代码追溯内联（3.3） | `code_analysis.md`、`forward_verification.json` |
+| 3. map | 正向（3.2）：M ≤ 3 主 agent 内联，M > 3 拆 case-tracer sub-agent 按模块并行；反向（3.3）：主 agent 内联 | `code_analysis.md`、`forward_verification.json`（M > 3 时含中间产物 `forward_verification.{module}.json`） |
 | 4. output | 覆盖验证、风险评估和最终产出 | `traceability_matrix.json`、`traceability_coverage_report.json`、`risk_assessment.json` |
 | 4.6 | `forward_verification.json` 兜底落盘（**last-resort**：3.2 已产出则跳过，否则从 coverage_report 合成；正常路径不应走到这里） | `forward_verification.json`（兜底版） |
 | 4.6a | 强制 schema 校验 fv（`metersphere_helper.py validate-fv`） | — |

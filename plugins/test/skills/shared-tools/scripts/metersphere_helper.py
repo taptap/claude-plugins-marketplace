@@ -16,6 +16,7 @@ MeterSphere 辅助工具 — 供 AI Agent 在测试用例同步和测试计划�
   validate-fv          按 schema 校验 forward_verification.json
   lookup-plan-case     按 case_id 三级查找 plan_case_id
   refresh-mapping      刷新/比对 ms_case_mapping.json 与 final_cases.json
+  rebuild-mapping      从 MS plan 反向重建 ms_case_mapping.json（切换 plan 后用）
   writeback-from-fv    一站式：fv → MS plan 状态回写（含 P6 状态映射）
 
 响应契约（统一）：
@@ -41,6 +42,8 @@ MeterSphere 辅助工具 — 供 AI Agent 在测试用例同步和测试计划�
       [--mapping-path PATH]
     python3 metersphere_helper.py refresh-mapping --mapping-path PATH --cases-path final_cases.json \\
       [--diff-only|--apply]
+    python3 metersphere_helper.py rebuild-mapping --plan-id <id> --cases-path final_cases.json \\
+      [--mapping-out PATH]
     python3 metersphere_helper.py writeback-from-fv --plan-id <id> --fv-path <fv.json> \\
       [--mapping-path PATH] [--report-path PATH] [--dry-run]
 
@@ -899,6 +902,23 @@ def cmd_import_cases(parent_module_id: str, cases_file: str,
             f"?moduleId={parent_module_id}"
         ),
     }
+
+    # 同时落盘 ms_import_report.json（P12 命名冲突防御：与 writeback 的 ms_sync_report.json 永不撞名）
+    import_report_path = str(cases_path.parent / 'ms_import_report.json')
+    import_report_doc = {
+        'ran_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'source_cases_file': {
+            'path': str(cases_path.resolve()),
+            'sha256': cases_sha,
+        },
+        'parent_module_id': parent_module_id,
+        'requirement_name': requirement_name,
+        **report,
+    }
+    with open(import_report_path, 'w', encoding='utf-8') as f:
+        json.dump(import_report_doc, f, ensure_ascii=False, indent=2)
+    report['import_report_path'] = import_report_path
+
     print(json.dumps(report, ensure_ascii=False, indent=2))
 
 
@@ -1341,6 +1361,145 @@ def cmd_refresh_mapping(*, mapping_path: str, cases_path: str,
         sys.exit(1)
 
 
+def cmd_rebuild_mapping(*, plan_id: str, cases_path: str,
+                         mapping_out: str | None = None) -> None:
+    """从 MS plan 反向重建 ms_case_mapping.json（P11）。
+
+    场景：切换 plan / 重 import 后，旧 mapping 的 ms_id 已经过期，refresh-mapping 救不了。
+    本命令拉 plan 全部 plan_cases，按 plan_case.name == cases.title 匹配本地 cases，
+    重建一份正确的 mapping 文件。
+
+    title 撞名时不能拍脑袋——直接报 ambiguous 让用户消歧。
+    """
+    cases_file = Path(cases_path)
+    if not cases_file.exists():
+        _fail(ERR_NOT_FOUND, f"cases 文件不存在: {cases_path}",
+              cases_path=str(cases_path))
+    with open(cases_file, 'rb') as f:
+        cases_bytes = f.read()
+    cases_sha = hashlib.sha256(cases_bytes).hexdigest()
+    cases = json.loads(cases_bytes.decode('utf-8'))
+    if not isinstance(cases, list):
+        _fail(ERR_VALIDATION, f"cases 文件顶层不是数组: {cases_path}",
+              exit_code=2, cases_path=str(cases_path))
+
+    # 本地 cases：title → case 字典；同时检查同模块重名（与 import-cases 一致）
+    local_by_title: dict[str, dict] = {}
+    title_collisions: list[dict] = []
+    for c in cases:
+        if not isinstance(c, dict):
+            continue
+        title = c.get('title', '')
+        if not title:
+            continue
+        sanitized = _sanitize_title(title)
+        if sanitized in local_by_title:
+            existing = local_by_title[sanitized]
+            title_collisions.append({
+                'title': sanitized,
+                'case_ids': [existing.get('case_id'), c.get('case_id')],
+                'modules': [existing.get('module'), c.get('module')],
+            })
+            continue  # 后来的不进字典；ambiguous 集体报告
+        local_by_title[sanitized] = c
+
+    # 拉 plan 全部 plan_cases
+    all_pc = _list_all_plan_cases(plan_id)
+
+    matched: list[dict] = []
+    unmatched_in_plan: list[dict] = []
+    seen_titles_in_plan: dict[str, list[dict]] = {}
+
+    for pc in all_pc:
+        pc_name = pc.get('name', '')
+        sanitized = _sanitize_title(pc_name)
+        seen_titles_in_plan.setdefault(sanitized, []).append(pc)
+
+    ambiguous_titles: list[dict] = list(title_collisions)
+    for sanitized, pc_group in seen_titles_in_plan.items():
+        if len(pc_group) > 1:
+            # plan 里 title 撞名 → ambiguous
+            ambiguous_titles.append({
+                'title': sanitized,
+                'source': 'plan',
+                'plan_case_ids': [pc.get('id') for pc in pc_group],
+                'ms_ids': [pc.get('caseId') for pc in pc_group],
+            })
+            continue
+        pc = pc_group[0]
+        local = local_by_title.get(sanitized)
+        if local is None:
+            unmatched_in_plan.append({
+                'plan_case_id': pc.get('id'),
+                'ms_id': pc.get('caseId'),
+                'name': pc_name,
+            })
+            continue
+        matched.append({
+            'case_id': local.get('case_id') or local.get('title'),
+            'ms_id': pc.get('caseId'),
+            'title': sanitized,
+            'module': local.get('module', ''),
+            'module_path': pc.get('nodePath', ''),
+            'import_status': 'reused',  # 反向重建一律标记 reused
+        })
+
+    matched_titles = {e['title'] for e in matched}
+    unmatched_local = [
+        {
+            'case_id': c.get('case_id') or c.get('title'),
+            'title': _sanitize_title(c.get('title', '')),
+            'module': c.get('module', ''),
+        }
+        for c in cases
+        if isinstance(c, dict)
+        and _sanitize_title(c.get('title', '')) not in matched_titles
+        and _sanitize_title(c.get('title', '')) not in {a['title'] for a in ambiguous_titles}
+    ]
+
+    # 落盘 mapping
+    if mapping_out is None:
+        mapping_out = str(cases_file.parent / 'ms_case_mapping.json')
+
+    mapping_doc = {
+        'generated_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'source_cases_file': {
+            'path': str(cases_file.resolve()),
+            'sha256': cases_sha,
+        },
+        'ms_project_id': _cfg('MS_PROJECT_ID'),
+        'rebuilt_from_plan': plan_id,
+        'entries': matched,
+    }
+
+    # ambiguous 时不落盘，仅报告——免得用户拿到半残的 mapping 用错
+    if not ambiguous_titles:
+        Path(mapping_out).parent.mkdir(parents=True, exist_ok=True)
+        with open(mapping_out, 'w', encoding='utf-8') as f:
+            json.dump(mapping_doc, f, ensure_ascii=False, indent=2)
+        report_path = str(Path(mapping_out).resolve())
+    else:
+        report_path = None
+
+    report = {
+        'mapping_path': report_path,
+        'plan_id': plan_id,
+        'total_in_plan': len(all_pc),
+        'matched': len(matched),
+        'unmatched_in_plan': unmatched_in_plan,
+        'unmatched_local': unmatched_local,
+        'ambiguous_titles': ambiguous_titles,
+    }
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+
+    if ambiguous_titles:
+        # ambiguous 是数据问题，需要人工介入；不落盘 mapping，exit 1 提示调用方
+        sys.exit(1)
+    if unmatched_local:
+        # 本地有但 plan 里没找到 → 提示但不阻塞
+        sys.exit(1)
+
+
 def _compose_writeback_comment(entry: dict, target: str, ext_dep_types: list[str],
                                 confidence) -> str:
     """按 P6 状态映射拼 comment（人话，不塞 JSON）。"""
@@ -1729,6 +1888,15 @@ def main():
                 mapping_path=_flag_value(args, '--mapping-path'),
                 cases_path=_flag_value(args, '--cases-path'),
                 apply_changes=_flag_present(args, '--apply'),
+            )
+        elif cmd == 'rebuild-mapping':
+            if not (_flag_present(args, '--plan-id') and _flag_present(args, '--cases-path')):
+                _usage("rebuild-mapping --plan-id <id> --cases-path final_cases.json "
+                       "[--mapping-out PATH]")
+            cmd_rebuild_mapping(
+                plan_id=_flag_value(args, '--plan-id'),
+                cases_path=_flag_value(args, '--cases-path'),
+                mapping_out=_flag_value(args, '--mapping-out'),
             )
         elif cmd == 'writeback-from-fv':
             if not (_flag_present(args, '--plan-id') and _flag_present(args, '--fv-path')):

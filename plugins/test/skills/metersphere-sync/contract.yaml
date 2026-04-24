@@ -59,6 +59,10 @@ output:
     - name: ms_case_mapping.json
       description: 用例 ID 映射 v2（含 generated_at / source_cases_file.sha256 / ms_project_id / entries[{case_id, ms_id, title, module, module_path, import_status}]）
       format: json
+    - name: ms_import_report.json
+      description: sync 模式 import 阶段的报告（imported / failed / modules_created / mapping_path），与 writeback 的 ms_sync_report.json 永不撞名
+      format: json
+      optional: true
     - name: ms_plan_info.json
       description: 测试计划信息（plan_id, plan_url）
       format: json

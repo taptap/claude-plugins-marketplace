@@ -78,6 +78,8 @@ python3 $SKILLS_ROOT/shared-tools/scripts/metersphere_helper.py \
 - 格式转换（后端自动完成，AI 无需手动转换）：`{action, expected}` → `{num, desc, result}`
 - 名称清洗：去除内部标记（AC-1, RP-3）、截断超长名称（250 字）
 
+> **P12 命名冲突防御**：`import-cases` 还会同时落盘 `ms_import_report.json`（与 mapping 同目录）作为 import 阶段的持久化汇总，**与 writeback 阶段的 `ms_sync_report.json` 是不同文件，永不撞名**。下游消费方按需读：sync 阶段看 `ms_import_report.json`，execute 阶段看 `ms_sync_report.json`。
+
 ### 2.2 mapping 文件（v2 格式，由 import-cases 直接落盘）
 
 > **注意**：v2 格式由脚本自动写入，**不要再用 stdout 重定向手工保存**。stdout 现在只输出 summary。
@@ -133,6 +135,39 @@ python3 $HELPER refresh-mapping --mapping-path PATH --cases-path final_cases.jso
 - `missing_in_mapping`：cases 里有但 mapping 里没有 → 需要重跑 mode=sync 来 import
 - `stale_in_mapping`：mapping 里有但 cases 里没有 → `--apply` 时自动清理
 - `extra_in_ms`：MS 端独立加的（PM 手工补的）→ 永不动，由人工域处理
+
+### 2.4 跨 plan 切换 / 重 import 后的 mapping 重建（P11 教训）
+
+**触发场景**：
+
+- 用户 reset workspace 后切到一个新 plan_id，旧 mapping 文件还在但 ms_id 都过期了
+- 上游误删后重 import 了一份 cases，新 ms_id 与旧 mapping 不一致
+- 上面两种 `refresh-mapping --apply` 救不了——它只清 stale 不重建 ms_id
+
+**解决**：用 `rebuild-mapping` 反向从 MS plan 拉全部 plan_cases（含 case 的真实 ms_id 和 name），按 `name == cases.title` 匹配本地 cases 重建 mapping：
+
+```bash
+python3 $HELPER rebuild-mapping --plan-id <new_plan_id> --cases-path final_cases.json \
+  [--mapping-out PATH]
+```
+
+**输出**（stdout）：
+
+```json
+{
+  "mapping_path": "/abs/path/ms_case_mapping.json",
+  "total_in_plan": 46,
+  "matched": 46,
+  "unmatched_in_plan": [],          // plan 里有但本地 cases 没匹配上的
+  "unmatched_local": [],             // 本地 cases 但 plan 里没找到的（漏 import？）
+  "ambiguous_titles": []             // title 撞了无法消歧的 case
+}
+```
+
+**异常处理**：
+- `ambiguous_titles` 非空 → exit 1。title 撞名时 rebuild 不能拍脑袋选一个；要么改 case title 消歧，要么手工编辑 mapping
+- `unmatched_local` 非空 → 提示用户先跑 `add-cases-to-plan` 把缺的关联进去
+- `unmatched_in_plan` 非空 → 这些是 PM 手工加的或别的来源，与本 cases 无关，跳过
 
 ---
 

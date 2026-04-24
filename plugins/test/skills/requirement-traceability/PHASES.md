@@ -157,6 +157,32 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 
 ### 3.2 正向通道：用例中介验证
 
+#### 3.2.dispatch 主 agent 内联 vs sub-agent 拆分（决策点）
+
+> **历史教训**：旧版本声称 sub-agent 自动并行，实际 AI 跑 skill 时常常变成主 agent 手写——上次跑 46 条用例时主 agent 全程加载所有模块代码，新会话第一次跑非常慢，且容易跑偏。
+>
+> **本次（v0.0.18）开启**：按模块数拆 sub-agent，每个 sub-agent 携带受限上下文（一个模块的 cases + 那个模块涉及的 diff），独立跑完后输出标准 fv 子集，主 agent 合并。**目的不是并行加速，而是减少主 agent 的全量上下文负担**。
+
+**决策规则**（基于 `final_cases.json` 中不同 `module` 字段的去重数 = M）：
+
+| M（模块数） | 路径 | 理由 |
+| --- | --- | --- |
+| M ≤ 3 | 主 agent 顺序内联 3.2.1-3.2.3 | 拆 sub-agent 的 dispatch 开销不划算 |
+| M > 3 | **单条消息**发 M 个 Task 调用 case-tracer sub-agent | 每个 sub-agent 只看自己模块，主 agent 只做合并 |
+
+**Sub-agent 调度协议**（M > 3 时必须遵守）：
+
+1. 在调度前先把 `final_cases.json` 按 module 分组，统计每个模块涉及的代码文件清单（可从 cases 的 `module` 字段或 `steps` 关键词推断）
+2. **单条消息**发 M 个 Task 调用：每个 Task 的 prompt 严格按 `agents/requirement-traceability/case-tracer.md` 模板填充：
+   - 模块名 `{M}`
+   - 该模块的 cases 子集
+   - 该模块涉及的 diff 文件路径清单
+   - 输出落盘路径：`$TEST_WORKSPACE/forward_verification.{M}.json`
+3. **每个 sub-agent 必须自校验**：用 `metersphere_helper.py validate-fv $TEST_WORKSPACE/forward_verification.{M}.json` 校验通过才能返回；不通过 sub-agent 内部修复重试
+4. 所有 sub-agent 完成后，主 agent 合并所有 `forward_verification.{M}.json` → `forward_verification.json`，再统一跑 4.6a 校验
+
+**降级路径**：任一 sub-agent 多次校验失败仍无法产出合规 fv → 主 agent 接管该模块的内联追踪（走 3.2.1）。**绝不允许跳过该模块的 cases**。
+
 #### 3.2.0 可追踪性评估（前置硬规则）
 
 对每条用例，在追踪前先评估代码路径的**静态可追踪性**。命中以下任一条件 → 直接标记 `inconclusive`，不进入下方追踪流程：
@@ -187,12 +213,42 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
    - `code_location`：array of `file:line` 或 `file:start-end`，**文件必须存在、行号必须在文件长度内**（schema 校验时会查）
    - `verification_logic`：为什么从这段代码能推出 pass/fail 的论证（让另一个人/AI 只看 evidence 就能复算）
    - `considered_failure_modes`：对抗式自检——列出考虑过但被排除的失败模式（pass + conf≥85 必填，fail 选填）
-5. **「假装这条会 fail」自检清单**（仅 `pass` 必须过一遍，任一答"是"且 evidence 没体现 → conf 上限 80 + 必须填 `external_dependencies`）：
+5. **「假装这条会 fail」自检清单**（仅 `pass` 必须过一遍，任一答"是"且 evidence 没体现 → conf 上限 80）：
    - [ ] 涉及空/null/边界条件？代码有防护吗？
    - [ ] 异步/回调追到完成态了吗？
    - [ ] mock 数据 vs 真实数据区分清楚了吗？
    - [ ] feature flag / 配置项默认是开的吗？
    - [ ] 依赖 server / device / 三方行为吗？默认值是验证过的还是假设的？
+
+   **CRITICAL — external_dependencies 强约束**（P12 教训）：
+
+   只要本条 pass 的判定理由涉及任意外部因素（真机 UI 渲染、server 实际返回、第三方 SDK 行为、framework 默认实现、用户操作、特定测试数据、时序等）→ **必须**在 fv 的 `external_dependencies.types` 数组里**结构化填上对应类型**（`device` / `server` / `third_party` / `framework_default` / `user_action` / `data_state` / `timing`），不能只在 `trace` 字段或 MS comment 里写自然语言。
+
+   理由：下游 `writeback-from-fv` 的 P6 状态映射只看 `external_dependencies.types`：非空 → 自动降级 MS Prepare + 自动汇总进 `pass_with_caveats.md` / `pending_external_validation.md`。如果只写 trace 或 comment，**降级不会触发，caveats 报告会是空，QA 漏掉回归**——这正是 v0.0.16 后第一次实战在 TAP-6841255319 上踩的坑：手写 comment 标了 `external_deps=server,device`，但 fv.external_dependencies.types 是空的，11 条 case 全部错标 Pass。
+
+   **反例 vs 正例**：
+
+   ```jsonc
+   // ❌ 错：依赖外部因素的信息只写在 trace 自然语言里
+   {
+     "result": "pass", "confidence": 85,
+     "trace": "登录后展示 Avatar — 实际渲染需真机验证",
+     "evidence": {...},
+     // external_dependencies 缺失 → 下游错标 MS Pass
+   }
+
+   // ✅ 对：结构化标进 external_dependencies.types
+   {
+     "result": "pass", "confidence": 85,
+     "trace": "登录后展示 Avatar",
+     "evidence": {...},
+     "external_dependencies": {
+       "types": ["device"],
+       "notes": "Avatar 圆角 + 阴影需真机渲染验证"
+     }
+     // → 下游降级 MS Prepare + 进 pending_external_validation.md
+   }
+   ```
 6. **评估置信度**（评分锚点；schema 会拒绝 pass + conf<70）：
 
    | conf 区间 | 含义 |
