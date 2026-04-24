@@ -110,31 +110,29 @@ python3 $SKILLS_ROOT/shared-tools/scripts/metersphere_helper.py \
 - `source_cases_file.sha256`：用于 `lookup-plan-case` 校验 mapping 与当前 cases 是否一致；不一致 → stale_mapping
 - `entries[].module_path`：MS 模块完整路径，便于人工定位
 
-**错误处理**：
+**错误处理**（详见 [Recovery Cookbook](../../_shared/RECOVERY.md#6-r-icimport-cases-失败)）：
 
-- **schema 校验失败**（用例文件不符合 CONVENTIONS）→ 脚本 `exit 2`，stderr 是结构化 JSON `{type: validation, errors: [...], hint}`。AI 必须按指引修正用例文件后重新执行，**不可跳过**
-- **同模块重名** → 同上 exit 2，stderr 含 `duplicates` 字段列出冲突
-- **MS API 调用失败**（网络/重名等）→ 单条跳过记进 `failed_details`，不中断剩余用例导入
-- **顶层不是 JSON 数组**（如 `{cases:[...]}` 包裹）→ 同 schema 失败 exit 2
+| 错误 | R-code |
+| --- | --- |
+| schema 校验失败 / 顶层非数组 | [R-IC-2](../../_shared/RECOVERY.md#r-ic-2--schema-校验失败) |
+| 同模块重名 | [R-IC-1](../../_shared/RECOVERY.md#r-ic-1--同模块内重名) |
+| MS API 单条失败 | 记进 `failed_details`，不中断（无需 R-code，正常行为）|
 
-常见 schema 错误及修复方式见 [CONVENTIONS.md#用例-json-格式](../../CONVENTIONS.md#用例-json-格式)。
+常见 schema 错误见 [CONVENTIONS.md#用例-json-格式](../../CONVENTIONS.md#用例-json-格式)。
 
 ### 2.3 mapping 维护命令
 
-如果 mapping 与 cases 漂移（MS 端有人手工改、cases 文件被局部更新等），用以下命令处理：
+mapping 与 cases 漂移时（MS 端手工改 / cases 文件被局部更新）：
 
 ```bash
 # 查看差异（不修改文件）
 python3 $HELPER refresh-mapping --mapping-path PATH --cases-path final_cases.json
 
-# 自动清理 stale 条目，并提示要重 import 的 missing 条目
+# 自动清理 stale 条目
 python3 $HELPER refresh-mapping --mapping-path PATH --cases-path final_cases.json --apply
 ```
 
-输出三类差异：
-- `missing_in_mapping`：cases 里有但 mapping 里没有 → 需要重跑 mode=sync 来 import
-- `stale_in_mapping`：mapping 里有但 cases 里没有 → `--apply` 时自动清理
-- `extra_in_ms`：MS 端独立加的（PM 手工补的）→ 永不动，由人工域处理
+差异处理见 [R-RM-1（missing_in_mapping）](../../_shared/RECOVERY.md#r-rm-1--missing_in_mapping) / [R-RM-2（stale_in_mapping）](../../_shared/RECOVERY.md#r-rm-2--stale_in_mapping)。`extra_in_ms`（MS 端独立加的）永不动。
 
 ### 2.4 跨 plan 切换 / 重 import 后的 mapping 重建（P11 教训）
 
@@ -164,44 +162,13 @@ python3 $HELPER rebuild-mapping --plan-id <new_plan_id> --cases-path final_cases
 }
 ```
 
-**异常处理**：
-- `ambiguous_titles` 非空 → exit 1，**mapping 不落盘**。title 撞名时 rebuild 不能拍脑袋选一个；要么改 case title 消歧，要么手工编辑 mapping
-- `unmatched_local` 非空 → exit 1，**mapping 已落盘**（仅含 matched 条目）。提示用户先跑 `add-cases-to-plan` 把缺的关联进去
-- `unmatched_in_plan` 非空 → 这些是 PM 手工加的或别的来源，与本 cases 无关，跳过
+**异常处理**（详见 [Recovery Cookbook](../../_shared/RECOVERY.md#4-r-rbrebuild-mapping-失败)）：
 
-#### 2.4.1 unmatched_local 修复小循环（D6）
-
-```
-              ┌─ rebuild-mapping ─┐
-              │   exit 1          │
-              │   unmatched_local │
-              │   = [TC-09, TC-12]│
-              └────────┬──────────┘
-                       │
-                       ▼
-        从 mapping 不到 ms_id —— TC-09/12 还没在 plan 里
-                       │
-                       ▼
-            ┌─── 检查这些 case 是否已在 MS 用例库 ───┐
-            │                                        │
-            ▼                                        ▼
-   已在用例库（曾 import 过）              不在用例库（漏 import）
-            │                                        │
-            ▼                                        ▼
-   add-cases-to-plan <plan_id>              先跑 mode=sync 重 import
-   --case-ids <ms_id1>,<ms_id2>             （会同时 add 到当前 plan）
-            │                                        │
-            └──────────────┬─────────────────────────┘
-                           │
-                           ▼
-                   重跑 rebuild-mapping
-                           │
-                           ▼
-                     unmatched_local 应为空
-                     mapping 完整，回到 traceability writeback
-```
-
-**关键判断点**：用 `lookup-plan-case --plan-id X --case-id <local_id>` 试一下；如返回 `not_found` 但能在 list-modules 里搜到这条 case → 用例库有但 plan 没关联 → 走 add-cases-to-plan；list-modules 也搜不到 → 走 mode=sync 重 import。
+| 输出字段非空 | R-code |
+| --- | --- |
+| `ambiguous_titles` | [R-RB-1](../../_shared/RECOVERY.md#r-rb-1--ambiguous_titles) |
+| `unmatched_local` | [R-RB-2](../../_shared/RECOVERY.md#r-rb-2--unmatched_localD6-修复小循环)（含修复诊断流程图）|
+| `unmatched_in_plan` | [R-RB-3](../../_shared/RECOVERY.md#r-rb-3--unmatched_in_plan) |
 
 ---
 

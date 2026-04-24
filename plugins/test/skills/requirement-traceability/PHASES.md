@@ -193,15 +193,15 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 3. **每个 sub-agent 必须自校验**：用 `metersphere_helper.py validate-fv $TEST_WORKSPACE/forward_verification.{M}.json` 校验通过才能返回；不通过 sub-agent 内部修复重试
 4. 所有 sub-agent 完成后，主 agent 合并所有 `forward_verification.{M}.json` → `forward_verification.json`，再统一跑 4.6a 校验
 
-**降级路径**：
+**降级路径**（详见 [Recovery Cookbook §R-32](../_shared/RECOVERY.md#9-r-32phase-32dispatch-sub-agent-失败d5)）：
 
-| 失败场景 | 处理 |
+| 失败场景 | R-code |
 | --- | --- |
-| **D5a — Task 工具不可用 / 全部 sub-agent 启动失败** | 直接退回 M ≤ 3 路径——主 agent 顺序内联跑完所有模块的 3.2.1。在 chat 输出标记 `subagent_dispatch_failed: true` |
-| **某个 sub-agent 多次校验失败仍无法产出合规 fv** | 主 agent 接管该模块的内联追踪（走 3.2.1）。其他 sub-agent 不受影响 |
-| **某个 sub-agent 长时间无返回（卡死）** | 由 Task 工具的超时机制兜底；超时后等同上一行处理 |
+| Task 工具不可用 / 全部 sub-agent 启动失败 | [R-32-1](../_shared/RECOVERY.md#r-32-1--task-工具不可用--全部-sub-agent-启动失败) |
+| 单 sub-agent 多次校验失败 | [R-32-2](../_shared/RECOVERY.md#r-32-2--单-sub-agent-持续校验失败) |
+| sub-agent 超时 | [R-32-3](../_shared/RECOVERY.md#r-32-3--sub-agent-超时) |
 
-**绝不允许**「sub-agent 失败 → 跳过该模块的 cases」。所有 case 必须有 fv 条目（最低限 inconclusive）。
+**硬约束**：sub-agent 失败**绝不允许**跳过该模块的 cases。所有 case 必须有 fv 条目（最低限 inconclusive）。
 
 #### 3.2.0 可追踪性评估（前置硬规则）
 
@@ -616,21 +616,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/github_helper.py pr-detail <owner/repo
 }
 ```
 
-**`source: "synthesized_from_coverage_report"` 字段是兜底版的硬约束标记**——schema 校验把它当作 evidence 缺失的唯一豁免凭证。**写每一条兜底记录时都不能漏**。下游 metersphere-sync 在 Phase 4.4 看到该字段时，回写评论中追加"AI 回溯（降级判定，无用例级粒度）"以提示人工后续复核。
-
-#### 4.6 自校验清单（CRITICAL，写完合成 fv 后必跑）
-
-合成完毕、落盘前**逐条 assert**：
-
-- [ ] 每条记录都有 `source: "synthesized_from_coverage_report"`（漏写 → 4.6a 校验直接 stop，无恢复路径）
-- [ ] `case_id` 形如 `FORWARD-TRACER-FP-{N}`
-- [ ] `requirement_id` 形如 `FP-{N}`
-- [ ] `result` ∈ `{pass, fail, inconclusive}`
-- [ ] `confidence` 是 number（pass 不能 < 70；schema 会拒）
-- [ ] `inconclusive` 必须带 `inconclusive_reason`（取 `external_dependency` 或 `insufficient_context` 兜底）
-- [ ] `trace` 字段非空（兜底说明文案）
-
-> **D2 教训防御**：本节列出的字段**全部硬约束**，少一个就让整个 skill 在 4.6a stop。落盘前用 jq / grep 自查比走到 4.6a 才发现错误便宜得多。
+**`source` 字段是兜底版的硬约束标记**——schema 校验把它当作 evidence 缺失的唯一豁免凭证。**写每一条兜底记录时都不能漏**（详见 [R-46-1](../_shared/RECOVERY.md#r-46-1--漏-source-字段d2) 自校验清单）。下游 metersphere-sync Phase 4.4 看到该字段时，回写评论追加"AI 回溯（降级判定，无用例级粒度）"。
 
 > **定位提醒**：4.6 是 last-resort 救命，不应承担 precondition 缺失或 3.2 跑偏的责任。**正常路径不应该走到 4.6**。如果反复走到这里，说明 3.2 有 bug，回归 3.2 修。
 
@@ -646,52 +632,21 @@ python3 $SKILLS_ROOT/shared-tools/scripts/metersphere_helper.py \
 - 校验通过（exit 0）→ 继续 4.7 / Phase 5
 - 校验失败（exit 2）→ stderr 是结构化 `{type: validation, errors: [{path, message}]}`，**stop**
 
-#### 4.6a 失败的诊断分流
+**异常处理**（详见 [Recovery Cookbook](../_shared/RECOVERY.md#2-r-vfvvalidate-fv-校验失败)）：
 
-按 `errors[].schema_path` 或 `errors[].message` 关键词分流处理建议：
+| 错误特征 | R-code |
+| --- | --- |
+| pass 缺 evidence | [R-VFV-1](../_shared/RECOVERY.md#r-vfv-1--pass-缺-evidence) |
+| code_location 文件不存在 | [R-VFV-2](../_shared/RECOVERY.md#r-vfv-2--code_location-文件不存在) |
+| pass + conf < 70 | [R-VFV-3](../_shared/RECOVERY.md#r-vfv-3--pass--conf--70) |
+| fail 缺 actual / evidence | [R-VFV-4](../_shared/RECOVERY.md#r-vfv-4--fail-缺-actual-或-evidence) |
+| pass + conf≥85 缺 considered_failure_modes | [R-VFV-5](../_shared/RECOVERY.md#r-vfv-5--pass--conf85-缺-considered_failure_modes) |
+| external_dependencies.types enum 越界 | [R-VFV-6](../_shared/RECOVERY.md#r-vfv-6--external_dependenciestypes-enum-越界) |
+| 4.6 兜底漏 source 字段 | [R-46-1](../_shared/RECOVERY.md#r-46-1--漏-source-字段d2) |
 
-| 错误特征 | 根因 | 修复 |
-| --- | --- | --- |
-| `pass` 但缺 `evidence` | 3.2.1 没填 evidence | 回归 3.2.1，按 step 4 给每条 pass 写 evidence 三件套 |
-| `evidence.code_location[X]: 文件不存在` | code_location 拼错 / 文件被删 / 改了路径 | 检查文件路径；如果路径变了，更新 code_location；如果文件确实没了，trace 改 inconclusive |
-| `pass` + `conf < 70` | 评分锚点没遵守 | 降为 inconclusive 或补强证据让 conf 升到 ≥ 70 |
-| `fail` 缺 `actual` 或 `evidence` | 3.2.1 没填完整 | 回归 3.2.1，fail 必须带 actual + evidence |
-| `pass + conf>=85` 缺 `considered_failure_modes` | 高 conf pass 未做对抗式自检 | 回归 3.2.1 step 4，加 considered_failure_modes 至少 1 条 |
-| 4.6 兜底产物缺 `source` | D2 — 4.6 漏写 source 字段 | 检查 4.6 自校验清单，补全 `source: synthesized_from_coverage_report` 重新落盘 |
-| `external_dependencies.types` 越界 enum | typo（写了 `Device` 而非 `device`）| 改成 schema 允许的 enum 值（device/server/third_party/...）|
+**STOP 时的产物处置**（应用 P-CARRY-FORWARD pattern）：4.6a 失败时**前 4 个 phase 的产物仍可用**，chat 必须输出「已落盘清单 + 中断说明 + 三条修复路径」。详见 [R-VFV-STOP](../_shared/RECOVERY.md#r-vfv-stop--46a-失败时的产物处置应用-p-carry-forward)。
 
-#### D11 — 4.6a 失败不丢前序产物
-
-> **重要**：4.6a 失败 stop 时，**前 4 个 phase 的产物已经落盘且仍然有效**。skill stop 不等于这些产物作废。
-
-stop 时 chat 必须输出两段：
-
-**(A) 已可用的产物清单**：
-
-```
-✅ 已落盘且仍可用：
-  - $TEST_WORKSPACE/traceability_matrix.json
-  - $TEST_WORKSPACE/traceability_coverage_report.json
-  - $TEST_WORKSPACE/risk_assessment.json
-  - $TEST_WORKSPACE/code_analysis.md
-  - $TEST_WORKSPACE/api_contract_report.json (如有)
-  - $TEST_WORKSPACE/ui_fidelity_report.json (如有)
-```
-
-**(B) Phase 4.7 + 5 + 6 已被中断的解释**：
-
-```
-⛔ Phase 4.7 / 5 / 6 已中断，因为 fv 校验失败。fv 字段错误：
-  - {errors[0].path}: {errors[0].message}
-  - {errors[1].path}: ...
-
-修复后重跑本 skill：
-  - 如错误来自 3.2 用例追踪 → fv 修好后从 4.6a 重跑（前 4 个 phase 不重复跑）
-  - 如错误来自 4.6 兜底合成 → 检查 4.6 自校验清单是否漏字段
-  - 如不想修 fv 也不需要 writeback → 把 fv.json 删掉重跑 mode=traceability，writeback 会被 6.1.b 软警告 skip，coverage 报告仍正常出
-```
-
-绝不允许「校验失败但带 bug fv 跑下去污染 MS plan」。但也绝不让 4.6a 失败显得像「整个 skill 跑废了」——前 4 个 phase 的产物是有价值的。
+绝不允许「校验失败但带 bug fv 跑下去污染 MS plan」。
 
 ### 4.7 高 conf fail 复核（标准模式）
 
@@ -720,41 +675,16 @@ Evidence:
        evidence.human_override 记录（evidence 其余字段可保留）
 ```
 
-#### 4.7.1 不可解析回答的兜底（D1 防御）
+**改判后的处理**：被改判的条目（B/C）在 evidence 加 `human_override: {from, to, reason}` 字段，整轮 4.7 跑完后**重跑 4.6a validate-fv** 确认 schema 仍合规。
 
-用户可能回 "嗯/随便/等等" / 给非 ABC 内容 / 给多选 / 完全不相关的话。**绝不允许死循环或静默继续**。
+**异常处理**（详见 [Recovery Cookbook](../_shared/RECOVERY.md)）：
 
-| 场景 | 处理 |
+| 场景 | R-code |
 | --- | --- |
-| 用户明确选 A/B/C | 按上面表执行（A 不写 human_override；B/C 按 4.7.2 写 human_override） |
-| 用户回复中**包含明确终止意图**（"算了" / "停" / "跳过" / "不改" / "维持原判"） | 视为 A 处理，**不写 human_override**（fv 保持原状）|
-| 用户回复**不可解析或与本 case 无关** | **再发起一次 AskUserQuestion 澄清**，prompt 多加一行「上次回复无法识别为 A/B/C，请明确选项」。最多 1 次 |
-| 澄清后仍不可解析 | 默认走 A（保持 fail），**不写 human_override**（fv 保持原状）。在 chat 输出汇总时单独列出本 case_id + 标 "ambiguous_response, kept as fail"，提示用户后续可手工 review。**继续处理下一条 fail**，不阻塞流程 |
+| 用户回复不明确 / 不可解析 | [R-AQ-1](../_shared/RECOVERY.md#r-aq-1--phase-47-用户回复不明确d1) |
+| 选 B 后 schema 失败（缺 verification_logic 等） | [R-AQ-2](../_shared/RECOVERY.md#r-aq-2--phase-47-选-b-后-schema-失败d1) |
 
-> **设计原则**：4.7 是质量加固关，不是质量门——卡住主流程比错放一个 false positive 危害更大。默认保持 AI 原判更安全（fail 进 MS Failure 让 QA 二次审）。
->
-> **为什么 A / 不可解析都不写 human_override**：human_override 语义是「人工改判过」，from=fail 又 to=fail 不算改判；schema 允许但语义混乱。不写 human_override 时，audit 走 chat 输出 + Phase 6 摘要列单独的 ambiguous-list（不入 fv）。
-
-#### 4.7.2 改判后的处理
-
-被改判的条目，写回 fv.json，并在 `evidence.human_override` 里记录：
-
-```json
-"evidence": {
-  ...原字段...,
-  "human_override": {
-    "from": "fail",
-    "to": "pass",
-    "reason": "PM 复核：网络错误文案在 TapNetwork 兜底下不会为空"
-  }
-}
-```
-
-复核改写完后**重跑一次 4.6a 的 schema 校验**确认仍合法。如果改判后 schema 失败（例如选 B 但没补全 verification_logic / considered_failure_modes）：
-
-1. 给用户报错：「改判 case {case_id} 后 schema 校验失败：{字段缺失列表}」
-2. 再发起一次 AskUserQuestion，让用户补齐字段（最多 1 次）
-3. 仍不合规 → **撤销本次改判**，恢复原 fail 状态，记 `human_override.reason: "override_failed_validation"`，`from=fail, to=fail`
+> **设计原则**：4.7 是质量加固关，不是质量门——默认保持 AI 原判更安全（fail 进 MS Failure 让 QA 二次审）。
 
 ### 5S.1 缺陷提取与优先级判定（仅 smoke-test 模式）
 
@@ -1000,73 +930,28 @@ helper 内部完成：
    - `forward_verification.enriched.json` — 原 fv + 回写后的 ms_id（下次跑可跳过 lookup）
    - `pass_with_caveats.md` + `pending_external_validation.md` — 给 QA 的人话清单
 
-### 6.3 完成校验 + 摘要文案分支（D7）
+### 6.3 完成校验 + chat 摘要
 
 1. 确认 `$TEST_WORKSPACE/ms_sync_report.json` 已生成且非空
-2. 从 `summary.by_target_status` 提取 Pass/Prepare/Failure 三个数字 + 从 fv 统计 inconclusive 与 ext_deps 数量
-3. 按情形分支输出 chat 摘要：
+2. 从 `summary.by_target_status` 提取 Pass/Prepare/Failure；从 fv 统计 inconclusive_reason 分组
+3. **按情形选 chat 模板**（详见 [Recovery Cookbook](../_shared/RECOVERY.md)）：
 
-#### 常态摘要（Pass 或 Failure 占多数）
-
-```
-MS 测试计划回写完成：
-- Pass：33 条（AI 静态验证通过且无外部依赖）
-- Prepare：13 条（11 条带外部依赖待回归 + 2 条 inconclusive）
-- Failure：0 条
-- 测试计划：<plan_url>
-- 待回归清单：$TEST_WORKSPACE/pending_external_validation.md
-```
-
-#### 全 Prepare / 全 inconclusive 警示摘要（D7 防御）
-
-当 `by_target_status.Pass == 0 && by_target_status.Failure == 0`（即所有 case 都映射到 Prepare），主 agent **必须**在摘要顶部加显眼警示：
-
-```
-⚠️ AI 本次未能验证任何 case（全部判定 inconclusive 或依赖外部因素）
-
-可能原因：
-  - 代码可读性不足（diff-only 模式 + 调用链过深 / 动态分派 / 跨服务）
-  - 用例输入质量低（final_cases.json 描述太抽象，无法对应具体代码路径）
-  - 大部分 pass 自检后被识别为依赖真机/server，全部降级 Prepare
-
-建议：
-  - QA 须把全部 {N} 条 case 视为「待人工执行」，不能默认 AI 减负
-  - 若担心 AI 完全失能，用 `requirement_doc_link` 重跑本 skill 提供需求文档辅助追踪
-  - 全 inconclusive 通常意味着 fv 的 inconclusive_reason 字段集中在 1-2 类，可针对性补充上下文
-
-详情：$TEST_WORKSPACE/forward_verification.json，按 inconclusive_reason 分组：
-  - external_dependency: {n1} 条
-  - call_depth_exceeded: {n2} 条
-  - dynamic_dispatch: {n3} 条
-  - ...
-
-测试计划：<plan_url>
-```
-
-#### writeback 被跳过的摘要
-
-当 6.1 step 3 的 ms_plan_info.json 缺失导致 Phase 6 被 skip，输出：
-
-```
-ℹ️ Phase 6 writeback 已跳过：ms_plan_info.json 不存在
-
-fv.json 已落盘，可后续补跑：
-  1. 跑 `metersphere-sync mode=sync` 完成 import + 创建测试计划
-  2. 重跑本 skill（fv 会被复用，不会重复跑 3.x/4.x）
-
-或如果不需要 writeback，本次产物已完整：
-  - traceability_matrix.json
-  - traceability_coverage_report.json
-  - risk_assessment.json
-  - forward_verification.json
-```
+| 情形 | 模板 |
+| --- | --- |
+| 常态（Pass 或 Failure 占多数） | [R-P6-NORMAL](../_shared/RECOVERY.md#r-p6-normal--phase-63-常态摘要模板) |
+| `by_target_status.Pass == 0 && Failure == 0`（全 Prepare） | [R-P6-3](../_shared/RECOVERY.md#r-p6-3--fv-全-inconclusive-警示摘要d7) |
+| Phase 6 被 6.1.b 优雅 skip | [R-P6-1](../_shared/RECOVERY.md#r-p6-1--missing-ms_case_mappingd10) 或 [R-P6-2](../_shared/RECOVERY.md#r-p6-2--missing-ms_plan_infod3) |
 
 ### 6.4 失败处理
 
-- helper 调用 exit code != 0 → stderr 是结构化 JSON，按 `type` 处理：
-  - `type: precondition_failed` / `not_found` （mapping 缺失等）→ 提示用户跑 `metersphere-sync mode=sync` 或 `refresh-mapping`
-  - `type: stale_mapping` → 提示用户跑 `refresh-mapping --diff-only` 看差异
-  - `type: validation` → fv 不合规，回归 4.6a 修
-  - `type: api_error` 不可重试 → 透传错误给用户，标记本阶段 `failed`，但不影响 4. output 已经落地的主产出
-  - `type: network` 可重试 → helper 已内部重试 1 次，再失败说明问题持续，让用户检查网络
-- writeback report.failed 非空 → exit 1。失败的 case 在 `ms_sync_report.json.failed[]` 里逐条列出原因，可针对性重跑 lookup 诊断
+helper 调用 exit code != 0 → stderr 是结构化 JSON，按 `type` 走 [Recovery Cookbook](../_shared/RECOVERY.md)：
+
+| stderr.type | R-code |
+| --- | --- |
+| `precondition_failed` / `not_found`（mapping/plan_info 缺失） | [R-P6-1 / R-P6-2](../_shared/RECOVERY.md#10-r-p6phase-6-整段优雅-skip应用-p-skip-phase) |
+| `stale_mapping` | [R-PRE-2](../_shared/RECOVERY.md#r-pre-2--mapping-sha-不一致硬阻断) |
+| `validation`（fv 不合规） | [R-VFV-* + R-VFV-STOP](../_shared/RECOVERY.md#2-r-vfvvalidate-fv-校验失败) |
+| `api_error` 不可重试 | [R-WB-3](../_shared/RECOVERY.md#r-wb-3--api_error-不可重试) |
+| `network` 可重试 | [R-WB-4](../_shared/RECOVERY.md#r-wb-4--network-持续失败) |
+
+writeback report.failed 非空 → exit 1。失败的 case 在 `ms_sync_report.json.failed[]` 里逐条列出 `error_type`，按上表分流。
