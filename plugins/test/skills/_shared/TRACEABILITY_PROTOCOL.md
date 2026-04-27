@@ -13,9 +13,9 @@ requirement-traceability 采用双通道追溯：
 
 **正向通道**用具体的测试用例作为中介——AI 拿用例的"操作步骤 + 预期结果"逐条对照代码推理"代码是否真能实现这条用例"。按优先级消费：① 上游 `final_cases.json`（test-case-generation 产出）→ ② `requirement_points.json` 的 `acceptance_criteria` → ③ 兜底从需求描述提取。详见 [requirement-traceability/PHASES.md](../requirement-traceability/PHASES.md) 3.1-3.2 节。
 
-**反向通道**保持 reverse-tracer Agent 模式，从代码变更出发寻找需求对应。
+**反向通道**主 agent 内联完成（v0.0.16 起不再调 Task sub-agent，详见 `requirement-traceability/PHASES.md` 3.3）：从代码变更出发寻找需求对应，结果直接写进 `code_analysis.md` 的「reverse-tracer 输出（主 agent 内联）」节。
 
-两个通道并行启动，结果在 output 阶段合并。
+两个通道由主 agent 顺序执行（先正向，再反向），结果在 output 阶段交叉验证。
 
 > v0.0.7 起合并 verification-test-generation 能力到 traceability 内嵌步骤，不再独立生成中间验证用例文件。
 
@@ -113,32 +113,76 @@ AI 分类标准：
 
 **降级**：页面不可访问时 → structural-only 模式（仅对比设计数据 vs 代码样式定义，跳过截图对比）。
 
-## forward_verification.json 格式
+## forward_verification.json 格式（v2）
 
-requirement-traceability 正向通道（用例中介验证）的产出。每条记录对应一条用例的代码追踪结果：
+requirement-traceability 正向通道的产出。**权威 schema 在 `_shared/schemas/forward_verification.schema.json`**，本节是人话说明，schema 与本节冲突时以 schema 为准。
 
 ```json
 [
   {
     "case_id": "M1-TC-01",
     "requirement_id": "FP-1",
-    "result": "pass | fail | inconclusive",
-    "confidence": 85,
+    "requirement_name": "网络失败时弹 toast",
+    "result": "pass",
+    "confidence": 90,
     "trace": "applyCoupon(100, 50) -> min(coupon, order) -> 50 == expected 50 ✓",
-    "expected": "<用例 expected 原文摘录>",
-    "actual": "<代码追踪推断的实际行为>",
-    "inconclusive_reason": "call_depth_exceeded | dynamic_dispatch | external_dependency | insufficient_context | complex_logic | null"
+    "expected": "网络失败时弹 toast 提示",
+    "evidence": {
+      "code_location": ["src/Network.swift:87", "src/Toast.swift:142-150"],
+      "verification_logic": "Network.swift:87 在 catch 分支调 ToastCenter.show(errorMsg)；errorMsg 由 TapNetwork.swift:33 兜底为非空。",
+      "considered_failure_modes": [
+        {"mode": "errorMsg 为空字符串", "ruled_out_by": "TapNetwork.swift:33 默认值兜底"}
+      ]
+    },
+    "external_dependencies": {
+      "types": [],
+      "notes": ""
+    }
   }
 ]
 ```
 
+### 字段定义
+
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `case_id` | string | 是 | 用例编号。来自上游 `final_cases.json`（如 `M1-TC-01`）；降级路径（forward-tracer 模式）形如 `FORWARD-TRACER-FP-1` |
-| `requirement_id` | string | 是 | 对应的需求功能点编号（FP- 前缀） |
-| `result` | string | 是 | pass / fail / inconclusive |
-| `confidence` | number \| null | 是 | 0-100 置信度；降级模式（无代码可验证）时为 `null`，含义见「量化置信度评分」 |
+| `case_id` | string | 是 | 用例编号。来自上游 `final_cases.json`（如 `M1-TC-01`）；降级路径形如 `FORWARD-TRACER-FP-1` |
+| `requirement_id` | string | 是 | 对应需求功能点编号（FP- 前缀） |
+| `requirement_name` | string | 否 | 需求点名称（用于 caveats 报告展示） |
+| `result` | enum | 是 | `pass` / `fail` / `inconclusive` |
+| `confidence` | number \| null | 是 | 0-100 置信度；降级模式（无代码可验证）时为 `null`。**pass 且 conf<70 schema 拒绝**（强制降为 inconclusive） |
 | `trace` | string | 否 | 代码追踪路径（调用链格式） |
 | `expected` | string | 否 | 用例 expected 原文摘录 |
-| `actual` | string | 否 | 代码追踪推断的实际行为（fail 时必填） |
-| `inconclusive_reason` | string \| null | 否 | inconclusive 时必填，取值见 traceability/PHASES.md 3.2.0 节 |
+| `actual` | string | fail 必填 | 代码追踪推断的实际行为 |
+| `inconclusive_reason` | enum | inconclusive 必填 | `call_depth_exceeded` / `dynamic_dispatch` / `external_dependency` / `insufficient_context` / `complex_logic` |
+| `evidence` | object | **pass / fail 必填** | 见下 |
+| `external_dependencies` | object | 否（pass 但需外部验证时必填） | 见下；下游 P6 状态映射会把非空 types 的 pass 降为 MS Prepare |
+| `source` | string | 否 | 兜底标记，例如 `synthesized_from_coverage_report` |
+| `ms_id` | string | 否 | MeterSphere 用例 UUID。由 P3 writeback 在 lookup 后回写进 `forward_verification.enriched.json`，下次跑 writeback 可跳过 lookup |
+
+### evidence 子字段
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `code_location` | string[] | 是 | array of `file:line` 或 `file:start-end`；**文件必须存在、行号必须在文件内**（schema 校验 + boundary 校验都查） |
+| `verification_logic` | string | 是 | 为什么从这段代码能推出 pass/fail 的论证。让另一个人/AI 只看 evidence 就能复算 |
+| `considered_failure_modes` | array | pass+conf≥85 必填 | 对抗式自检：列出考虑过但被排除的失败模式。每条 `{mode, ruled_out_by}` |
+| `human_override` | object | 否 | Phase 4.7 fail 复核被人工改判时的审计字段。`{from, to, reason}` |
+
+### external_dependencies 子字段
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `types` | enum[] | 是（external_dependencies 出现时） | 取值：`device` / `server` / `third_party` / `framework_default` / `user_action` / `data_state` / `timing` |
+| `notes` | string | 否 | 自由文本补充 |
+
+### 校验
+
+落盘后强制跑：
+
+```bash
+python3 $SKILLS_ROOT/shared-tools/scripts/metersphere_helper.py \
+  validate-fv $TEST_WORKSPACE/forward_verification.json
+```
+
+失败 → exit 2 + structured stderr，**不允许带 bug fv 跑下去**。详见 `requirement-traceability/PHASES.md` 4.6a。

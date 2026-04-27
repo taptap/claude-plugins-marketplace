@@ -268,6 +268,64 @@ python3 $SKILLS_ROOT/shared-tools/scripts/fetch_feishu_doc.py \
 
 契约草案暂存在内存中，待 consolidate 阶段写入 `implementation_brief.json` 的 `api_contracts` 字段。
 
+### 3.2.5 PRD 文档质量校对（必做）
+
+12 维度功能点分析完成后、进入渐进式确认之前，对 PRD 文档**文本本身**做一次校对，按 [REQUIREMENT_DIMENSIONS.md 附加项](../_shared/REQUIREMENT_DIMENSIONS.md#附加项prd-文档质量校对) 的 5 类检查项执行：错别字 / 术语一致性 / 易读性 / 文案-设计稿一致性 / 数字单位一致性。
+
+执行规则：
+1. 仅基于 PRD 原文判定，每条发现必须含**原文摘录**（用 `『』` 圈出）；找不到原文 = 不写这条
+2. 所有发现先在内存中暂存，按 `severity` 区分后续处理：
+   - `blocking`（错别字、数字单位歧义、占位符不一致）→ 必须在 3.3 渐进式确认中通过 AskUserQuestion 单独提问（option 提供「按建议修正 / 维持原文 / PM 线下确认」三个元操作，`evidence_tag = derived`，`evidence_ref` 必须包含 PRD 原文摘录）；用户答复后将决策合并到该条的 `resolution` 字段
+   - `concern`（术语漂移、易读性）→ 不主动追问，直接进入 4.1 consolidate 阶段
+3. 4.1 consolidate 阶段把所有发现（含 blocking 决策结果）写入 `clarified_requirements.json` 的 `doc_quality_issues` 数组
+4. 该步骤无条件触发，不允许跳过；若 PRD 完全无文案问题，仍须在 4.1 写入 `doc_quality_issues: []`
+
+`doc_quality_issues` 每条字段：`category`（错别字/术语/易读性/文案一致性/单位）、`evidence`（PRD 原文摘录）、`suggestion`（建议改写或 `null`）、`severity`（`blocking` / `concern`）、`resolution`（仅 blocking 项有值，用户决策原文）。
+
+### 3.2.6 分类变量的正向枚举（必做）
+
+12 维度分析过程中，对每条业务规则、状态流转、交互规则做一道**句式 lint**：禁止使用"例外/否定"句式压缩枚举空间，必须改写为"正向枚举"句式，并把分类变量的所有取值显式登记到 `enum_factors` 数组。
+
+**为什么必做**：例外句式（如「Review 类型不显示『不再通知』」）隐含一个二分塌缩 `通知类型 ∈ {Review, 其他}`，把 N 元枚举折成 2 元，"其他"是个黑洞。开发拿到这条规则可以理解成 `if action == .repost`、`if !isReview`、`if type != .review`，三种实现的边界完全不同 — 必然漏 case。强制正向枚举后，开发只能写 `switch type` 或显式列出全部分类，bug 在写代码那一刻形成不了。真实案例：iOS Review 类型菜单错误展示「不再通知」，根因就是 PRD 用了「Review 不显示」的句式 → RC 照抄 → 端实现错配。
+
+**禁止句式**（命中即 lint fail）：
+- 「X 类型不…」「X 不显示…」「X 不支持…」（针对名词的否定）
+- 「非 X 时…」「除 X 外…」「X 之外的…」「除了 X 都…」
+- 「仅 X 才…」当上下文存在多个分类取值时（隐含"其他不…"）
+
+**必须改写为**：
+1. 先在功能点的 `enum_factors` 数组里登记该分类变量：所有取值 + 取值来源（PRD/设计稿/代码/用户确认）+ 是否闭合
+2. 业务规则正文按"每个取值各自的行为"展开，或显式分组（"前 5 类… / Review …"），让每个枚举值都有明确归属
+
+**执行流程**：
+
+1. **扫描**：对 `business_rules` / `state_transitions[].rules` / `interaction_rules` 中每条文本，匹配上述禁止句式
+2. **识别隐含分类变量**：从命中文本提取被否定的名词（如「Review 不…」→ 变量是 `通知类型`，被否定值是 `Review`）
+3. **查全集**：在已收集的源材料（PRD / 设计稿 / 代码 / 上游 qa_pairs）中检索该变量的全部可能取值
+   - **找到完整列表** → 直接改写规则为正向枚举形式，登记到 `enum_factors`
+   - **只找到部分** → AskUserQuestion 在 3.3 渐进式确认中追问：「`{变量名}` 有哪些取值？我已识别 `[A, B, C]`，是否还有其他类型？」option 提供「就这 N 个 / 还有更多（请列出）/ 是开放集合（默认 X 行为）」三选项
+   - **完全没找到** → 同上追问，但 evidence_ref 标 unknown
+4. **标记开放集**：如果用户确认枚举不闭合（如"未来可能新增类型"），在 `enum_factors[].open_set: true` + 必填 `default_behavior` 字段说明默认分支
+5. **改写后回填**：原 business_rule 文本改写为正向枚举形式，并在 `enum_factors[].covered_by_rules` 反向引用规则索引
+
+**`enum_factors` 字段格式**：
+
+```json
+{
+  "id": "EF-1",
+  "name": "通知类型",
+  "values": ["点赞", "收藏", "回复", "转发", "评论", "Review"],
+  "open_set": false,
+  "default_behavior": null,
+  "source": "PRD §3.2 列举",
+  "covered_by_rules": ["business_rules[2]", "interaction_rules[0]"]
+}
+```
+
+**该步骤无条件触发，不允许跳过**。如果功能点完全不涉及分类变量（纯数值/字符串字段类需求），仍须在 4.1 写入 `enum_factors: []` 显式声明"已检查无枚举"，禁止省略字段。
+
+**与 12 维度的关系**：本步骤是对维度 1（功能边界）+ 维度 2（状态流转）+ 维度 8（交互与 UI 规则）的横切补强 — 三者都涉及分类变量但都不强制枚举展开，本步骤把"展开"作为硬约束。
+
 ### 3.3 渐进式确认
 
 按 SKILL.md 中定义的问题编排策略执行。所有提问**必须**通过调用 AskUserQuestion 工具完成，格式见 CONVENTIONS.md「[AskUserQuestion 交互式提问](../../CONVENTIONS.md#askuserquestion-交互式提问)」。
@@ -322,6 +380,38 @@ python3 $SKILLS_ROOT/shared-tools/scripts/fetch_feishu_doc.py \
 - 按优先级逐维度提问：功能边界 + 平台范围 → 交互与 UI 规则 → 依赖关系（含 API 契约） → 状态流转 → 验收标准 → 异常处理 → 影响范围 → 其他
 - 每次调用 AskUserQuestion 工具控制在 1-4 个问题
 - 每个问题必须提供选项或默认值
+
+**条件触发：多变体一致性追问**（CRITICAL — 类继承 / 父组件级联防御）
+
+进入「交互与 UI 规则」维度提问前，先检查需求是否满足以下任一条件：
+
+1. 在 cell / 列表项 / tab / 子页面 上**新增 UI 元素**（按钮、icon、menu、徽章等）
+2. **修改某个组件的行为**（响应、文案、状态切换、显隐）
+3. 涉及多 tab / 多子页面 / 多列表变体的页面（如「点赞收藏 / 回复转发-收到的/发出的/提到我的」）
+
+满足任一条件 → 必须发起一次专项追问（即使用户没主动提及子 tab 差异）：
+
+```json
+{
+  "questions": [{
+    "question": "{页面/列表名} 的所有 tab / 子页面 / 列表变体是否都需要 {新增的 UI 元素 / 行为}？是否有特定 tab 不应展示？",
+    "header": "多变体一致性",
+    "options": [
+      {"label": "全部适用", "description": "所有 tab / 变体都需要该改动"},
+      {"label": "部分适用", "description": "某些 tab 不该展示，请在回复中列出例外"},
+      {"label": "不确定", "description": "需 PM 与开发对齐每个变体的预期"}
+    ],
+    "multiSelect": false
+  }]
+}
+```
+
+**为什么必跑**：PRD 通常只描述「在 X 列表加 Y 按钮」，不会枚举该列表下所有 tab/变体的差异化行为。开发用类继承实现时，UI 元素往往会**隐式扩散到所有兄弟组件**，造成「发出的 tab 错误展示了不再通知按钮」这类需求-实现错配。澄清阶段主动询问比开发后修复成本低 10 倍。
+
+**回答处理**：
+- 「全部适用」→ 在 functional_points 的 `interaction_rules` 标注「所有变体一致」
+- 「部分适用」→ 在 `interaction_rules` 列出例外清单；下游 test-case-generation 自动为每个例外生成 negative case
+- 「不确定」→ 标记 unconfirmed，进入 `open_questions`，并在 implementation_brief 的对应 task 加 `prerequisite: "PM 拍板各变体差异"` 阻断开发
 
 **末轮（查缺补漏）**：
 - 汇总已知信息让用户确认全貌
@@ -394,9 +484,18 @@ clarify 阶段结束后，**必须立即进入阶段 4: consolidate**。
 
 字段按实际澄清结果填写，未涉及的维度留空数组或 null，不强制填充。
 
+`doc_quality_issues` 字段从 3.2.5 阶段暂存的发现回填，blocking 项需带上用户在 3.3 给出的决策（写入 `resolution` 字段）。无发现时写入空数组 `[]`，**禁止**省略该字段。
+
+`enum_factors` 字段从 3.2.6 阶段的 lint 与改写结果回填到每个功能点。功能点若不涉及分类变量需写入空数组 `[]` 显式声明，**禁止**省略。每条 `enum_factors` 元素须含 `id` / `name` / `values[]` / `open_set` / `source`；`open_set: true` 时必须有非空的 `default_behavior`；`covered_by_rules` 反向引用本功能点中已展开该枚举的规则索引（用于下游 traceability / test-case-generation 做覆盖检查）。
+
+业务规则正文的 lint：consolidate 阶段对每条 `business_rules` / `state_transitions[].rules` / `interaction_rules` 文本最后再扫一次禁止句式（「X 不…」「非 X」「除 X 外」等），命中即视为 3.2.6 未走完，回 3.2.6 重跑而不是直接落盘。
+
 ### 4.2 生成 requirement_points.json
 
 从 clarified_requirements.json 中提取编号功能点清单，附带验收标准和测试关注维度。供下游 test-case-generation 消费。
+
+**必须继承的字段**（不允许在本阶段重新提取或部分继承）：
+- `enum_factors[]` — 完整复制每个功能点的同名数组（仅省略 `covered_by_rules` 反向引用即可，其他字段全部保留）。下游 test-case-generation 与 requirement-traceability 在 lite-pipeline（仅有 `requirement_points.json`、无 `clarified_requirements.json`）下从此字段读取枚举覆盖要求；字段缺失会让 #16h/#16i/#16j 链路在 lite-pipeline 中失效。功能点不涉及分类变量时仍须写 `enum_factors: []` 显式声明，**禁止**省略字段名本身。
 
 ### 4.3 标记未解决问题
 

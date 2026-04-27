@@ -11,7 +11,7 @@
    python3 $SKILLS_ROOT/shared-tools/scripts/metersphere_helper.py ping
    ```
    - 返回 `status: ok` → 继续
-   - 失败 → **停止**，输出错误信息
+   - 失败 → **停止**，输出错误信息（helper 失败 stderr 已是结构化 JSON，参见 SKILL.md「Helper Commands」节）
 
 ### 1.1 输入路由
 
@@ -30,7 +30,27 @@
 
 - `parent_module_id`：优先使用参数值，否则读取 `MS_DEFAULT_NODE_ID` 环境变量
 - `plan_name`：优先使用参数值，否则询问用户提供需求名称
-- `confidence_threshold`：优先使用参数值，否则默认 90
+
+> **已废弃**：`confidence_threshold`（默认 90）。当前 P6 状态映射不再用阈值——pass + ext_deps 非空时直接降级为 Prepare（详见 SKILL.md「P6 状态映射」）。如果传入了这个参数，会被 writeback-from-fv 忽略。
+
+### 1.4 Precondition 校验（CRITICAL，必须执行）
+
+按 mode 走对应表，**任一项不满足直接 stop，输出明确错误信息**。下游 Phase 4 的兜底逻辑只是 last-resort 救命，不应承担 precondition 缺失的责任。
+
+| mode | precondition |
+| --- | --- |
+| sync | `final_cases.json` 存在；schema 合法（顶层 array、每条满足 plugins/test/CONVENTIONS.md#用例-json-格式）；同 `(module, title)` 不重名 |
+| execute | `forward_verification.json` 存在；通过 `validate-fv`；`ms_case_mapping.json` 存在；mapping 的 `source_cases_file.sha256` 与当前 `final_cases.json` 一致 |
+
+execute 模式校验示例：
+
+```bash
+python3 $SKILLS_ROOT/shared-tools/scripts/metersphere_helper.py \
+  validate-fv $TEST_WORKSPACE/forward_verification.json
+# 失败 → exit 2 + stderr {type: validation, errors: [...]}
+```
+
+mapping 不存在或 sha 不匹配 → 提示用户先跑 `refresh-mapping`，**不要**自动重 import。
 
 ---
 
@@ -38,46 +58,117 @@
 
 ### 2.1 导入用例
 
-调用 `import-cases` 一次性完成模块创建和用例导入：
+调用 `import-cases` 一次性完成模块创建、用例导入、**mapping 文件落盘**：
 
 ```bash
 python3 $SKILLS_ROOT/shared-tools/scripts/metersphere_helper.py \
-  import-cases <parent_module_id> <cases_file> [--requirement <需求名>]
+  import-cases <parent_module_id> <cases_file> \
+  [--requirement <需求名>] [--tags 'AI 变更分析'] [--mapping-out PATH]
 ```
 
 - `--requirement`（推荐）：指定需求名称，会先在 `parent_module_id` 下创建需求级父模块，子模块再挂在其下。结构为：`父模块 / 需求名 / 子模块A, 子模块B...`
-- 不指定时，子模块直接挂在 `parent_module_id` 下（向后兼容）
+- `--mapping-out`：mapping 落盘路径，默认 `<cases_file 同目录>/ms_case_mapping.json`
+- 不指定 `--requirement` 时，子模块直接挂在 `parent_module_id` 下
 
 该命令自动：
 - 按用例的 `module` 字段分组
 - 为每个 module 创建子模块（已存在则复用），支持 `/` 分隔的多层路径
-- 逐条导入用例，标签由 `--tags` 参数指定（默认 `AI 用例生成`）
+- **同模块内重名校验**：同 `(module, title)` ≥2 条 → 直接 fail（exit 2），让用例生成阶段消歧。不再做静默 `_2` 后缀
+- 逐条并发导入用例，标签由 `--tags` 参数指定（默认 `AI 用例生成`）
 - 格式转换（后端自动完成，AI 无需手动转换）：`{action, expected}` → `{num, desc, result}`
-- 名称清洗：去除内部标记（AC-1, RP-3）、截断超长名称（250 字）、处理重名
+- 名称清洗：去除内部标记（AC-1, RP-3）、截断超长名称（250 字）
 
-### 2.2 保存映射文件
+> **P12 命名冲突防御**：`import-cases` 还会同时落盘 `ms_import_report.json`（与 mapping 同目录）作为 import 阶段的持久化汇总，**与 writeback 阶段的 `ms_sync_report.json` 是不同文件，永不撞名**。下游消费方按需读：sync 阶段看 `ms_import_report.json`，execute 阶段看 `ms_sync_report.json`。
 
-将 `import-cases` 的 stdout 输出保存为 `ms_case_mapping.json`：
+### 2.2 mapping 文件（v2 格式，由 import-cases 直接落盘）
+
+> **注意**：v2 格式由脚本自动写入，**不要再用 stdout 重定向手工保存**。stdout 现在只输出 summary。
 
 ```json
 {
-  "imported": 28,
-  "failed": 2,
-  "modules_created": 5,
-  "case_mapping": [
-    {"local_id": "M1-TC-01", "ms_id": "uuid-xxx", "module": "登录模块", "name": "..."}
-  ],
-  "metersphere_url": "https://metersphere.tapsvc.com/#/track/case/all/..."
+  "generated_at": "2026-04-23T12:34:56Z",
+  "source_cases_file": {
+    "path": "/abs/path/to/final_cases.json",
+    "sha256": "abc123..."
+  },
+  "ms_project_id": "...",
+  "entries": [
+    {
+      "case_id": "M1-TC-01",
+      "ms_id": "uuid-xxx",
+      "title": "点击 more 按钮弹出菜单面板",
+      "module": "登录模块",
+      "module_path": "/AI 工作流/优惠券/登录模块",
+      "import_status": "created"
+    }
+  ]
 }
 ```
 
-**错误处理**：
+字段说明：
+- `case_id`：v1 字段叫 `local_id`，v2 改名以与下游 fv 字段对齐；fv writeback 用此 ID 查 mapping
+- `source_cases_file.sha256`：用于 `lookup-plan-case` 校验 mapping 与当前 cases 是否一致；不一致 → stale_mapping
+- `entries[].module_path`：MS 模块完整路径，便于人工定位
 
-- **schema 校验失败**（用例文件不符合 CONVENTIONS）→ 脚本以 `exit code 2` 终止，详细错误指引输出到 stderr。AI 必须按指引修正用例文件后重新执行 `import-cases`，**不可跳过**。
-- **MS API 调用失败**（网络/重名等）→ 单条跳过，详情写 stderr，不中断剩余用例导入。
-- **顶层不是 JSON 数组**（如 `{cases:[...]}` 包裹）→ 同 schema 失败，`exit code 2` 终止。
+**错误处理**（详见 [Recovery Cookbook](../../_shared/RECOVERY.md#6-r-icimport-cases-失败)）：
 
-常见 schema 错误及修复方式见 [CONVENTIONS.md#用例-json-格式](../../CONVENTIONS.md#用例-json-格式)。
+| 错误 | R-code |
+| --- | --- |
+| schema 校验失败 / 顶层非数组 | [R-IC-2](../../_shared/RECOVERY.md#r-ic-2--schema-校验失败) |
+| 同模块重名 | [R-IC-1](../../_shared/RECOVERY.md#r-ic-1--同模块内重名) |
+| MS API 单条失败 | 记进 `failed_details`，不中断（无需 R-code，正常行为）|
+
+常见 schema 错误见 [CONVENTIONS.md#用例-json-格式](../../CONVENTIONS.md#用例-json-格式)。
+
+### 2.3 mapping 维护命令
+
+mapping 与 cases 漂移时（MS 端手工改 / cases 文件被局部更新）：
+
+```bash
+# 查看差异（不修改文件）
+python3 $HELPER refresh-mapping --mapping-path PATH --cases-path final_cases.json
+
+# 自动清理 stale 条目
+python3 $HELPER refresh-mapping --mapping-path PATH --cases-path final_cases.json --apply
+```
+
+差异处理见 [R-RM-1（missing_in_mapping）](../../_shared/RECOVERY.md#r-rm-1--missing_in_mapping) / [R-RM-2（stale_in_mapping）](../../_shared/RECOVERY.md#r-rm-2--stale_in_mapping)。`extra_in_ms`（MS 端独立加的）永不动。
+
+### 2.4 跨 plan 切换 / 重 import 后的 mapping 重建（P11 教训）
+
+**触发场景**：
+
+- 用户 reset workspace 后切到一个新 plan_id，旧 mapping 文件还在但 ms_id 都过期了
+- 上游误删后重 import 了一份 cases，新 ms_id 与旧 mapping 不一致
+- 上面两种 `refresh-mapping --apply` 救不了——它只清 stale 不重建 ms_id
+
+**解决**：用 `rebuild-mapping` 反向从 MS plan 拉全部 plan_cases（含 case 的真实 ms_id 和 name），按 `name == cases.title` 匹配本地 cases 重建 mapping：
+
+```bash
+python3 $HELPER rebuild-mapping --plan-id <new_plan_id> --cases-path final_cases.json \
+  [--mapping-out PATH]
+```
+
+**输出**（stdout）：
+
+```json
+{
+  "mapping_path": "/abs/path/ms_case_mapping.json",
+  "total_in_plan": 46,
+  "matched": 46,
+  "unmatched_in_plan": [],          // plan 里有但本地 cases 没匹配上的
+  "unmatched_local": [],             // 本地 cases 但 plan 里没找到的（漏 import？）
+  "ambiguous_titles": []             // title 撞了无法消歧的 case
+}
+```
+
+**异常处理**（详见 [Recovery Cookbook](../../_shared/RECOVERY.md#4-r-rbrebuild-mapping-失败)）：
+
+| 输出字段非空 | R-code |
+| --- | --- |
+| `ambiguous_titles` | [R-RB-1](../../_shared/RECOVERY.md#r-rb-1--ambiguous_titles) |
+| `unmatched_local` | [R-RB-2](../../_shared/RECOVERY.md#r-rb-2--unmatched_localD6-修复小循环)（含修复诊断流程图）|
+| `unmatched_in_plan` | [R-RB-3](../../_shared/RECOVERY.md#r-rb-3--unmatched_in_plan) |
 
 ---
 
@@ -95,12 +186,14 @@ python3 $SKILLS_ROOT/shared-tools/scripts/metersphere_helper.py \
 
 ### 3.2 关联用例
 
-从 `ms_case_mapping.json` 提取所有 `ms_id`，关联到计划：
+从 `ms_case_mapping.json` 的 `entries[].ms_id` 提取所有 ms_id，关联到计划：
 
 ```bash
 python3 $SKILLS_ROOT/shared-tools/scripts/metersphere_helper.py \
   add-cases-to-plan <plan_id> --case-ids <ms_id1>,<ms_id2>,...
 ```
+
+> v1 mapping 用 `case_mapping[].ms_id`；v2 用 `entries[].ms_id`。如果你看到的是 v1 格式（含 `case_mapping` 顶层数组），重跑 mode=sync 让 import-cases 升级到 v2。
 
 ### 3.3 保存计划信息
 
@@ -138,113 +231,136 @@ python3 $HELPER update-case-result <plan_case_id> Prepare \
 
 若文件不存在或 `verdict == "pass"`，继续正常流程（4.1-4.4）。Pass 时将 `traceability_summary` 追加到回写评论中作为补充信息。
 
-### 4.1 加载验证数据
+### 4.1 一站式回写（推荐路径）
 
-读取 `forward_verification.json`，提取每条记录的：
-- `case_id`（来自 final_cases，形如 `M1-TC-01`；降级模式下形如 `FORWARD-TRACER-FP-1`）
-- `requirement_id`（FP-N 格式）
-- `result`（pass / fail / inconclusive）
-- `confidence`（0-100）
-
-### 4.2 获取计划用例
+execute 模式的全部回写工作通过一个命令完成：
 
 ```bash
 python3 $SKILLS_ROOT/shared-tools/scripts/metersphere_helper.py \
-  list-plan-cases <plan_id>
+  writeback-from-fv \
+  --plan-id <plan_id> \
+  --fv-path $TEST_WORKSPACE/forward_verification.json \
+  [--mapping-path PATH] \
+  [--report-path PATH] \
+  [--dry-run]
 ```
 
-### 4.3 匹配 case_id 到计划用例
+`writeback-from-fv` 内部自动完成：
+1. **fv schema 校验**（含 evidence、external_dependencies、code_location 文件存在性等所有规则）
+2. **三级查找** `case_id (M1-TC-01) → ms_id → plan_case_id`
+3. **P6 状态映射**（见 4.2）
+4. **幂等比对**：当前 MS 状态 == target → skip
+5. **重试**：retriable 错误（5xx / network）单次内自动重试 1 次
+6. **三个产物**：`ms_sync_report.json`、`forward_verification.enriched.json`、`pass_with_caveats.md` + `pending_external_validation.md`
 
-`final_cases.json` 的 `case_id` 已经是 MS 用例的天然主键（test-case-generation 直接产出 `M{N}-TC-NN` 格式）。匹配链路：
+第一次跑或大改动后建议先 `--dry-run` 一遍。
 
-1. `forward_verification.json` 的 `case_id`（如 `M1-TC-01`）→ MS 计划用例的 `case_id`（直接相等）
-2. 降级路径（case_id 形如 `FORWARD-TRACER-FP-1`）：通过 `requirement_id` (FP-N) → `requirement_points` 的 `name` → MS 计划用例的 `node_path` 模糊匹配，粒度退化到需求点级别
+### 4.2 三级查找的契约（mapping ↔ ms_id ↔ plan_case_id）
 
-### 4.4 判定与回写
+> 历史教训：旧版 PHASES 写「`forward_verification` 的 case_id 与 MS 计划用例的 case_id 直接相等」，**这是错的**——MS 内部的 `case_id` 是 UUID，跟我们的 `M1-TC-01` 完全不是同一个东西。
 
-**优先用例级精确判定**（case_id 直接匹配 MS 用例）：
+正确链路：
 
-- `result == "pass"` 且 `confidence >= threshold` → MS 用例标 `Pass`
-- `result == "fail"` 且 `confidence >= 70` → MS 用例标 `Failure`
-- 其余 → 保持 `Prepare`，添加评论说明
+```
+case_id (M1-TC-01)
+   ↓ 查 ms_case_mapping.json (Phase 2 落盘的 v2 格式)
+ms_id (UUID)
+   ↓ 查 list-plan-cases 的 caseId 字段
+plan_case_id (UUID, 用于 update-case-result)
+```
+
+由 `helper.py lookup-plan-case` 命令封装。`writeback-from-fv` 内部已调，不需要手工拼。
+
+mapping 不存在或 sha 不匹配 → **stop**，输出 `{type: stale_mapping, hint: 跑 refresh-mapping}`。不要自动重 import。
+
+### 4.3 P6 状态映射表（fv → MS target）
+
+| AI 判定 | external_dependencies.types | MS target | comment 模板 |
+| --- | --- | --- | --- |
+| `pass` | 空 | **Pass** | `AI 静态验证通过 (conf={c})` |
+| `pass` | 非空 | **Prepare** | `AI 静态验证通过 (conf={c})，待人工验证: {types_csv}` |
+| `fail` | — | **Failure** | `AI 判定不通过 (conf={c}) — evidence: {first_loc} — 失败原因: {actual_brief}` |
+| `inconclusive` | — | **Prepare** | `AI 无法判定 — 原因: {inconclusive_reason}` |
+
+> **关键变更（vs 旧版本）**：pass 但需要外部验证（真机/server/三方等）→ **降级为 Prepare**，不是「Pass + caveat 评论」。
+>
+> 理由：MS 端的 Pass 语义是「已验证通过」。如果还需要回归才能确认，它就不算 Pass。把这种条目当 Pass 处理会让 QA 默认信任、漏掉回归。被降级为 Prepare 的条目通过 `pass_with_caveats.md` 单独汇总，QA 直接拿这份清单做回归。
+
+### 4.4 重新执行场景
+
+- **有补充用例**（`supplementary_cases.json` 存在）：先执行 Phase 2 重新 import + Phase 3 追加关联（mapping 会自动重写），再跑 4.1 回写
+- **无补充用例**：直接对计划中已有用例重新跑 4.1。`writeback-from-fv` 的幂等比对会跳过状态相同的条目，只更新真正变化的。
+
+### 4.5 单条调用（仅诊断 / 应急用）
+
+不推荐在正常流程使用；仅在 4.1 报错需要逐条诊断时用：
 
 ```bash
+python3 $HELPER lookup-plan-case --plan-id X --case-id M1-TC-01
 python3 $HELPER update-case-result <plan_case_id> Pass \
-  --actual-result "AI 验证通过，置信度 95%" \
-  --comment "AI 自动验证：用例 M1-TC-01 通过"
+  --comment "AI 静态验证通过 (conf=95)"
 ```
-
-```bash
-python3 $HELPER update-case-result <plan_case_id> Failure \
-  --actual-result "AI 验证失败：<trace 字段中的实际行为摘要>" \
-  --comment "AI 自动验证：用例 M1-TC-01 未通过（置信度 80%）"
-```
-
-**降级粒度判定**（case_id 是 `FORWARD-TRACER-FP-N` 时）：
-
-需求点级别聚合——同一 FP 下所有 traceability 输出的判定走"全 pass 才标 Pass、任一 fail 即标 Failure"的旧逻辑，并在评论中注明"降级判定（无用例级粒度）"。
-
-**Manual 判定**：其余情况
-- 保持 `Prepare` 状态
-- 添加评论注明原因：
-```bash
-python3 $HELPER update-case-result <plan_case_id> Prepare \
-  --comment "AI 置信度不足（平均 65%），需人工验证"
-```
-
-### 4.5 重新执行场景
-
-- **有补充用例**（`supplementary_cases.json` 存在）：先执行 Phase 2 导入 + Phase 3 追加关联，再执行 Phase 4 回写
-- **无补充用例**：直接对计划中已有用例重新验证回写（覆盖之前的状态和评论）
 
 ---
 
 ## 阶段 5: output - 生成报告
 
-### 5.1 生成 ms_sync_report.json
+### 5.1 ms_sync_report.json（execute 模式由 writeback-from-fv 自动生成）
 
-汇总所有阶段的结果：
+execute 模式下的 `ms_sync_report.json` 由 `writeback-from-fv` 自动落盘，结构：
 
 ```json
 {
-  "sync_mode": "execute",
-  "timestamp": "2026-04-08T15:30:00+08:00",
-  "import": {
-    "source_files": ["final_cases.json"],
-    "total_cases": 30,
-    "imported": 28,
+  "plan_id": "uuid-zzz",
+  "fv_path": "/abs/path/to/forward_verification.json",
+  "ran_at": "2026-04-23T12:34:56Z",
+  "dry_run": false,
+  "summary": {
+    "total": 46,
+    "updated": 30,
+    "unchanged": 14,
     "failed": 2,
-    "modules_created": 5,
-    "metersphere_url": "https://metersphere.tapsvc.com/#/track/case/all/..."
+    "by_target_status": {"Pass": 33, "Prepare": 13, "Failure": 0}
   },
-  "plan": {
-    "plan_id": "uuid-zzz",
-    "plan_name": "优惠券功能",
-    "plan_url": "https://metersphere.tapsvc.com/#/track/plan/view/uuid-zzz",
-    "is_existing_plan": false,
-    "associated_cases": 28
-  },
-  "execution": {
-    "auto_passed": 15,
-    "auto_failed": 3,
-    "manual_required": 10,
-    "confidence_threshold": 90,
-    "details": [
-      {"requirement_id": "FP-1", "verdict": "pass", "avg_confidence": 95, "tc_count": 5},
-      {"requirement_id": "FP-2", "verdict": "fail", "failed_cases": ["M2-TC-03"], "tc_count": 3},
-      {"requirement_id": "FP-3", "verdict": "manual", "reason": "置信度不足(avg 65)", "tc_count": 2}
-    ]
-  }
+  "updated": [
+    {"case_id": "M1-TC-01", "target": "Pass", "from": "Prepare",
+     "plan_case_id": "...", "ms_id": "..."}
+  ],
+  "unchanged": [
+    {"case_id": "M2-TC-03", "status": "Pass", "plan_case_id": "...", "ms_id": "..."}
+  ],
+  "failed": [
+    {"case_id": "M3-TC-09", "error_type": "mapping_miss",
+     "message": "M3-TC-09 not in mapping", "retriable": false}
+  ]
 }
 ```
 
+> 字段语义：
+> - `summary.by_target_status`：按 P6 映射后的 MS 目标状态分类计数
+> - `updated`：状态有变更并成功写回的条目
+> - `unchanged`：当前状态已等于 target，幂等跳过
+> - `failed`：写回失败的条目（按 `error_type` 分类，含 mapping_miss / not_in_plan / api_error 等）
+
+sync 模式（不跑 writeback）则**不产出**该文件。
+
 ### 5.2 输出摘要
 
-在聊天中向用户展示：
-- 导入统计：N 条用例导入成功 / M 条失败
-- 测试计划链接
-- 执行回写统计（execute 模式）：N 条自动通过 / M 条自动失败 / K 条需人工验证
+execute 模式跑完后向用户展示：
+
+```
+MS 测试计划回写完成：
+- Pass: {by_target_status.Pass} 条（AI 静态验证通过且无外部依赖）
+- Prepare: {by_target_status.Prepare} 条（含 X 条 pass+ext_deps + Y 条 inconclusive）
+- Failure: {by_target_status.Failure} 条
+- 测试计划: {plan_url from ms_plan_info.json}
+- 待回归清单: {workspace}/pending_external_validation.md
+- {summary.failed} 条写回失败 → 见 ms_sync_report.json.failed[]
+```
+
+sync 模式只展示导入统计 + 计划链接。
 
 ### 5.3 完成验证
 
-检查 `ms_sync_report.json`、`ms_case_mapping.json`、`ms_plan_info.json` 是否已生成且内容有效。
+- sync 模式：`ms_case_mapping.json`（v2）、`ms_plan_info.json` 已落盘
+- execute 模式：上述两个 + `ms_sync_report.json`、`forward_verification.enriched.json`、`pass_with_caveats.md`、`pending_external_validation.md` 全部落盘

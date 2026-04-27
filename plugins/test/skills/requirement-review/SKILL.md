@@ -163,7 +163,7 @@ python3 $SKILLS_ROOT/shared-tools/scripts/gitlab_helper.py file-content <project
 skill 执行的最终阶段（output）完成后，**必须**逐一验证以下产出文件：
 
 - [ ] `requirement_understanding.md` — 非空，包含需求理解结构化文档
-- [ ] `review_checklist.md` — 非空，包含 12 维度评审清单
+- [ ] `review_checklist.md` — 非空，包含 12 维度评审清单 + 「文档文案校对」区块（无发现也须显式写入）
 - [ ] `report.md` — 非空，包含精简评审报告
 
 全部必须项通过后，输出完成总结。如任一必须文件缺失，**停止并补生成**，不允许声明完成。

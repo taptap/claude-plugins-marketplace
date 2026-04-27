@@ -27,6 +27,7 @@
 - 根据需求类型（understand 阶段的分类结果）选择适用的维度，跳过明显不相关的维度并标记为 `[不适用]`
 - 评审发现的问题按照 TEMPLATES.md 中的问题分配规则分配给对应职能
 - 各维度统一使用 [TEMPLATES.md](TEMPLATES.md#review_checklistmd-模板) 中定义的表格格式输出
+- **12 维度评审完成后**必须执行 [PRD 文档质量校对](../_shared/REQUIREMENT_DIMENSIONS.md#附加项prd-文档质量校对)（错别字 / 术语一致性 / 易读性 / 文案-设计稿一致性 / 数字单位一致性），结果写入 `review_checklist.md` 单独的「文档文案校对」区块。错别字若已扩散到端上文案视为阻断项。
 
 ### Go/No-Go 判定标准
 
