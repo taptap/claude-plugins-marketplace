@@ -766,10 +766,22 @@ Evidence:
 
 1. **写入 `defect_list.json`**：将 5S.1 提取的缺陷按优先级排序（P0 在前），格式见 [TEMPLATES.md](TEMPLATES.md#defect_listjson)
 2. **写入 `smoke_test_report.json`**：汇总验证统计和缺陷统计，格式见 [TEMPLATES.md](TEMPLATES.md#smoke_test_reportjson)
-3. **P0 门控判定**：
+3. **写入 `report.md`（人类可读报告，最终上传飞书云文档）**：按 [TEMPLATES.md](TEMPLATES.md#reportmdsmoke-test-模式专用5s2-阶段产出) 中 6 节结构组织（无 H1）：
+   - §0 冒烟测试结论：判定 `[通过]/[不通过]` + P0/P1 缺陷数 + 整体置信度均值
+   - §1 核心指标（验证点/覆盖率/追溯率/缺陷数）
+   - §2 P0 用例评估（**标题必须明确分子分母** `共 N/总数`）
+   - §3 双通道追溯结论（§3.1 需求覆盖矩阵 + §3.2 代码变更追溯）
+   - §4 缺陷清单（每个 DEF 含问题描述/预期/代码块/修复建议；代码块前必须加 quote 提示）
+   - §5 其他观察
+
+   > ⚠️ 状态符号统一用中文 `[通过]/[不通过]/[待定]`、`[已覆盖]/[范围外]`，**禁止 emoji ⭕✅⚠️❌、ASCII `[OK]/[!]/[X]`、装饰性 emoji 章节前缀 📋🐛📊💡**——实测飞书 import 会破坏前两类，第三类会自动转为 `[Doc][Bug][Chart][Tip]` ASCII 形式。
+   > ⚠️ 禁止「本报告由 QA AI 助手...」署名，用元数据「分析方式：AI 静态分析 + 实机验证补充」替代。
+   > ⚠️ §3.2 末尾未追溯变更必须明确表述（如「本次 MR 所有变更文件都映射到 R1-R7」），禁止"无范围蔓延"含糊文案。
+
+4. **P0 门控判定**：
    - `defect_list.json` 中 `priority == "P0"` 的缺陷数 > 0 → `verdict: "fail"`，`fail_reason` 列出 P0 缺陷摘要
    - P0 缺陷数 == 0 → `verdict: "pass"`
-4. **Chat 输出冒烟测试结论**：
+5. **Chat 输出冒烟测试结论**：
 
 ```
 冒烟测试结论：{verdict}
