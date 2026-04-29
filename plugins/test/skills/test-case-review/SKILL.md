@@ -135,7 +135,7 @@ description: >
 | `review_data.md` | fetch | 需求摘要 + 用例列表 |
 | `requirement_points.md` | understand | 编号功能点清单 |
 | `tc_review_detail.md` | review | 4 维度评审结果（中间文件，供 output 阶段消费生成 `review_result.json`） |
-| `review_summary.md` | summary | 统计 + 改进建议 + 补充用例清单 |
+| `review_summary.md` | summary | 统计 + 改进建议 + 补充用例清单（**最终上传到飞书云文档的人类可读报告**，模板见 [TEMPLATES.md](TEMPLATES.md)） |
 | `supplementary_cases.json` | summary | 补充用例（可选） |
 
 ## Closing Checklist（CRITICAL）
