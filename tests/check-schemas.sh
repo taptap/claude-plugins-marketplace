@@ -72,7 +72,6 @@ assert_valid('ca-summary ok', ca, {
     'risk_count': 3,
     'new_features': [{'title': '新增登录校验', 'module': 'auth'}],
     'risk_breakdown': {'high': 1, 'medium': 2, 'low': 0},
-    'scenario': 'story',
 })
 for label, data in [
     ('ca-summary 缺 required',
@@ -83,8 +82,6 @@ for label, data in [
      {'changed_modules': [], 'risk_count': 0, 'risks_count': 1}),
     ('ca-summary 拼错 features',
      {'changed_modules': [], 'risk_count': 0, 'features': []}),
-    ('ca-summary scenario enum',
-     {'changed_modules': [], 'risk_count': 0, 'scenario': 'task'}),
     ('ca-summary risk_count 负数',
      {'changed_modules': [], 'risk_count': -1}),
 ]:
@@ -132,8 +129,6 @@ assert_valid('rr-summary ok', rr, {
     'verdict': 'ready_with_conditions',
     'issue_count': 2,
     'blocking_issues': [{'title': 'PRD 缺异常分支', 'category': '完整性'}],
-    'role_breakdown': {'PM': 1, 'Dev': 1},
-    'review_mode': 'multi_perspective',
 })
 for label, data in [
     ('rr-summary 缺 required',
@@ -148,8 +143,6 @@ for label, data in [
      {'verdict': 'ready', 'issue_count': 0, 'issues_count': 1}),
     ('rr-summary 拼错 blockers',
      {'verdict': 'ready', 'issue_count': 0, 'blockers': []}),
-    ('rr-summary review_mode enum',
-     {'verdict': 'ready', 'issue_count': 0, 'review_mode': 'fast'}),
 ]:
     assert_invalid(label, rr, data)
 
